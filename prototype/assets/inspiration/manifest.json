@@ -1,0 +1,554 @@
+{
+  "source": "即梦AI公开灵感作品详情页",
+  "collectedAt": "2026-07-31",
+  "requirements": {
+    "minimumLongEdge": 720,
+    "thumbnailAssetsAllowed": false,
+    "duplicateHashesAllowed": false
+  },
+  "items": [
+    {
+      "file": "portrait-01.webp",
+      "category": "人像",
+      "width": 1350,
+      "height": 2400,
+      "sha256": "b959fdb45877878c0fd583221a42142853c552fac922e2507a93078e2a2c3534",
+      "model": "图片 4.7",
+      "ratio": "9:16",
+      "workUrl": "https://jimeng.jianying.com/ai-tool/work-detail/7640866760467516698",
+      "prompt": "高清真人写真全身照，中景拍摄，容颜清丽脱俗，19岁清秀少女，日系清新风，浅米色、木色与绿色为主的配色，柔和自然光，冷白皮的年轻长发女子，杏色单肩系带长裙，户外平台旁有翠绿植物，背景是带卷帘的田园风房间，静谧雅致，画面清晰细腻，8K分辨率，专业摄影光源，全画幅清晰对焦。"
+    },
+    {
+      "file": "portrait-02.webp",
+      "category": "人像",
+      "width": 1350,
+      "height": 2400,
+      "sha256": "4abfb1b192b824a17cd03e07d1a50465454e4d1beffca3dc0fef137001608d20",
+      "model": "图片 5.0 Lite",
+      "ratio": "9:16",
+      "prompt": "真人写真，64K高清，绝色美人，气质美女，肤白细腻光滑，盘发微乱蓬松，深蓝色紧身衣服，微笑，中色模糊背景，高级项链耳环，唯美，迷人，注视着镜头浅笑"
+    },
+    {
+      "file": "portrait-03.webp",
+      "category": "人像",
+      "width": 1350,
+      "height": 2400,
+      "sha256": "71653bfc84ad20ee9a95b66cbd0a2072e82b282a23f73fb85d4550757356c20b",
+      "model": "图片 4.1",
+      "ratio": "9:16",
+      "workUrl": "https://jimeng.jianying.com/ai-tool/work-detail/7582393020583021875",
+      "prompt": "日常生活快照，非常规视角构图，随手一拍。年轻女性，娇柔可爱，气质出众，眼神灵动俏皮，冷白皮通透细腻，清新淡妆。强烈阳光倾洒在头发与脸上，风吹发丝飘动，光影斑驳，边缘发光，高饱和强对比，胶片颗粒。深棕长发微卷披散，浅蓝开衫外套、白色内搭吊带，秋日巷弄石阶旁，落叶轻旋，自然光线明亮柔和，高质量人像摄影，全画幅高清。"
+    },
+    {
+      "file": "portrait-04.webp",
+      "category": "人像",
+      "width": 1350,
+      "height": 2400,
+      "sha256": "9e0cd944bd1c2df8d43e393ec5e3cd0a51783d1cad610fbb77fb195417bffe5f",
+      "model": "图片 4.0",
+      "ratio": "9:16",
+      "workUrl": "https://jimeng.jianying.com/ai-tool/work-detail/7620870479829617930",
+      "prompt": "绝色美人，气质美女，肤白细腻光滑，盘发微乱蓬松，深蓝色衣服，高级项链耳环，唯美迷人，注视镜头。电影级面光，光线追踪，冷白皮漫感质感，人物有最好的骨相，莫兰迪配色，高颜值网红，INS风，侧光，发丝轻飘，慵懒俏皮，东方美女，甜美氛围，构图优美，绝美角度拍摄。"
+    },
+    {
+      "file": "portrait-05.webp",
+      "category": "人像",
+      "width": 1350,
+      "height": 2400,
+      "sha256": "6062b8ecb30f81a928d160ae67499adaef5186ab2702438dd2214ef03660cf76",
+      "model": "图片 4.0",
+      "ratio": "9:16",
+      "workUrl": "https://jimeng.jianying.com/ai-tool/work-detail/7628203599662828846",
+      "prompt": "真人写真，64K高清，绝色美人，气质美女，肤白细腻光滑，盘发，深蓝色圆领衣服，高级项链耳环，唯美迷人，全身照，注视镜头。电影级面光，光线追踪，莫兰迪配色，INS风，侧光，发丝轻飘，甜美少女系，东方美女，冷白皮，偶像气质，皮肤美白透亮，构图优美。"
+    },
+    {
+      "file": "portrait-06.webp",
+      "category": "人像",
+      "width": 1728,
+      "height": 2304,
+      "sha256": "f65ff3a77469faa62d0541a556cfd63a415f4b31357948525f696e03be0ef01a",
+      "model": "图片 4.0",
+      "ratio": "3:4",
+      "workUrl": "https://jimeng.jianying.com/ai-tool/work-detail/7639924053351927078",
+      "prompt": "韩系氛围照片，20岁左右网红美女，妆容精致，搭配精致项链和耳环，黑色露肩上衣，背景为暖棕色低饱和磨砂质感墙面，正面柔光打光，人物面部柔和阴影过渡，摄影棚网红照质感，双手抱臂歪头，可爱笑眯眯表情，眼神灵动，胶片风格，明显颗粒感，柔光暖调。"
+    },
+    {
+      "file": "portrait-07.webp",
+      "category": "人像",
+      "width": 1350,
+      "height": 2400,
+      "sha256": "eda6182bee576ff6716035ca829d35cbce725dd6058d24738991cb9867efceda",
+      "model": "图片 4.1",
+      "ratio": "9:16",
+      "workUrl": "https://jimeng.jianying.com/ai-tool/work-detail/7625592109566823731",
+      "prompt": "8K Ultra HD超高清人物写真，绝美东方女性，鹅蛋脸，黑长直秀发自然垂落，背身侧立在白色法式竖框落地窗旁，面部侧转45度，神态清冷慵懒；身穿浅杏色修身旗袍，豆沙粉与浅绿晕染花卉印花。自然光从右侧斜射，发丝边缘有细腻轮廓光，浅景深，背景自然虚化，真实皮肤肌理，低饱和暖调，写实摄影风格。"
+    },
+    {
+      "file": "portrait-08.webp",
+      "category": "人像",
+      "width": 1600,
+      "height": 2400,
+      "sha256": "66534652738a66be40b11909c433e23bb33a033455eff0868eb92e557dee3485",
+      "model": "图片 4.0",
+      "ratio": "2:3",
+      "workUrl": "https://jimeng.jianying.com/ai-tool/work-detail/7613970153264450826",
+      "prompt": "清甜治愈的春日氛围，19岁甜美少女，冷白皮，妆容清透，暖棕色侧编辫子。白色打底衫搭配薄荷绿色V领针织开衫，米白色蕾丝蛋糕长裙，怀抱透明玻璃纸包裹的小束鲜花，站在春日都市街道边，身后明黄色围墙与嫩绿树叶形成色彩对比，暖融融的自然光，写实摄影，画面明亮温柔。"
+    },
+    {
+      "file": "photography-01.webp",
+      "category": "摄影",
+      "width": 608,
+      "height": 1080,
+      "sha256": "2e5e29f55ab5de803e1212dbaf8e6c8311a525c8557279803f06346e56a196eb",
+      "model": "图片 4.0",
+      "ratio": "9:16",
+      "workUrl": "https://jimeng.jianying.com/ai-tool/work-detail/7657846405393943846",
+      "prompt": "远山云雾缭绕，碧绿草原一望无际，清澈溪流潺潺流淌，蓝天白云温柔治愈，落日霞光温柔绚烂，森林清新通透，光影柔和唯美，大自然原生态美景，高清细腻，氛围感拉满，极致治愈，超广角风景大片"
+    },
+    {
+      "file": "photography-02.webp",
+      "category": "摄影",
+      "width": 720,
+      "height": 1080,
+      "sha256": "4a9e1d51ec65069256e13b5ef947ef083231dd1eae36b515fafab0314a572985",
+      "model": "图片 5.0 Lite",
+      "ratio": "2:3",
+      "workUrl": "https://jimeng.jianying.com/ai-tool/work-detail/7664183402408578354",
+      "prompt": "大师级风光摄影，真实摄影质感，高分辨率，自然光线。宏伟山脉高高耸起，前景有野花，黄金时刻的暖光，大气透视自然，层次丰富。三分法构图，12mm广角镜头，极致纵深感与透视，画面通透，色彩真实，保留自然纹理与轻微胶片颗粒。"
+    },
+    {
+      "file": "photography-03.webp",
+      "category": "摄影",
+      "width": 608,
+      "height": 1080,
+      "sha256": "6d887cbf01c31e804cb4c4ac01693afe3ad488df9cb063d1842d989b23915027",
+      "model": "图片 3.0",
+      "ratio": "9:16",
+      "workUrl": "https://jimeng.jianying.com/ai-tool/work-detail/7667320230561058075",
+      "prompt": "超高清8K画质，大师级风光摄影，电影级柔和光影质感，超广角远景构图，夕阳西下暖金色落日霞光铺满整片天空，连绵翠绿山林间静谧小村庄错落分布，屋顶升起缕缕炊烟，氛围温柔治愈，柔和逆光，自然写实色彩。"
+    },
+    {
+      "file": "photography-04.webp",
+      "category": "摄影",
+      "width": 608,
+      "height": 1080,
+      "sha256": "78fd4c5c627b5810df22e9632e32fb2d6a605334bc7331b383cb05ab89f57596",
+      "model": "图片 5.0 Pro",
+      "ratio": "9:16",
+      "workUrl": "https://jimeng.jianying.com/ai-tool/work-detail/7598043171423096102",
+      "prompt": "风景摄影，治愈心灵，蓝天，白云，森林，草原，溪流，远景，阳光，丁达尔效应，高速摄影，佳能 EOS R5，壁纸，高细节，8K，电影感自然光。"
+    },
+    {
+      "file": "photography-05.webp",
+      "category": "摄影",
+      "width": 608,
+      "height": 1080,
+      "sha256": "4df7f0f5a98d1608935b12263fa47423abc2109d3c3d757d710fae0aae935dce",
+      "model": "图片 5.0 Lite",
+      "ratio": "9:16",
+      "workUrl": "https://jimeng.jianying.com/ai-tool/work-detail/7654973601874988334",
+      "prompt": "单反风光摄影，广角镜头，远景，清晨，秋日的乌兰布统五彩滩，零星白桦树点缀画面，小河穿过薄雾缭绕的草原，羊群与骏马，朝阳刚刚露出地平线，超现实主义美景，8K超高清，高饱和度。"
+    },
+    {
+      "file": "photography-06.webp",
+      "category": "摄影",
+      "width": 608,
+      "height": 1080,
+      "sha256": "cc62b2f622beedc2d6ce5f6f91f1290e4a3f6ebf5d2c5c9c2300ec353de26cb6",
+      "model": "图片 5.0 Lite",
+      "ratio": "9:16",
+      "workUrl": "https://jimeng.jianying.com/ai-tool/work-detail/7640727386039897353",
+      "prompt": "治愈山野风景，蓝天白云，青山连绵，自然氛围感拉满，超清画质，电影滤镜，柔和光影，简约高级，无杂质画面，意境感十足。"
+    },
+    {
+      "file": "photography-07.webp",
+      "category": "摄影",
+      "width": 810,
+      "height": 1080,
+      "sha256": "0151d04a2f92fcbf339cb7ace16a71451fe688a8ee7ef1aae924d57e847abc1b",
+      "model": "图片 4.5",
+      "ratio": "3:4",
+      "workUrl": "https://jimeng.jianying.com/ai-tool/work-detail/7603813729402178854",
+      "prompt": "航拍视角，鲜绿色草坡上一个黑色人影，黄色小花点缀，右侧深色陡峭悬崖，左侧深色水面数百只白色海鸥飞舞。冰岛海边悬崖，清晨晴朗，阳光斜射草坡，氛围空灵孤寂，航拍写实摄影风格，暗色调与绿色草坡形成强烈对比，8K分辨率，DJI Mavic 3 Pro Cine航拍。"
+    },
+    {
+      "file": "photography-08.webp",
+      "category": "摄影",
+      "width": 608,
+      "height": 1080,
+      "sha256": "45a5089f1b8b4c49a71d2a4b1fe505bd3732a71f00ba723739760302e9d6f9ae",
+      "model": "图片 5.0 Lite",
+      "ratio": "9:16",
+      "workUrl": "https://jimeng.jianying.com/ai-tool/work-detail/7656190695534759195",
+      "prompt": "8K超清自然风光照片，写实风格，画面中央为壮丽雪山，前景是平静湖泊，湖面倒映雪山，夕阳照射下雪山呈现温暖橙色，云朵也被染成橙色，整体配色蓝色、橙色和白色，宁静而壮丽，细节精致，光影逼真。"
+    },
+    {
+      "file": "photography-09.webp",
+      "category": "摄影",
+      "width": 810,
+      "height": 1080,
+      "sha256": "acf3f2563c8c52cc4286051a2eda9405aeaca743f739ba6a2b1c75ad6b015e52",
+      "model": "图片 4.0",
+      "ratio": "3:4",
+      "workUrl": "https://jimeng.jianying.com/ai-tool/work-detail/7624404497539796275",
+      "prompt": "翠绿山峦主题的意境海报，葱郁绿色山坡覆盖草皮与苔藓，云雾笼罩山脊，画面下方偏右是一栋实木色小木屋。整体设计偏文艺与极简风格，墨绿色低饱和色调，保留中英文字混排与留白，传达心灵栖息在山间的宁静意境。"
+    },
+    {
+      "file": "photography-10.webp",
+      "category": "摄影",
+      "width": 720,
+      "height": 1080,
+      "sha256": "cbf2c70b691a709f6fb9175d36cdfb1c00c8431ea0d6cf29fe6d91eec97ed499",
+      "model": "图片 3.1",
+      "ratio": "2:3",
+      "workUrl": "https://jimeng.jianying.com/ai-tool/work-detail/7651989150584917274",
+      "prompt": "氛围感风景，胶片感，大师摄影作品，国家地理摄影风格，人物占十分之一画面，远景构图，真实自然光，细腻层次与故事感。"
+    },
+    {
+      "file": "portrait-09.webp",
+      "category": "人像",
+      "width": 1350,
+      "height": 2400,
+      "sha256": "fc847e643a19b7fe26857618956ecedf3b2c1fd4c9cf779a13e7a62313ad931d",
+      "model": "图片 4.1",
+      "ratio": "9:16",
+      "prompt": "中式风格摄影，镜头特写，暖色调，冷白皮东方美女，极繁超长精致流苏头链，红色奢华异域服饰绣有复杂纹路，手持华丽工艺扇，中国传统大师级配色，银色点缀，神秘深邃，宁静与热烈并存，故事感与场景感。"
+    },
+    {
+      "file": "portrait-10.webp",
+      "category": "人像",
+      "width": 1350,
+      "height": 2400,
+      "sha256": "3447fa6357d6465d0ddc4fda5f7ff7c4e3d3665d3b1e39447094e6d2b9c8ba99",
+      "model": "图片 4.0",
+      "ratio": "9:16",
+      "prompt": "大家闺秀真人写真，冷白皮，元气妆，亭亭玉立，高雅气质，柔和灯光，黑色长发编发，黑花发饰，黑色纱制衣服，蕾丝、蝴蝶结、绫罗绸缎与水晶首饰，暗黑甜美系，半身镜头，自然光线，高细节摄影。"
+    },
+    {
+      "file": "portrait-11.webp",
+      "category": "人像",
+      "width": 1350,
+      "height": 2400,
+      "sha256": "6b2d9db8a05d0ab5fdbe09dc00a1c440993d3af89915c2b3b8064699bd57ebd8",
+      "model": "图片 4.0",
+      "ratio": "9:16",
+      "prompt": "人像摄影，冷白皮美女，瓜子脸，柔顺长发垂落肩头，修身高领长袖针织衫，身体微微前倾，表情自然害羞。江景自然色调与深色服装相互映衬，日常快照风格，近景写实，自然光影，生活气息，32K超高清细节。"
+    },
+    {
+      "file": "portrait-12.webp",
+      "category": "人像",
+      "width": 1728,
+      "height": 2304,
+      "sha256": "0bb37b7bed3ed3e7d2c6f7e1b91b4ca5d938c74c9152f6361cacdeffefc72e25",
+      "model": "图片 4.0",
+      "ratio": "3:4",
+      "prompt": "电影级大片，25岁亚洲美女，清纯瓜子脸，冰瓷玉肌冷白皮，深蓝色休闲针织衫。背景为迷雾山水、冷蓝天空与飘动的深蓝围巾，人物表情从容坚定，复古文艺、大气磅礴，胶片颗粒，风吹发丝的动态。"
+    },
+    {
+      "file": "anime-01.webp",
+      "category": "动漫",
+      "width": 1080,
+      "height": 1080,
+      "sha256": "c0563ec8742c17b332898a1981c6640aa5ef8c8371440ae2bc6a0635c665833b",
+      "model": "图片 3.1",
+      "ratio": "1:1",
+      "prompt": "日式萌系动漫插画，蓝灰双马尾少女，蓝色眼眸清亮有高光，洛丽塔服饰，蝴蝶结、花朵、爱心等精致饰品，正面特写构图，手指摆出可爱姿势，浅蓝与白色主色调，清新治愈，细节丰富。"
+    },
+    {
+      "file": "anime-02.webp",
+      "category": "动漫",
+      "width": 936,
+      "height": 1664,
+      "sha256": "abad51c028ba9d8d42b77ef2cea514d12ffc83d1810508811fabf80bf51bc544",
+      "model": "图片 3.0",
+      "ratio": "9:16",
+      "prompt": "3D动漫厚涂风格，丙烯颜料质感，18岁高冷少女，深棕色单边麻花辫与空气刘海，精致清冷五官，斜挎白色针织大单肩包，柔焦、华丽通透光影，32K超高清，OC渲染，细腻发丝与肌理。"
+    },
+    {
+      "file": "anime-03.webp",
+      "category": "动漫",
+      "width": 1350,
+      "height": 2400,
+      "sha256": "4999b5aeb2b13a2f22f6f029d6a46b158ea878d68e2a2cc62193d4efc30b2142",
+      "model": "图片 4.0",
+      "ratio": "9:16",
+      "prompt": "CG建模，古风美少年，面部特写，冷白皮肤，凤眼清冷，灰色发丝凌乱拂面，华丽银饰从发间垂落，银白服装领口袖口精致华丽，高级朦胧梦幻氛围，写实国漫质感。"
+    },
+    {
+      "file": "anime-04.webp",
+      "category": "动漫",
+      "width": 1350,
+      "height": 2400,
+      "sha256": "84fee9d795819a1b3ba031bcd195cc4f6bb32cc7ea447971320dad78556c2225",
+      "model": "图片 4.5",
+      "ratio": "9:16",
+      "prompt": "动漫风格精致厚涂，少年感亚洲面孔，黑色头发，宽松高中校服外套，樱花校园与蓝天白云，自然柔光，强烈而温暖的光影对比，半厚涂CG渲染，线条流畅，治愈系高级插画。"
+    },
+    {
+      "file": "anime-05.webp",
+      "category": "动漫",
+      "width": 1350,
+      "height": 2400,
+      "sha256": "fb55a22d1394787abd14787449ca7497efcad6701d5abf26f91b89c7d5450458",
+      "model": "图片 3.1",
+      "ratio": "9:16",
+      "prompt": "3D国漫仙侠风格，栗色双马尾少女，发间插野花与羽毛，琥珀色杏眼，浅棕渐变草绿劲装，绣山海异兽与草木纹样，身侧跟随白泽幼兽，翠绿色自然粒子灵光，虚幻引擎电影级渲染。"
+    },
+    {
+      "file": "anime-06.webp",
+      "category": "动漫",
+      "width": 1350,
+      "height": 2400,
+      "sha256": "6d5671f312e0c9d26308081c2668d69b8d2507d550720944d2f40f6edefd3170",
+      "model": "图片 5.0 Lite",
+      "ratio": "9:16",
+      "prompt": "现代2D漫剧风格，日系治愈动画质感，24岁温柔女性，奶茶棕羊毛卷，中长发齐刘海，米白针织毛衣与浅咖围巾，手捧热奶茶，暖调窗边逆光，赛璐璐平涂，低饱和暖色，单人半身立绘。"
+    },
+    {
+      "file": "anime-07.webp",
+      "category": "动漫",
+      "width": 1350,
+      "height": 2400,
+      "sha256": "c3dce11bc46b9040c64f4c8e59a84307334cf213933279f7b27469038461cc90",
+      "model": "图片 4.5",
+      "ratio": "9:16",
+      "prompt": "灵动纯美的深紫发少女，动态发丝凌乱飘动，泛光、柔焦、颗粒质感与伦勃朗光，高饱和反射折射，情绪写意，前卫视觉艺术与电影美学，CGI虚幻引擎5渲染，高级大片感。"
+    },
+    {
+      "file": "anime-08.webp",
+      "category": "动漫",
+      "width": 1350,
+      "height": 2400,
+      "sha256": "1407d69b98e0123bdda7cf5936159ebf291629adfb851d292e4a18a84daab49a",
+      "model": "图片 5.0 Lite",
+      "ratio": "9:16",
+      "prompt": "3D动漫风格，浅银长发女性面部特写，眼尾淡粉，温柔湿润的眼眸略带忧郁，纤细手指轻拉浅雾灰针织围巾半遮脸颊，冷灰银白基底，柔和朦胧光影，清冷又温柔，细腻治愈。"
+    },
+    {
+      "file": "illustration-01.webp",
+      "category": "插画",
+      "width": 1350,
+      "height": 2400,
+      "sha256": "41aea8312a9e49b615171b82a813da5cbc702d75bd523b1ae58470ddf6553632",
+      "model": "图片 4.5",
+      "ratio": "9:16",
+      "prompt": "杭州现代地标建筑凹版印刷线稿，粗细线结合并保留铜版雕刻痕迹，橙白色调，西湖、三潭印月、灵隐寺、莲花体育场与江南山水，以清明上河图散点透视构图，大师级插画与现代海报排版。"
+    },
+    {
+      "file": "illustration-02.webp",
+      "category": "插画",
+      "width": 1728,
+      "height": 2304,
+      "sha256": "f5f10545d644f64a99b6b07cce3985e2bd846e8bac7279a650feb9f9cbba185e",
+      "model": "图片 4.0",
+      "ratio": "3:4",
+      "prompt": "新中式扁平渐变插画，以山楂和山药为主体，高度概括的图形，噪点肌理与色彩颗粒，纯白背景，多巴胺配色，红色与浅棕色为主，弥散渐变，年轻现代，极简先锋图形设计。"
+    },
+    {
+      "file": "illustration-03.webp",
+      "category": "插画",
+      "width": 1728,
+      "height": 2304,
+      "sha256": "154844b568d06d4070b524e88a86f730ba64fa4aa1bac49ee3b4a1cb208a7c2a",
+      "model": "图片 4.7",
+      "ratio": "3:4",
+      "prompt": "丝网印刷风格，颗粒肌理，超广角平视视角，淡蓝色海滨小镇冰淇淋车，车顶有大型冰淇淋装饰，车门口摆放绿植与桌椅，蓝白双色为主，纯扁平插画，简约构图，高饱和8K。"
+    },
+    {
+      "file": "illustration-04.webp",
+      "category": "插画",
+      "width": 1104,
+      "height": 1472,
+      "sha256": "45f6b0348b266bd0664fc71ed21b0c77b4c3c0c3ed834205bc5f8cac0ff432e0",
+      "model": "图片 3.1",
+      "ratio": "3:4",
+      "prompt": "极繁治愈系插画，童趣涂鸦与意识流梦境，白色及腰长发、蓝色眼睛的小男孩在森林玩耍，大色块、颗粒肌理、抽象扁平表现，非对称有角度构图。"
+    },
+    {
+      "file": "illustration-05.webp",
+      "category": "插画",
+      "width": 1080,
+      "height": 1080,
+      "sha256": "715825a2bdeae8ccad64feebb7ea75fe1ce50f89a45ae96a7ee9f7181658595d",
+      "model": "图片 4.0",
+      "ratio": "1:1",
+      "prompt": "极繁治愈系插画，梦幻森林动物角色，大色块与颗粒质感，色彩鲜艳饱和，童趣涂鸦和意识流自由表达，纯色背景，角落点缀手写体小字，整体色调协调。"
+    },
+    {
+      "file": "illustration-06.webp",
+      "category": "插画",
+      "width": 1080,
+      "height": 1080,
+      "sha256": "6f95c1cf67ba6f120a2b2891683d08cc11754ecd3795dfe73af062238446319d",
+      "model": "图片 4.0",
+      "ratio": "1:1",
+      "prompt": "极简日系平面海报，丝网印刷与大面积留白，抽象变形的高饱和蓝色菜篮子，篮中露出樱桃，白色背景，简洁线条，90年代复古美学。"
+    },
+    {
+      "file": "illustration-07.webp",
+      "category": "插画",
+      "width": 936,
+      "height": 1664,
+      "sha256": "641cfef596a7f85ad0e039371b92a97d9ab76dc0b0e918d9de67cfd2cc25fad2",
+      "model": "图片 3.1",
+      "ratio": "9:16",
+      "prompt": "“我的阿勒泰”连续性三联竖版长卷，绘本与水彩插画，绿色高原、雪山、森林、绵羊和帐篷，鸟瞰视角，大色块与颗粒肌理，中英文字错落排版，简约高级，文艺留白，意识流叙事。"
+    },
+    {
+      "file": "illustration-08.webp",
+      "category": "插画",
+      "width": 1080,
+      "height": 1080,
+      "sha256": "084a9490cb66724f67be1430c96951e71693811e0b49ac33be724912d0a19f9e",
+      "model": "图片 3.1",
+      "ratio": "1:1",
+      "prompt": "一群充满活力的孩子，厚重色彩与复古水彩质感，超级简约手绘图，美漫风格，局部英文排版，极致细节，鲜明艺术感染力。"
+    },
+    {
+      "file": "design-01.webp",
+      "category": "设计",
+      "width": 1080,
+      "height": 720,
+      "sha256": "3d36f647bdb5d78596db4d2605017cb0bce637d782ff392c2f3c3c45d133b6fe",
+      "model": "图片 3.0",
+      "ratio": "3:2",
+      "prompt": "文艺手写字体“山河无恙”，搭配英文小字“DESIGN BY BEIYU”，毛笔手写风格，水墨笔刷效果，笔画巧妙延长变形，黑底白字，视觉震撼的艺术字体设计。"
+    },
+    {
+      "file": "design-02.webp",
+      "category": "设计",
+      "width": 1350,
+      "height": 2400,
+      "sha256": "24f603d2fa52df7ba1851fd9098152c316f3b94afecae31ca2b4d7543d2b245e",
+      "model": "图片 4.0",
+      "ratio": "9:16",
+      "prompt": "瑞士平面设计风格，纯黑背景，巨型交织立体无衬线英文大字，细密渐变线条构成半透明霓虹蓝紫线框，多层错位穿插，赛博透光质感，细小白字分布于空隙，高级暗黑实验字体海报。"
+    },
+    {
+      "file": "design-03.webp",
+      "category": "设计",
+      "width": 1080,
+      "height": 720,
+      "sha256": "ee1d4d2fb2909ec6146221aa811bcca26c4d3e3d514a1fa87266ae4b155f30cd",
+      "model": "图片 4.1",
+      "ratio": "3:2",
+      "prompt": "设计“行为艺术”四个汉字，下方配英文“Performance art”，解构主义字体，笔画不规则切割与错位，线条几何化，日式极简排版，充足留白，高对比黑白，扁平矢量图形。"
+    },
+    {
+      "file": "design-04.webp",
+      "category": "设计",
+      "width": 1728,
+      "height": 2304,
+      "sha256": "02859273fe86518543214340d3a20956fdb1f9e0de693eb158063c5467409b4d",
+      "model": "图片 4.6",
+      "ratio": "3:4",
+      "prompt": "天蓝背景与黑色创意字体“自由设计师”，搭配“电商美工设计”和英文“Design”，夸张笔画弧度，街头涂鸦风格，尖锐边缘与流畅曲线，黄色线条和星星点缀，居中排版。"
+    },
+    {
+      "file": "design-05.webp",
+      "category": "设计",
+      "width": 1728,
+      "height": 2304,
+      "sha256": "64044e9c784caee0e397516dd2c2584f7916eda11699091b33c980e4442a316b",
+      "model": "图片 4.0",
+      "ratio": "3:4",
+      "prompt": "视觉实验风格，“emi”形状的能量状态图标，以抽象流体、光和能量变化表达stillness、flow、surge，深色背景，现代数字艺术，实验性强但整体克制高级，非UI、非品牌logo。"
+    },
+    {
+      "file": "design-06.webp",
+      "category": "设计",
+      "width": 1350,
+      "height": 2400,
+      "sha256": "fda3715ab33438b7f5fa2bc8adf57ef350f6101b026dcf39c83e03a796ec48b8",
+      "model": "图片 4.1",
+      "ratio": "9:16",
+      "prompt": "极繁主义矢量封面，复杂线条、形状和色彩勾勒“奇易居士”汉字场景，传统元素与现代风融合，下方排版中文标题与拼音，现代时尚、视觉盛宴、大师级封面设计。"
+    },
+    {
+      "file": "design-07.webp",
+      "category": "设计",
+      "width": 1080,
+      "height": 1080,
+      "sha256": "05bc5f41f2a5a45d350269e3228f986b0228a10b3854455be3bc0e1ed74f1360",
+      "model": "图片 4.5",
+      "ratio": "1:1",
+      "prompt": "简约现代logo设计，浅米色背景，艺术化中文篆书篆刻字体“心境”，中间竖排小字拼音“XINJING”，文字居中构图，四周大量留白，富有文化内涵与艺术氛围。"
+    },
+    {
+      "file": "design-08.webp",
+      "category": "设计",
+      "width": 1080,
+      "height": 1080,
+      "sha256": "47fe67c8109226ba7bd639c50751aa7ce20cbabd12597149cf80beb0ba2664be",
+      "model": "图片 4.0",
+      "ratio": "1:1",
+      "prompt": "绿色背景与黑色创意字体“自由设计师”，搭配“包装设计”和英文“Design”，夸张笔画、街头涂鸦风格，尖锐边缘与流畅曲线，黄色线条和星星点缀，简约而有视觉冲击力。"
+    },
+    {
+      "file": "illustration-09.webp",
+      "category": "插画",
+      "width": 1350,
+      "height": 2400,
+      "sha256": "f510ff4272f4a37ddc48e58b31bbb46e2d97856c344f1ce13a079cc4b3a68621",
+      "model": "图片 4.1",
+      "ratio": "9:16",
+      "workUrl": "https://jimeng.jianying.com/ai-tool/work-detail/7592455799398501658",
+      "prompt": "这些极繁主义的矢量图展现出独特的艺术魅力，它们以复杂的设计风格传达出丰富的情感。通过复杂的线条、形状和色彩，勾勒出国风插画，中式美学，中国神话故事场景与现代风相融合，体现出一种现代、时尚的美感，细节丰富，电影质感。"
+    },
+    {
+      "file": "illustration-10.webp",
+      "category": "插画",
+      "width": 1350,
+      "height": 2400,
+      "sha256": "1a69c98cb229e519e5a6dbc7ab5bd1b62da2767512e2dafd1aa4b64dc662daac",
+      "model": "图片 4.5",
+      "ratio": "9:16",
+      "workUrl": "https://jimeng.jianying.com/ai-tool/work-detail/7610747358539730227",
+      "prompt": "视觉海报，凹版印刷，白金图片，金色，抽象变形牡丹，牡丹5-6朵。精致的线条细致线条刻画细节，白金关系，以点线表现明暗关系，大师级排线，细致的细节，高清画质。白色背景，大片美学，大师杰作，极具视觉冲击力，获奖作品，大师级配色，大师级排版，高细节，高级感。布局协调。"
+    },
+    {
+      "file": "illustration-11.webp",
+      "category": "插画",
+      "width": 1350,
+      "height": 2400,
+      "sha256": "c566d00239385739b9c8203a7bd1460c54695f8215173904de6834a887ace28a",
+      "model": "图片 4.5",
+      "ratio": "9:16",
+      "workUrl": "https://jimeng.jianying.com/ai-tool/work-detail/7589856629177240859",
+      "prompt": "中国现代地标建筑凹版印刷线稿，0.8mm粗线勾勒外轮廓，0.2mm细线刻画细节，保留铜版雕刻痕迹，橙白色调，大师级排版，大标题“YUNNAN DESIGN ANCIENT”，极具艺术的现代海报版式设计。主体是中国现代地标建筑：云南勐焕大金塔，金马碧鸡坊，崇圣寺三塔，兴盛大桥，大理文庙，玉龙雪山，搭配山水，树木，孔雀，大象，绿植，采用清明上河图散点透视法构图。大师级别插画，高定风插画，画面丰富饱满，充满艺术性。"
+    },
+    {
+      "file": "design-09.webp",
+      "category": "设计",
+      "width": 1104,
+      "height": 1472,
+      "sha256": "fea7419da349944f3c12d279119e20abb86b0be4b4a3711750ecef2fb67233d0",
+      "model": "图片 3.0",
+      "ratio": "3:4",
+      "workUrl": "https://jimeng.jianying.com/ai-tool/work-detail/7667951708856667419",
+      "prompt": "风格：内在光辉，精神肖像，高级质感，大师级设计，强烈的光影效果，电影质感，国际流行色，抽象艺术，时尚风格，意识流风格，近景，神秘感。大师级排版，右下角半透明极小小字水印“ONE FLAIR DESIGN 2026”装饰性文字。"
+    },
+    {
+      "file": "design-10.webp",
+      "category": "设计",
+      "width": 1350,
+      "height": 2400,
+      "sha256": "27d5eb60f0ef883d5cb1e502b3ad5c862c8a43d9eb1531bc13c2725b3e3679d4",
+      "model": "图片 4.7",
+      "ratio": "9:16",
+      "workUrl": "https://jimeng.jianying.com/ai-tool/work-detail/7663394860799397130",
+      "prompt": "品牌设计，大师作品，国际化风格，精致排版，简约高级，纯藏青色背景，以碧蓝色背景为主色调平面图，沉稳高级，白色与碧蓝色渐变粒子线条形成古风人物，缩小，占画面1/3。显体态线条，抽象，营造轻奢、精致质感，强调稳定与聚焦，风格偏向商业美学，简约圆润、流畅对称、精致禅意、高级质感，银灰光泽，整体极简对称。空气感，设计感，没有文字，没有数字，没有英文。"
+    },
+    {
+      "file": "design-11.webp",
+      "category": "设计",
+      "width": 768,
+      "height": 1366,
+      "sha256": "100b088b2b3be59ce2efc2c404e3593a564d44c1dd4c97ed2923ba89c29ee805",
+      "model": "图片 5.0 Pro",
+      "ratio": "9:16",
+      "workUrl": "https://jimeng.jianying.com/ai-tool/work-detail/7662174653191916851",
+      "prompt": "品牌设计，大师作品，国际化风格，精致排版，简约高级，纯藏青色背景，以碧蓝色背景为主色调平面图，沉稳高级，白色与碧蓝色渐变粒子线条形成燕子，内含荷叶与半开花蕾，整体标志占画面高度三分之一。体态线条抽象，营造轻奢、精致质感，强调稳定与聚焦，简约圆润、流畅对称、精致禅意、高级质感，银灰光泽，空气感与设计感。"
+    }
+  ]
+}

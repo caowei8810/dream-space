@@ -1,0 +1,2026 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <title>造梦空间 - 阶段 1 交互原型</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f7f8f9;
+      --surface: #ffffff;
+      --surface-strong: #f0f2f3;
+      --text: #17191c;
+      --muted: #6f747c;
+      --border: #e5e8eb;
+      --primary: #0e8f7c;
+      --primary-soft: #e7f4f1;
+      --danger: #d04444;
+      --warning: #b26a16;
+      --disabled-bg: #d9dde0;
+      --disabled-text: #7c838a;
+      --nav-width: 72px;
+      --session-width: 280px;
+      --radius: 8px;
+      font-family: Inter, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    }
+    body.theme-dark {
+      color-scheme: dark;
+      --bg: #0f1012;
+      --surface: #191b1e;
+      --surface-strong: #24272b;
+      --text: #f3f5f6;
+      --muted: #a5abb1;
+      --border: #30343a;
+      --primary-soft: #183a35;
+      --disabled-bg: #3b4044;
+      --disabled-text: #92999f;
+    }
+
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font-size: 14px; }
+    button, input, textarea, select { font: inherit; }
+    button { color: inherit; }
+    button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+    }
+    .hidden { display: none !important; }
+    .app { min-height: 100vh; }
+    .page { min-height: 100vh; padding-left: var(--nav-width); }
+
+    .brand-mark {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      position: relative;
+      color: var(--primary);
+      border: 0;
+      padding: 0;
+      background: transparent;
+      cursor: pointer;
+    }
+    .brand-mark::before, .brand-mark::after {
+      content: "";
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      background: currentColor;
+      clip-path: polygon(50% 0, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0 50%, 39% 39%);
+    }
+    .brand-mark::after { width: 11px; height: 11px; color: #1f2b2a; transform: translate(10px, -9px); }
+
+    .primary-nav {
+      position: fixed;
+      inset: 0 auto 0 0;
+      z-index: 50;
+      width: var(--nav-width);
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 22px 8px 16px;
+    }
+    .primary-nav .brand-mark { margin-bottom: 82px; }
+    .nav-stack { display: grid; gap: 16px; width: 100%; }
+    .nav-btn.mobile-only { display: none; }
+    .nav-spacer { flex: 1; }
+    .nav-btn {
+      border: 0;
+      background: transparent;
+      min-height: 58px;
+      width: 100%;
+      display: grid;
+      place-items: center;
+      align-content: center;
+      gap: 6px;
+      cursor: pointer;
+      border-radius: var(--radius);
+      color: var(--muted);
+    }
+    .nav-btn:hover { background: var(--surface-strong); color: var(--text); }
+    .nav-btn.active { color: var(--text); font-weight: 500; }
+    .nav-btn.active svg { fill: currentColor; }
+    .nav-btn span { font-size: 12px; }
+    .quota {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 10px 4px;
+      text-align: center;
+      width: 56px;
+      margin-bottom: 12px;
+      font-size: 12px;
+      background: var(--surface);
+    }
+    .quota strong { display: block; font-size: 14px; margin-bottom: 2px; }
+    .desktop-dock { width: 100%; display: grid; place-items: center; gap: 8px; }
+    .account-avatar {
+      width: 38px;
+      height: 38px;
+      border: 0;
+      border-radius: var(--radius);
+      background: transparent;
+      color: var(--muted);
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+    }
+    .account-avatar:hover, .account-avatar.logged-in { background: var(--surface-strong); color: var(--text); }
+    .dock-icon {
+      width: 42px;
+      height: 42px;
+      border: 0;
+      border-radius: var(--radius);
+      background: transparent;
+      color: var(--muted);
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+    }
+    .dock-icon:hover { background: var(--surface-strong); color: var(--text); }
+    .account-menu {
+      position: fixed;
+      z-index: 90;
+      left: 82px;
+      bottom: 16px;
+      width: 272px;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: 0 18px 48px rgba(20,24,28,.14);
+    }
+    .menu-row {
+      width: 100%;
+      min-height: 44px;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 12px;
+      text-align: left;
+      cursor: pointer;
+    }
+    .menu-row:hover, .menu-row.active { background: var(--surface-strong); }
+    .menu-row .menu-end { margin-left: auto; color: var(--muted); }
+    .theme-options { margin: 2px 0 6px 34px; border-left: 1px solid var(--border); padding-left: 8px; }
+    .menu-footer { border-top: 1px solid var(--border); margin-top: 8px; padding: 10px 12px 2px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+    .menu-switch { margin-left: auto; accent-color: var(--primary); }
+    .dock-divider { width: 28px; height: 1px; background: var(--border); margin: 2px 0; }
+    .dock-tooltip { position: relative; }
+    .dock-tooltip::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      left: 48px;
+      top: 50%;
+      transform: translateY(-50%);
+      padding: 6px 8px;
+      color: white;
+      background: #25282c;
+      border-radius: 5px;
+      font-size: 12px;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 120ms ease;
+    }
+    .dock-tooltip:hover::after { opacity: 1; }
+
+    .toolbar {
+      height: 72px;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg);
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+    .category-btn, .action-btn, .field-btn, .icon-btn {
+      height: 36px;
+      border: 1px solid transparent;
+      border-radius: var(--radius);
+      background: transparent;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      padding: 0 14px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .category-btn:hover, .action-btn:hover, .field-btn:hover, .icon-btn:hover { background: var(--surface-strong); }
+    .category-btn.active { background: var(--surface-strong); font-weight: 500; }
+    .action-btn { background: var(--surface-strong); }
+    .action-btn.primary { background: var(--text); color: var(--surface); }
+    .action-btn.primary:hover { background: #303337; }
+    body.theme-dark .action-btn.primary { background: #f3f5f6; color: #17191c; }
+    body.theme-dark .action-btn.primary:hover { background: #dfe3e5; }
+    .action-btn.soft { background: var(--primary-soft); color: #086f61; }
+    body.theme-dark .action-btn.soft { color: #8bd9cd; }
+    .action-btn.danger { color: var(--danger); }
+    .icon-btn { width: 36px; padding: 0; }
+    .icon-btn.round { border-radius: 50%; }
+    .search-wrap { position: relative; margin-left: 12px; width: min(380px, 32vw); }
+    .search-wrap > svg { position: absolute; left: 13px; top: 10px; color: var(--muted); }
+    .search-input {
+      width: 100%;
+      height: 40px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      padding: 0 40px;
+      color: var(--text);
+    }
+    .search-clear { position: absolute; right: 5px; top: 2px; }
+    .search-history-panel { position: absolute; z-index: 80; top: calc(100% + 8px); left: 0; width: max(100%, 360px); max-width: calc(100vw - 24px); min-height: 132px; padding: 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); box-shadow: 0 16px 44px rgba(20,24,28,.14); }
+    .search-history-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    .search-history-header strong { font-size: 13px; font-weight: 600; }
+    .search-history-clear { height: 32px; padding: 0 9px; color: var(--muted); font-size: 12px; }
+    .search-history-clear svg { width: 14px; height: 14px; }
+    .search-history-list { display: flex; flex-wrap: wrap; gap: 8px; }
+    .search-history-chip { height: 32px; max-width: 190px; border: 0; border-radius: 6px; padding: 0 11px; background: var(--surface-strong); color: var(--text); cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+    .search-history-chip:hover { background: var(--border); }
+    .search-history-empty { color: var(--muted); font-size: 12px; padding: 8px 0; }
+    .toolbar-end { margin-left: auto; display: flex; align-items: center; min-width: 0; }
+    .utility-bar { height: 40px; display: flex; align-items: center; gap: 2px; }
+    .utility-divider { width: 1px; height: 18px; margin: 0 4px; background: var(--border); }
+    .utility-button { height: 36px; border: 0; border-radius: 7px; background: transparent; color: var(--muted); padding: 0 9px; display: inline-flex; align-items: center; gap: 7px; cursor: pointer; white-space: nowrap; font-size: 13px; line-height: 1; }
+    .utility-button:hover, .utility-button[aria-expanded="true"] { background: var(--surface-strong); color: var(--text); }
+    .utility-button svg { width: 15px; height: 15px; }
+    .motivation-button { width: 218px; overflow: hidden; }
+    .motivation-window { width: 178px; flex: 0 0 178px; display: block; overflow: hidden; text-align: left; }
+    .motivation-text { display: inline-block; min-width: max-content; transform: translateX(0); }
+    .motivation-button.is-scrolling .motivation-text { animation: motivation-scroll 9s ease-in-out infinite alternate; }
+    @keyframes motivation-scroll { 0%, 15% { transform: translateX(0); } 85%, 100% { transform: translateX(calc(-1 * var(--motivation-overflow))); } }
+    .utility-meta { height: 36px; padding: 0 8px; display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 13px; line-height: 1; white-space: nowrap; }
+    .utility-meta svg { width: 15px; height: 15px; }
+    .quota { width: 56px; min-width: 56px; min-height: 58px; padding: 7px 4px; display: grid; grid-template-columns: 1fr; justify-items: center; align-content: center; row-gap: 4px; border: 0; background: transparent; color: var(--muted); font-size: 11px; line-height: 1; text-align: center; }
+    .quota strong { display: block; grid-row: auto; max-width: 48px; overflow: hidden; color: var(--text); font-size: 10px; font-weight: 600; line-height: 1.15; white-space: normal; overflow-wrap: anywhere; }
+    .quota-label { max-width: 48px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .quota-bar { width: 42px; height: 4px; overflow: hidden; border-radius: 99px; background: var(--surface-strong); }
+    .quota-bar span { display: block; width: 80%; height: 100%; border-radius: inherit; background: var(--primary); transition: width 220ms ease, background 220ms ease; }
+    .quota.is-low .quota-bar span { background: var(--warning); }
+    .quota.is-critical .quota-bar span { background: var(--danger); }
+    .language-control { position: relative; }
+    .language-trigger { min-width: 70px; justify-content: center; color: var(--text); }
+    .language-trigger svg:last-child { transition: transform 150ms ease; }
+    .language-trigger[aria-expanded="true"] svg:last-child { transform: rotate(180deg); }
+    .language-flag { font-size: 14px; line-height: 1; }
+    .language-menu { position: absolute; z-index: 90; top: calc(100% + 8px); right: 0; width: 166px; padding: 5px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface); box-shadow: 0 14px 38px rgba(20,24,28,.16); }
+    .language-option { width: 100%; height: 40px; border: 0; border-radius: 6px; background: transparent; color: var(--text); padding: 0 10px; display: grid; grid-template-columns: 22px 1fr 18px; align-items: center; gap: 7px; text-align: left; cursor: pointer; font-size: 13px; }
+    .language-option:hover, .language-option.active { background: var(--surface-strong); }
+    .language-option svg { width: 16px; height: 16px; opacity: 0; color: var(--primary); }
+    .language-option.active svg { opacity: 1; }
+
+    .masonry { columns: 6 260px; column-gap: 4px; padding: 0 16px 48px; }
+    .art-card {
+      width: 100%;
+      display: block;
+      break-inside: avoid;
+      margin: 0 0 4px;
+      padding: 0;
+      border: 0;
+      border-radius: 4px;
+      background: #dfe3e5;
+      overflow: hidden;
+      cursor: pointer;
+      position: relative;
+      text-align: left;
+    }
+    .art-card img { width: 100%; height: auto; display: block; transition: filter 150ms ease; }
+    .art-overlay {
+      position: absolute;
+      inset: auto 0 0;
+      padding: 42px 12px 12px;
+      color: white;
+      background: linear-gradient(transparent, rgba(0,0,0,.72));
+      display: flex;
+      align-items: flex-end;
+      gap: 8px;
+      opacity: 0;
+      transition: opacity 150ms ease;
+    }
+    .art-card:hover .art-overlay, .art-card:focus-visible .art-overlay { opacity: 1; }
+    .art-meta { min-width: 0; flex: 1; }
+    .art-title { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .art-author { font-size: 12px; opacity: .84; margin-top: 3px; }
+    .same-chip { background: rgba(255,255,255,.94); color: #191b1e; padding: 7px 9px; border-radius: 6px; font-size: 12px; white-space: nowrap; }
+    .empty-state { min-height: 55vh; display: grid; place-items: center; text-align: center; color: var(--muted); }
+    .empty-state strong { color: var(--text); display: block; margin-bottom: 8px; }
+
+    .detail-layout { min-height: 100vh; display: grid; grid-template-columns: minmax(440px, 1fr) 460px; }
+    .detail-stage { min-width: 0; background: var(--bg); display: grid; place-items: center; padding: 28px 80px 154px; position: relative; }
+    .detail-image { max-width: min(72%, 720px); max-height: calc(100vh - 190px); width: auto; height: auto; object-fit: contain; border-radius: var(--radius); box-shadow: 0 10px 32px rgba(20,24,28,.08); }
+    .detail-layout:not(.has-detail-composer) .detail-stage { padding-bottom: 28px; }
+    .detail-layout:not(.has-detail-composer) .detail-image { max-width: min(78%, 820px); max-height: calc(100vh - 90px); }
+    .detail-close { position: absolute; top: 28px; right: 28px; background: var(--surface-strong); }
+    .pager { position: absolute; right: 28px; top: 48%; display: grid; gap: 20px; }
+    .detail-panel { background: var(--surface); border-left: 1px solid var(--border); padding: 30px 32px; overflow: auto; }
+    .author-line { display: flex; align-items: center; gap: 10px; }
+    .avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--primary-soft); display: grid; place-items: center; color: var(--primary); font-weight: 500; }
+    .follow-btn { height: 26px; padding: 0 9px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); font-size: 12px; cursor: pointer; }
+    .follow-btn:hover, .follow-btn.active { background: var(--surface-strong); }
+    .panel-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+    .detail-copy { color: var(--muted); margin: 28px 0 8px; }
+    .detail-date { color: var(--muted); font-size: 12px; padding-bottom: 24px; border-bottom: 1px solid var(--border); }
+    .prompt-label { color: var(--muted); margin: 24px 0 10px; }
+    .prompt-text { font-size: 15px; line-height: 1.85; margin: 0; }
+    .param-line { display: flex; gap: 10px; color: var(--muted); margin: 18px 0 28px; }
+    .detail-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+    .composer {
+      z-index: 40;
+      min-height: 88px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: 0 12px 32px rgba(20,24,28,.10);
+      padding: 14px;
+    }
+    .composer.detail-composer {
+      position: fixed;
+      left: calc(var(--nav-width) + (100vw - var(--nav-width) - 460px) / 2);
+      bottom: 24px;
+      transform: translateX(-50%);
+      width: min(760px, calc(100vw - var(--nav-width) - 460px - 90px));
+      min-height: 116px;
+    }
+    .prompt-row { display: flex; align-items: flex-start; gap: 10px; }
+    .upload-btn { flex: 0 0 42px; height: 58px; border: 1px dashed var(--border); border-radius: 6px; background: var(--bg); cursor: pointer; display: grid; place-items: center; color: var(--muted); }
+    .composer textarea { flex: 1; min-height: 58px; max-height: 130px; resize: none; border: 0; outline: 0; line-height: 1.6; color: var(--text); background: transparent; }
+    .composer-footer { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+    .field-btn { border-color: var(--border); background: var(--surface); padding: 0 10px; }
+    .field-btn.active { border-color: var(--text); background: var(--surface-strong); }
+    .submit-btn { margin-left: auto; flex: 0 0 40px; width: 40px; height: 40px; border: 0; border-radius: 50%; background: var(--text); color: white; display: grid; place-items: center; cursor: pointer; }
+    .submit-btn:disabled { background: var(--disabled-bg); color: var(--disabled-text); cursor: not-allowed; }
+    body.theme-dark .submit-btn:not(:disabled) { background: #f4f5f6; color: #17191c; box-shadow: 0 4px 14px rgba(0,0,0,.24); }
+    body.theme-dark .submit-btn:disabled { background: #34383d; color: #92999f; box-shadow: none; }
+    .cost-label { color: var(--muted); font-size: 12px; margin-left: auto; }
+    .ref-strip { display: flex; gap: 8px; margin-bottom: 8px; }
+    .ref-item { position: relative; width: 58px; height: 58px; }
+    .ref-thumb { width: 58px; height: 58px; object-fit: cover; border-radius: 7px; border: 1px solid var(--border); }
+    .ref-remove { position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; padding: 0; border: 1px solid var(--surface); border-radius: 50%; display: grid; place-items: center; background: var(--text); color: var(--surface); cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,.18); }
+    .ref-remove svg { width: 12px; height: 12px; }
+
+    .session-sidebar {
+      position: fixed;
+      inset: 0 auto 0 var(--nav-width);
+      width: var(--session-width);
+      border-right: 1px solid var(--border);
+      background: var(--surface);
+      padding: 28px 16px;
+      z-index: 30;
+    }
+    .sidebar-heading { font-size: 18px; font-weight: 500; display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+    .new-session { width: 100%; justify-content: flex-start; background: var(--surface); border: 1px solid var(--border); }
+    .session-label { color: var(--muted); font-size: 12px; margin: 24px 4px 10px; }
+    .session-row { display: flex; align-items: center; gap: 3px; margin-bottom: 3px; border-radius: var(--radius); }
+    .session-row:hover, .session-row.active { background: var(--surface-strong); }
+    .session-thumb { width: 30px; height: 30px; flex: 0 0 30px; margin-left: 6px; overflow: hidden; border-radius: 5px; background: var(--surface-strong); }
+    .session-thumb img { width: 100%; height: 100%; display: block; object-fit: cover; }
+    .session-item { min-width: 0; flex: 1; height: 40px; border: 0; border-radius: var(--radius); background: transparent; text-align: left; padding: 0 12px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .session-row.active .session-item { font-weight: 550; }
+    .session-rename, .session-delete { width: 30px; height: 30px; flex: 0 0 30px; padding: 0; opacity: 0; color: var(--muted); }
+    .session-delete { margin-right: 4px; }
+    .session-rename svg, .session-delete svg { width: 16px; height: 16px; stroke-width: 1.8; }
+    .session-row:hover .session-rename, .session-row:hover .session-delete, .session-row.active .session-rename, .session-row.active .session-delete { opacity: 1; }
+    .session-rename:hover { color: var(--text); background: var(--surface-strong); }
+    .session-delete:hover { color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent); }
+    .session-name-input { min-width: 0; flex: 1; height: 34px; margin-left: 6px; padding: 0 6px; border: 1px solid var(--primary); border-radius: 5px; background: var(--surface); color: var(--text); }
+    .generation-main {
+      margin-left: var(--session-width);
+      height: 100vh;
+      position: relative;
+      display: grid;
+      grid-template-rows: minmax(0, 1fr) auto;
+      overflow: hidden;
+      background: var(--bg);
+    }
+    body.theme-dark .generation-main { background: #0e0f11; }
+    body.theme-dark .generation-main > .composer { background: #1c1e22; border-color: #30343a; box-shadow: 0 18px 46px rgba(0,0,0,.3); }
+    body.theme-dark .generation-top .field-btn, body.theme-dark .generation-search-panel input { background: #181a1e; border-color: #30343a; }
+    body:not(.theme-dark) .generation-main > .composer { background: rgba(255,255,255,.96); }
+    .generation-top { position: absolute; inset: 0 0 auto; height: 82px; padding: 0 32px; display: flex; align-items: center; justify-content: flex-end; gap: 8px; z-index: 10; background: transparent; border: 0; pointer-events: none; }
+    .generation-top > * { pointer-events: auto; }
+    .generation-top > .field-btn { flex: 0 0 auto; }
+    .generation-search-control { width: 74px; height: 38px; flex: 0 0 auto; transition: width 180ms ease; }
+    .generation-search-control.expanded { width: min(320px, 30vw); }
+    .generation-search-control > .field-btn { width: 100%; }
+    .generation-search-panel { position: relative; width: 100%; height: 38px; display: flex; align-items: center; }
+    .generation-search-panel input { width: 100%; height: 38px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); padding: 0 38px 0 38px; }
+    .generation-search-panel > svg { position: absolute; left: 12px; color: var(--muted); pointer-events: none; }
+    .generation-search-clear { position: absolute; right: 3px; width: 32px; height: 32px; }
+    .generation-filter { position: relative; }
+    .generation-filter.active { background: var(--surface-strong); border-color: var(--border); }
+    .generation-filter-menu { position: fixed; z-index: 100; min-width: 144px; padding: 5px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface); box-shadow: 0 14px 36px rgba(20,24,28,.16); }
+    .generation-filter-menu button { width: 100%; height: 34px; border: 0; border-radius: 6px; padding: 0 10px; background: transparent; text-align: left; cursor: pointer; color: var(--text); font-size: 12px; }
+    .generation-filter-menu button:hover, .generation-filter-menu button.active { background: var(--surface-strong); }
+    .generation-empty { padding: 72px 0; text-align: center; color: var(--muted); }
+    .timeline {
+      width: 100%;
+      max-width: none;
+      min-height: 0;
+      margin: 0 auto;
+      padding: 96px 32px 48px;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scroll-padding-bottom: 24px;
+      scrollbar-width: none;
+    }
+    .timeline::-webkit-scrollbar, .session-sidebar::-webkit-scrollbar, .detail-panel::-webkit-scrollbar, .parameter-popover::-webkit-scrollbar, .generation-top::-webkit-scrollbar { display: none; }
+    .session-sidebar, .detail-panel, .parameter-popover, .generation-top { scrollbar-width: none; }
+    .empty-session { width: min(820px, 100%); margin: 0 auto; text-align: center; color: var(--muted); }
+    .empty-session-mark { width: 54px; height: 54px; margin: 0 auto 20px; border: 1px solid var(--border); border-radius: 14px; display: grid; place-items: center; background: var(--surface); box-shadow: 0 14px 34px rgba(20,24,28,.08); }
+    .empty-session-mark svg { width: 24px; height: 24px; color: var(--primary); }
+    .empty-session-eyebrow { margin-bottom: 8px; color: var(--muted); font-size: 12px; }
+    .empty-session h1 { margin: 0; color: var(--text); font-size: 30px; line-height: 1.25; font-weight: 540; }
+    .empty-session-copy { max-width: 560px; margin: 12px auto 24px; font-size: 13px; line-height: 1.7; }
+    .starter-prompts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; text-align: left; }
+    .starter-prompt { min-width: 0; min-height: 66px; padding: 9px; border: 1px solid var(--border); border-radius: 8px; display: flex; align-items: center; gap: 10px; background: color-mix(in srgb, var(--surface) 88%, transparent); color: var(--text); cursor: pointer; transition: background 150ms ease, border-color 150ms ease, transform 150ms ease; }
+    .starter-prompt:hover { border-color: color-mix(in srgb, var(--text) 24%, var(--border)); background: var(--surface); transform: translateY(-1px); }
+    .starter-prompt img { width: 48px; height: 48px; flex: 0 0 48px; border-radius: 6px; object-fit: cover; }
+    .starter-prompt span { min-width: 0; display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-size: 12px; line-height: 1.5; }
+    .generation-main.is-empty { grid-template-rows: minmax(210px, .9fr) auto minmax(92px, 1.1fr); }
+    .generation-main.is-empty::after { content: ""; grid-row: 3; }
+    .generation-main.is-empty .timeline { grid-row: 1; display: flex; align-items: flex-end; overflow: visible; padding-bottom: 34px; }
+    .generation-main.is-empty > .composer { grid-row: 2; width: clamp(680px, calc(100% - 96px), 920px); min-height: 158px; margin-bottom: 0; padding: 18px 20px; }
+    .generation-main.is-empty > .composer .composer-footer { display: flex; }
+    .generation-main.is-empty > .composer textarea { height: auto; min-height: 70px; padding-top: 7px; }
+    .generation-main > .composer {
+      position: relative;
+      width: clamp(560px, calc(100% - 96px), 760px);
+      margin: 0 auto 24px;
+      flex: 0 0 auto;
+      transition: width 180ms ease, min-height 180ms ease;
+    }
+    .generation-main > .composer.is-expanded {
+      width: clamp(680px, calc(100% - 64px), 1180px);
+      min-height: 176px;
+    }
+    .generation-main > .composer textarea { min-height: 42px; }
+    .generation-main > .composer.is-expanded textarea { min-height: 96px; }
+    .generation-main > .composer:not(.is-expanded) {
+      min-height: 72px;
+      padding: 10px 12px;
+    }
+    .generation-main > .composer:not(.is-expanded) .prompt-row { align-items: center; }
+    .generation-main > .composer:not(.is-expanded) .upload-btn { width: 40px; height: 40px; flex-basis: 40px; }
+    .generation-main > .composer:not(.is-expanded) textarea { height: 40px; min-height: 40px; padding: 9px 0; overflow: hidden; }
+    .generation-main > .composer:not(.is-expanded) .composer-footer { display: none; }
+    .composer-shell { position: relative; }
+    .parameter-popover {
+      position: absolute;
+      z-index: 80;
+      left: 14px;
+      bottom: calc(100% + 10px);
+      width: min(520px, calc(100vw - var(--nav-width) - var(--session-width) - 64px));
+      padding: 18px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: 0 18px 48px rgba(20,24,28,.14);
+    }
+    .param-section + .param-section { margin-top: 18px; }
+    .param-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; font-size: 13px; font-weight: 600; }
+    .size-preview { color: var(--muted); font-size: 12px; font-weight: 400; }
+    .option-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+    .option-grid.count-grid { grid-template-columns: repeat(8, minmax(0, 1fr)); }
+    .option-btn {
+      height: 38px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .option-btn:hover { background: var(--surface-strong); }
+    .option-btn.active { border-color: var(--text); background: var(--text); color: white; }
+    body.theme-dark .option-btn.active { border-color: #f4f5f6; background: #f4f5f6; color: #17191c; }
+    body.theme-dark .option-btn.active:hover { background: #ffffff; }
+    .date-heading { width: min(1120px, 100%); margin: 4px auto 34px; font-size: 24px; font-weight: 500; }
+    .task { width: min(1120px, 100%); margin: 0 auto 48px; }
+    .task-prompt { line-height: 1.75; max-width: 920px; }
+    .task-params { color: #a0a5aa; margin-left: 8px; white-space: nowrap; }
+    .status-line { color: var(--muted); margin: 18px 0 12px; display: flex; align-items: center; gap: 8px; }
+    .status-line.error { color: var(--danger); }
+    .status-line.processing { color: var(--primary); }
+    .task-actions { display: flex; gap: 6px; }
+    .result-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 4px; margin: 16px 0 10px; max-width: 1080px; }
+    .result-item { min-width: 0; position: relative; overflow: hidden; border-radius: 4px; background: var(--surface-strong); }
+    .result-preview { width: 100%; display: block; border: 0; padding: 0; background: transparent; cursor: zoom-in; }
+    .result-preview img { width: 100%; aspect-ratio: var(--result-ratio, 1 / 1); display: block; object-fit: cover; transition: filter 150ms ease; }
+    .result-download { position: absolute; top: 10px; right: 10px; width: 34px; height: 34px; border: 0; border-radius: 7px; background: rgba(18,20,23,.78); color: white; display: grid; place-items: center; opacity: 0; cursor: pointer; transition: opacity 150ms ease; }
+    .result-download svg { width: 17px; height: 17px; }
+    .result-item:hover .result-download, .result-download:focus-visible { opacity: 1; }
+    .result-item:hover .result-preview img { filter: brightness(.94); }
+    .progress-bar { height: 3px; width: min(420px, 70%); background: var(--border); overflow: hidden; margin: 14px 0; }
+    .progress-bar span { display: block; width: 62%; height: 100%; background: var(--primary); animation: pulse-progress 1.6s ease-in-out infinite alternate; }
+    @keyframes pulse-progress { from { transform: translateX(-30%); } to { transform: translateX(70%); } }
+
+    .login-page { padding-left: 0; display: grid; grid-template-columns: minmax(420px, 1.2fr) minmax(420px, .8fr); background: var(--surface); }
+    .login-visual { min-height: 100vh; position: relative; overflow: hidden; isolation: isolate; background: #08151d; }
+    .login-scene { position: absolute; inset: -6%; z-index: -3; background: url("assets/inspiration/photography-08.webp") center 48% / cover no-repeat; filter: saturate(.92) contrast(1.08); animation: login-drift 20s cubic-bezier(.45,0,.55,1) infinite alternate; }
+    .login-visual::before { content: ""; position: absolute; inset: 0; z-index: -2; background: rgba(3,13,21,.34); box-shadow: inset 0 0 180px rgba(2,9,14,.62); }
+    .login-visual::after { content: ""; position: absolute; left: 36px; right: 36px; bottom: 28px; height: 1px; z-index: -1; background: rgba(255,255,255,.28); transform-origin: left; animation: login-progress 12s linear infinite; }
+    @keyframes login-drift { from { transform: scale(1.02) translate3d(-1.5%, 0, 0); } to { transform: scale(1.12) translate3d(1.5%, -1.5%, 0); } }
+    @keyframes login-progress { from { transform: scaleX(.08); opacity: .35; } to { transform: scaleX(1); opacity: .8; } }
+    .login-brand { position: absolute; top: 32px; left: 36px; display: flex; align-items: center; gap: 12px; color: white; font-size: 16px; font-weight: 500; text-shadow: 0 2px 16px rgba(0,0,0,.22); }
+    .login-brand .brand-mark { color: white; }
+    .login-brand-copy { display: grid; gap: 3px; line-height: 1; }
+    .login-brand-copy small { color: rgba(255,255,255,.66); font-size: 9px; }
+    .login-quote { position: absolute; left: 42px; bottom: 62px; color: white; max-width: 520px; text-shadow: 0 3px 24px rgba(0,0,0,.36); }
+    .login-quote strong { display: block; max-width: 480px; font-size: clamp(30px, 3vw, 48px); line-height: 1.18; font-weight: 520; }
+    .login-quote span { display: block; margin-top: 16px; color: rgba(255,255,255,.72); font-size: 12px; }
+    .login-form-wrap { display: grid; place-items: center; padding: 40px; position: relative; }
+    .login-close { position: absolute; top: 24px; right: 24px; }
+    .login-form { width: min(380px, 100%); }
+    .login-form h1 { font-size: 24px; font-weight: 500; margin: 0 0 8px; }
+    .login-subtitle { color: var(--muted); margin: 0 0 30px; }
+    .form-label { display: block; margin: 18px 0 8px; font-weight: 500; }
+    .form-input { width: 100%; height: 44px; border: 1px solid var(--border); border-radius: var(--radius); padding: 0 12px; background: var(--surface); color: var(--text); }
+    .code-row { display: grid; grid-template-columns: 1fr 120px; gap: 8px; }
+    .agreement { margin: 18px 0; display: flex; align-items: flex-start; gap: 8px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+    .agreement input { margin-top: 3px; accent-color: var(--primary); }
+    .login-error { min-height: 20px; color: var(--danger); font-size: 12px; margin-top: 8px; }
+    .login-submit { width: 100%; height: 44px; }
+    .agreement-link { border: 0; padding: 0; background: transparent; color: var(--primary); cursor: pointer; }
+    .legal-backdrop { position: fixed; inset: 0; z-index: 120; background: rgba(0,0,0,.48); display: grid; place-items: center; padding: 24px; }
+    .legal-dialog { width: min(760px, 100%); max-height: min(760px, 88dvh); overflow: auto; scrollbar-width: none; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 24px 70px rgba(0,0,0,.28); }
+    .legal-dialog::-webkit-scrollbar { display: none; }
+    .legal-header { position: sticky; top: 0; display: flex; align-items: center; justify-content: space-between; padding: 18px 22px; background: var(--surface); border-bottom: 1px solid var(--border); }
+    .legal-header h2 { margin: 0; font-size: 18px; }
+    .legal-content { padding: 22px; line-height: 1.8; color: var(--muted); }
+    .legal-content h3 { color: var(--text); margin: 24px 0 6px; font-size: 15px; }
+    .legal-content h3:first-child { margin-top: 0; }
+
+    .image-preview-backdrop { position: fixed; inset: 0; z-index: 140; display: grid; place-items: center; padding: 64px; background: rgba(7,8,10,.92); }
+    .image-preview-backdrop img { max-width: min(1200px, 92vw); max-height: calc(100dvh - 128px); object-fit: contain; }
+    .image-preview-actions { position: fixed; top: 20px; right: 22px; display: flex; gap: 8px; }
+    .image-preview-actions .icon-btn { background: rgba(255,255,255,.12); color: white; }
+    .image-preview-actions .icon-btn:hover { background: rgba(255,255,255,.2); }
+    body.preview-open { overflow: hidden; }
+
+    .toast {
+      position: fixed;
+      z-index: 100;
+      left: 50%;
+      bottom: 28px;
+      transform: translate(-50%, 20px);
+      background: var(--text);
+      color: white;
+      padding: 10px 14px;
+      border-radius: 6px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 160ms ease, transform 160ms ease;
+    }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+    @media (max-width: 1199px) {
+      :root { --session-width: 240px; }
+      .date-meta { display: none; }
+      .search-wrap { width: min(280px, 26vw); }
+      .detail-layout { grid-template-columns: 1fr 390px; }
+      .detail-stage { padding-inline: 48px; }
+      .detail-image { max-width: 78%; }
+      .composer.detail-composer { left: calc(var(--nav-width) + (100vw - var(--nav-width) - 390px) / 2); width: calc(100vw - var(--nav-width) - 390px - 56px); }
+    }
+
+    @media (max-width: 1399px) {
+      .motivation-button { display: none; }
+    }
+
+    @media (max-width: 767px) {
+      :root { --nav-width: 0px; --session-width: 0px; }
+      .page { padding: 0 0 64px; }
+      .primary-nav { inset: auto 0 0; width: 100%; height: 64px; flex-direction: row; padding: 4px 14px; border: 0; border-top: 1px solid var(--border); }
+      .primary-nav .brand-mark, .desktop-dock, .nav-spacer { display: none; }
+      .nav-btn.mobile-only { display: grid; }
+      .nav-stack { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+      .nav-btn { min-height: 54px; }
+      .toolbar { height: auto; min-height: 64px; padding: 10px 12px; flex-wrap: wrap; }
+      .category-btn { padding: 0 10px; }
+      .search-wrap { order: 3; width: 100%; margin: 0; }
+      .toolbar-end { display: none; }
+      .masonry { columns: 2; padding: 0 4px 20px; }
+      .art-overlay { opacity: 1; padding: 30px 8px 8px; }
+      .same-chip { display: none; }
+      .detail-layout { display: block; }
+      .detail-stage { min-height: 62vh; padding: 22px 20px 76px; }
+      .detail-image { max-width: 100%; max-height: 54vh; }
+      .detail-layout:not(.has-detail-composer) .detail-image { max-height: 70vh; }
+      .detail-panel { border: 0; border-top: 1px solid var(--border); padding: 22px 18px 160px; }
+      .detail-close { top: 14px; right: 14px; }
+      .pager { right: 14px; top: auto; bottom: 18px; display: flex; }
+      .session-sidebar { display: none; }
+      .generation-main { margin: 0; height: calc(100dvh - 64px); grid-template-rows: minmax(0, 1fr) auto; }
+      .generation-top { padding: 0 12px; overflow-x: auto; justify-content: flex-start; }
+      .timeline { width: 100%; padding: 78px 14px 30px; }
+      .task-params { display: block; margin: 6px 0 0; }
+      .result-grid { grid-template-columns: 1fr; }
+      .generation-main.is-empty { grid-template-rows: minmax(210px, 1fr) auto 26px; }
+      .generation-main.is-empty .timeline { padding: 78px 16px 20px; }
+      .generation-main.is-empty > .composer { width: calc(100% - 24px); min-height: 146px; margin: 0 12px; padding: 14px; }
+      .empty-session-mark { width: 46px; height: 46px; margin-bottom: 14px; }
+      .empty-session h1 { font-size: 23px; }
+      .empty-session-copy { margin: 8px auto 16px; }
+      .starter-prompts { grid-template-columns: 1fr; }
+      .starter-prompt:nth-child(n+2) { display: none; }
+      .composer.detail-composer { left: 12px; right: 12px; bottom: 76px; transform: none; width: auto; }
+      .generation-main > .composer,
+      .generation-main > .composer.is-expanded { width: calc(100% - 24px); margin: 0 12px 12px; min-height: 88px; }
+      .generation-main > .composer.is-expanded { min-height: 148px; }
+      .composer-footer { overflow-x: auto; scrollbar-width: none; }
+      .composer-footer::-webkit-scrollbar { display: none; }
+      .composer-footer .field-btn { flex: 0 0 auto; }
+      .generation-main > .composer .composer-footer > .field-btn:first-child { display: none; }
+      .cost-label { display: none; }
+      .parameter-popover { position: fixed; left: 12px; right: 12px; bottom: 76px; width: auto; max-height: 70dvh; overflow: auto; }
+      .option-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .option-grid.count-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .login-page { display: block; min-height: 100vh; }
+      .login-visual { display: none; }
+      .login-form-wrap { min-height: 100vh; padding: 28px 22px; }
+      .image-preview-backdrop { padding: 56px 12px 18px; }
+      .image-preview-backdrop img { max-width: 100%; max-height: calc(100dvh - 74px); }
+      .image-preview-actions { top: 10px; right: 10px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app" id="app">
+    <nav class="primary-nav" id="primaryNav" aria-label="主导航">
+      <button class="brand-mark" type="button" aria-label="返回灵感" data-route="inspiration"></button>
+      <div class="nav-stack">
+        <button class="nav-btn active" type="button" data-route="inspiration"><i data-lucide="house" aria-hidden="true"></i><span>灵感</span></button>
+        <button class="nav-btn" type="button" data-route="generate"><i data-lucide="sparkles" aria-hidden="true"></i><span>生成</span></button>
+        <button class="nav-btn mobile-only" type="button" data-route="login"><i data-lucide="user-round" aria-hidden="true"></i><span>我的</span></button>
+      </div>
+      <div class="nav-spacer"></div>
+      <div class="desktop-dock">
+        <div class="quota" id="quotaDisplay" aria-label="剩余 80 / 100 点额度"><strong id="quotaValue">✦80/100</strong><span class="quota-label" id="quotaLabel">额度</span><span class="quota-bar" aria-hidden="true"><span id="quotaProgress"></span></span></div>
+        <button class="dock-icon dock-tooltip" type="button" aria-label="通知" data-tooltip="通知"><i data-lucide="bell" aria-hidden="true"></i></button>
+        <div class="dock-divider"></div>
+        <button class="account-avatar dock-tooltip" id="accountMenuButton" type="button" aria-label="设置" aria-expanded="false" data-tooltip="设置"><i data-lucide="settings" aria-hidden="true"></i></button>
+      </div>
+    </nav>
+    <section class="account-menu hidden" id="accountMenu" aria-label="账户与设置">
+      <button class="menu-row" id="legalMenuButton" type="button"><i data-lucide="file-text" aria-hidden="true"></i>平台协议<i class="menu-end" data-lucide="chevron-right" aria-hidden="true"></i></button>
+      <button class="menu-row" type="button"><i data-lucide="scroll-text" aria-hidden="true"></i>更新日志<span class="menu-end">v0.1</span></button>
+      <button class="menu-row" id="themeMenuButton" type="button" aria-expanded="false"><i data-lucide="sun-moon" aria-hidden="true"></i>外观<span class="menu-end" id="themeLabel">跟随系统</span></button>
+      <div class="theme-options hidden" id="themeOptions">
+        <button class="menu-row active" type="button" data-theme="跟随系统">跟随系统</button>
+        <button class="menu-row" type="button" data-theme="浅色">浅色</button>
+        <button class="menu-row" type="button" data-theme="深色">深色</button>
+      </div>
+      <label class="menu-row"><i data-lucide="badge-check" aria-hidden="true"></i>AI 水印<input class="menu-switch" id="watermarkSwitch" type="checkbox" checked></label>
+      <button class="menu-row" id="accountAction" type="button"><i data-lucide="log-in" aria-hidden="true"></i><span id="accountLabel">登录</span></button>
+      <div class="menu-footer">造梦空间 Dream Space<br>让每一次生成都可控、可追溯。</div>
+    </section>
+
+    <main class="page" id="inspirationPage">
+      <header class="toolbar">
+        <button class="category-btn active" type="button" data-category="推荐">推荐</button>
+        <button class="category-btn" type="button" data-category="人像">人像</button>
+        <button class="category-btn" type="button" data-category="摄影">摄影</button>
+        <button class="category-btn" type="button" data-category="动漫">动漫</button>
+        <button class="category-btn" type="button" data-category="插画">插画</button>
+        <button class="category-btn" type="button" data-category="设计">设计</button>
+        <div class="search-wrap">
+          <span class="hidden">搜索灵感</span>
+          <i data-lucide="search" aria-hidden="true"></i>
+          <input class="search-input" id="inspirationSearch" placeholder="搜索主题、风格或提示词">
+          <button class="icon-btn search-clear hidden" id="searchClear" type="button" aria-label="清空搜索"><i data-lucide="x" aria-hidden="true"></i></button>
+          <section class="search-history-panel hidden" id="searchHistoryPanel" aria-label="搜索历史">
+            <div class="search-history-header"><strong id="searchHistoryTitle">搜索历史</strong><button class="action-btn search-history-clear" id="searchHistoryClear" type="button"><i data-lucide="trash-2" aria-hidden="true"></i><span id="searchHistoryClearLabel">清空</span></button></div>
+            <div class="search-history-list" id="searchHistoryList"></div>
+          </section>
+        </div>
+        <div class="toolbar-end">
+          <div class="utility-bar" aria-label="工作台快捷信息">
+            <button class="utility-button motivation-button" id="dailyFocus" type="button" title="点击随机更换励志语"><i data-lucide="sparkles" aria-hidden="true"></i><span class="motivation-window"><span class="motivation-text" id="focusText">把想象变成看得见的作品。</span></span></button>
+            <span class="utility-divider" aria-hidden="true"></span>
+            <div class="utility-meta date-meta"><i data-lucide="calendar-days" aria-hidden="true"></i><span id="studioDate">8月1日周六</span></div>
+            <div class="utility-meta" title="演示天气"><i data-lucide="cloud-sun" aria-hidden="true"></i><span id="weatherText">深圳 29°</span></div>
+            <span class="utility-divider" aria-hidden="true"></span>
+            <div class="language-control">
+              <button class="utility-button language-trigger" id="languageToggle" type="button" aria-label="选择界面语言" aria-expanded="false"><span class="language-flag" id="languageFlag">🇨🇳</span><span id="languageLabel">ZH</span><i data-lucide="chevron-down" aria-hidden="true"></i></button>
+              <div class="language-menu hidden" id="languageMenu" role="menu">
+                <button class="language-option" type="button" data-language="en" role="menuitem"><span class="language-flag">🇺🇸</span><span>English</span><i data-lucide="check" aria-hidden="true"></i></button>
+                <button class="language-option active" type="button" data-language="zh-CN" role="menuitem"><span class="language-flag">🇨🇳</span><span>中文</span><i data-lucide="check" aria-hidden="true"></i></button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+      <section class="masonry" id="masonry" aria-label="灵感作品"></section>
+      <section class="empty-state hidden" id="emptyState">
+        <div><strong id="emptyTitle">没有找到相关灵感</strong><span id="emptyCopy">尝试其他关键词，或返回推荐内容。</span><br><br><button class="action-btn" id="resetSearch" type="button">返回推荐</button></div>
+      </section>
+    </main>
+
+    <main class="page hidden" id="detailPage">
+      <div class="detail-layout">
+        <section class="detail-stage" aria-label="作品大图">
+          <img class="detail-image" id="detailImage" alt="灵感作品大图">
+          <button class="icon-btn detail-close" id="detailClose" type="button" aria-label="关闭详情"><i data-lucide="x" aria-hidden="true"></i></button>
+          <div class="pager">
+            <button class="icon-btn" id="prevArtwork" type="button" aria-label="上一个作品"><i data-lucide="chevron-up" aria-hidden="true"></i></button>
+            <button class="icon-btn" id="nextArtwork" type="button" aria-label="下一个作品"><i data-lucide="chevron-down" aria-hidden="true"></i></button>
+          </div>
+        </section>
+        <aside class="detail-panel">
+          <div class="author-line">
+            <div class="avatar" id="detailAvatar">D</div>
+            <strong id="detailAuthor">造梦编辑部</strong><button class="follow-btn" id="detailFollow" type="button">+ 关注</button>
+            <div class="panel-actions">
+              <button class="icon-btn" id="likeButton" type="button" aria-label="点赞"><i data-lucide="heart" aria-hidden="true"></i></button>
+              <span id="likeCount">218</span>
+              <button class="icon-btn" type="button" aria-label="更多"><i data-lucide="ellipsis" aria-hidden="true"></i></button>
+            </div>
+          </div>
+          <p class="detail-copy" id="detailTitle">雾色森林中的微光旅途</p>
+          <p class="detail-date" id="detailDate">2026-07-31 · 内容由 AI 生成</p>
+          <div class="prompt-label">图片提示词</div>
+          <p class="prompt-text" id="detailPrompt"></p>
+          <div class="param-line"><span id="detailModel">通用模型</span><span>|</span><span id="detailRatio">3:4</span><span>|</span><span id="detailResolution">2K</span></div>
+          <div class="detail-actions">
+            <button class="action-btn" id="makeSame" type="button"><i data-lucide="refresh-cw" aria-hidden="true"></i>做同款</button>
+            <button class="action-btn" id="useReference" type="button"><i data-lucide="image-plus" aria-hidden="true"></i>用作参考图</button>
+            <button class="action-btn" id="copyPrompt" type="button"><i data-lucide="copy" aria-hidden="true"></i>复制提示词</button>
+            <button class="action-btn" id="downloadArtwork" type="button"><i data-lucide="download" aria-hidden="true"></i>下载图片</button>
+          </div>
+        </aside>
+      </div>
+      <section class="composer detail-composer hidden" id="detailComposer" aria-label="快捷生成器">
+        <div class="ref-strip hidden" id="detailRefStrip"></div>
+        <div class="prompt-row">
+          <button class="upload-btn" type="button" aria-label="添加参考图"><i data-lucide="plus" aria-hidden="true"></i></button>
+          <textarea id="detailComposerText" aria-label="提示词"></textarea>
+        </div>
+        <div class="composer-footer">
+          <button class="field-btn" type="button"><i data-lucide="image" aria-hidden="true"></i>图片生成</button>
+          <button class="field-btn" type="button" id="detailModelButton">通用模型</button>
+          <button class="field-btn" type="button" id="detailRatioButton">3:4</button>
+          <button class="field-btn" type="button" id="detailResolutionButton">2K</button>
+          <button class="submit-btn" id="detailSubmit" type="button" aria-label="提交生成"><i data-lucide="arrow-up" aria-hidden="true"></i></button>
+        </div>
+      </section>
+    </main>
+
+    <main class="page hidden" id="generatePage">
+      <aside class="session-sidebar">
+        <div class="sidebar-heading"><span>开启创作</span><i data-lucide="panel-left-close" aria-hidden="true"></i></div>
+        <button class="action-btn new-session" id="newSession" type="button"><i data-lucide="square-pen" aria-hidden="true"></i>新对话</button>
+        <div class="session-label">最近</div>
+      </aside>
+      <section class="generation-main">
+        <header class="generation-top">
+          <div class="generation-search-control" id="generationSearchControl"><div class="generation-search-panel hidden" id="generationSearchPanel"><i data-lucide="search" aria-hidden="true"></i><input id="generationSearchInput" type="search" placeholder="搜索当前会话" autocomplete="off"><button class="icon-btn generation-search-clear" id="generationSearchClear" type="button" aria-label="清空搜索"><i data-lucide="x" aria-hidden="true"></i></button></div><button class="field-btn" id="generationSearch" type="button"><i data-lucide="search" aria-hidden="true"></i><span>搜索</span></button></div>
+          <button class="field-btn generation-filter" type="button" data-filter-name="时间"><span class="filter-label">时间</span><i data-lucide="chevron-down" aria-hidden="true"></i></button>
+          <button class="field-btn generation-filter" type="button" data-filter-name="生成模式"><span class="filter-label">生成模式</span><i data-lucide="chevron-down" aria-hidden="true"></i></button>
+          <button class="field-btn generation-filter" type="button" data-filter-name="操作类型"><span class="filter-label">操作类型</span><i data-lucide="chevron-down" aria-hidden="true"></i></button>
+        </header>
+        <div class="timeline" id="timeline"></div>
+        <section class="composer composer-shell" id="generateComposer" aria-label="图片生成器">
+          <div class="parameter-popover hidden" id="parameterPopover" aria-label="生成参数">
+            <div class="param-section">
+              <div class="param-heading"><span>画面比例</span><span class="size-preview" id="sizePreview">2048 × 2048 px</span></div>
+              <div class="option-grid" id="ratioOptions"></div>
+            </div>
+            <div class="param-section">
+              <div class="param-heading"><span>分辨率</span></div>
+              <div class="option-grid" id="resolutionOptions"></div>
+            </div>
+            <div class="param-section">
+              <div class="param-heading"><span>生成数量</span></div>
+              <div class="option-grid count-grid" id="countOptions"></div>
+            </div>
+          </div>
+          <div class="ref-strip hidden" id="generateRefStrip"></div>
+          <div class="prompt-row">
+            <button class="upload-btn" id="mockUpload" type="button" aria-label="添加参考图"><i data-lucide="plus" aria-hidden="true"></i></button>
+            <textarea id="generatePrompt" aria-label="提示词" rows="1" placeholder="输入你想生成的画面，或上传参考图"></textarea>
+          </div>
+          <div class="composer-footer">
+            <button class="field-btn" type="button"><i data-lucide="image" aria-hidden="true"></i>图片生成</button>
+            <button class="field-btn" type="button" id="modelButton">通用模型</button>
+            <button class="field-btn" type="button" id="parameterButton" aria-expanded="false"><span id="ratioButton">1:1</span><span>·</span><span id="resolutionButton">2K</span><span>·</span><span id="countButton">2 张</span><i data-lucide="chevron-up" aria-hidden="true"></i></button>
+            <span class="cost-label" id="costLabel">预计 2 点</span>
+            <button class="submit-btn" id="generateSubmit" type="button" aria-label="提交生成" disabled><i data-lucide="arrow-up" aria-hidden="true"></i></button>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <main class="page login-page hidden" id="loginPage">
+      <section class="login-visual" aria-label="造梦空间品牌视觉">
+        <div class="login-scene" aria-hidden="true"></div>
+        <div class="login-brand"><span class="brand-mark"></span><span class="login-brand-copy"><strong>造梦空间 · Dream Space</strong><small>AI IMAGE STUDIO</small></span></div>
+        <div class="login-quote"><strong>让脑海里的画面，成为看得见的作品。</strong><span>CREATE BEYOND IMAGINATION · 2026</span></div>
+      </section>
+      <section class="login-form-wrap">
+        <button class="icon-btn login-close" id="loginClose" type="button" aria-label="关闭登录"><i data-lucide="x" aria-hidden="true"></i></button>
+        <form class="login-form" id="loginForm">
+          <h1>登录造梦空间</h1>
+          <p class="login-subtitle">登录后继续你的图片创作。</p>
+          <label class="form-label" for="phoneInput">手机号</label>
+          <input class="form-input" id="phoneInput" type="tel" value="13800138000" autocomplete="tel">
+          <label class="form-label" for="codeInput">验证码</label>
+          <div class="code-row"><input class="form-input" id="codeInput" inputmode="numeric" value="123456" autocomplete="one-time-code"><button class="action-btn" id="sendCode" type="button">获取验证码</button></div>
+          <label class="agreement"><input id="agreement" type="checkbox"><span>我已阅读并同意 <button class="agreement-link" type="button" data-legal="用户协议">用户协议</button>、<button class="agreement-link" type="button" data-legal="隐私政策">隐私政策</button> 和 <button class="agreement-link" type="button" data-legal="AI 功能使用协议">AI 功能使用协议</button>。</span></label>
+          <div class="login-error" id="loginError"></div>
+          <button class="action-btn primary login-submit" type="submit">登录并继续</button>
+        </form>
+      </section>
+    </main>
+
+    <div class="legal-backdrop hidden" id="legalBackdrop" role="presentation">
+      <section class="legal-dialog" role="dialog" aria-modal="true" aria-labelledby="legalTitle">
+        <header class="legal-header"><h2 id="legalTitle">造梦空间用户协议</h2><button class="icon-btn" id="legalClose" type="button" aria-label="关闭协议"><i data-lucide="x" aria-hidden="true"></i></button></header>
+        <div class="legal-content" id="legalContent">
+          <h3>一、协议范围</h3><p>本协议适用于用户访问和使用造梦空间提供的 AI 图片生成、灵感浏览及相关服务。用户使用服务前应完整阅读并理解本协议。</p>
+          <h3>二、账号与使用规范</h3><p>用户应提供真实、合法的注册信息并妥善保管账号。不得利用服务制作、上传或传播违法违规、侵权、欺诈、仇恨、色情或危害他人合法权益的内容。</p>
+          <h3>三、输入与生成内容</h3><p>用户应确保对上传的提示词、参考图片及其他素材拥有必要权利。AI 生成结果具有不确定性，用户在公开发布或商业使用前应自行审核真实性、合法性和知识产权风险。</p>
+          <h3>四、个人信息保护</h3><p>平台仅在实现账号登录、任务处理、安全审计和服务改进所必要的范围内处理个人信息，并依据隐私政策提供访问、更正、删除和撤回授权渠道。</p>
+          <h3>五、服务变更与责任</h3><p>平台可能因模型升级、维护、安全风险或不可抗力调整服务。对可预见的重要变更将通过站内通知等合理方式告知用户。</p>
+          <h3>六、联系我们</h3><p>如对本协议、隐私保护或生成内容处理有疑问，可通过平台内反馈入口联系我们。协议版本：2026-07-31。</p>
+        </div>
+      </section>
+    </div>
+
+    <div class="image-preview-backdrop hidden" id="imagePreviewBackdrop" role="dialog" aria-modal="true" aria-label="图片预览">
+      <img id="imagePreviewImage" alt="生成图片预览">
+      <div class="image-preview-actions"><button class="icon-btn" id="imagePreviewDownload" type="button" aria-label="下载图片"><i data-lucide="download" aria-hidden="true"></i></button><button class="icon-btn" id="imagePreviewClose" type="button" aria-label="关闭预览"><i data-lucide="x" aria-hidden="true"></i></button></div>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  </div>
+
+  <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+  <script>
+    const artworks = [
+      {
+        image: 'assets/inspiration/portrait-01.webp', title: '秋日庭院里的清丽少女', author: '即梦创作者', source: '即梦AI公开灵感', likes: 283, category: '人像', model: '图片 4.7', ratio: '9:16', resolution: '1350 × 2400',
+        prompt: `高清真人写真全身照，中景拍摄，容颜清丽脱俗，19岁清秀少女，日系清新风，浅米色、木色与绿色为主的配色，柔和自然光，冷白皮的年轻长发女子，杏色单肩系带长裙，户外平台旁有翠绿植物，背景是带卷帘的田园风房间，静谧雅致，画面清晰细腻，8K分辨率，专业摄影光源，全画幅清晰对焦。`
+      },
+      {
+        image: 'assets/inspiration/portrait-02.webp', title: '深蓝礼服的优雅肖像', author: '即梦创作者', source: '即梦AI公开灵感', likes: 134, category: '人像', model: '图片 5.0 Lite', ratio: '9:16', resolution: '1350 × 2400',
+        prompt: `真人写真，64K高清，绝色美人，气质美女，肤白细腻光滑，盘发微乱蓬松，深蓝色紧身衣服，微笑，中色模糊背景，高级项链耳环，唯美，迷人，注视着镜头浅笑`
+      },
+      {
+        image: 'assets/inspiration/portrait-03.webp', title: '秋日巷弄的随性抓拍', author: '即梦创作者', source: '即梦AI公开灵感', likes: 218, category: '人像', model: '图片 4.1', ratio: '9:16', resolution: '1350 × 2400',
+        prompt: `日常生活快照，非常规视角构图，随手一拍。年轻女性，娇柔可爱，气质出众，眼神灵动俏皮，冷白皮通透细腻，清新淡妆。强烈阳光倾洒在头发与脸上，风吹发丝飘动，光影斑驳，边缘发光，高饱和强对比，胶片颗粒。深棕长发微卷披散，浅蓝开衫外套、白色内搭吊带，秋日巷弄石阶旁，落叶轻旋，自然光线明亮柔和，高质量人像摄影，全画幅高清。`
+      },
+      {
+        image: 'assets/inspiration/portrait-04.webp', title: '莫兰迪蓝调电影人像', author: '即梦创作者', source: '即梦AI公开灵感', likes: 196, category: '人像', model: '图片 4.0', ratio: '9:16', resolution: '1350 × 2400',
+        prompt: `绝色美人，气质美女，肤白细腻光滑，盘发微乱蓬松，深蓝色衣服，高级项链耳环，唯美迷人，注视镜头。电影级面光，光线追踪，冷白皮漫感质感，人物有最好的骨相，莫兰迪配色，高颜值网红，INS风，侧光，发丝轻飘，慵懒俏皮，东方美女，甜美氛围，构图优美，绝美角度拍摄。`
+      },
+      {
+        image: 'assets/inspiration/portrait-05.webp', title: '深蓝圆领的东方少女', author: '即梦创作者', source: '即梦AI公开灵感', likes: 174, category: '人像', model: '图片 4.0', ratio: '9:16', resolution: '1350 × 2400',
+        prompt: `真人写真，64K高清，绝色美人，气质美女，肤白细腻光滑，盘发，深蓝色圆领衣服，高级项链耳环，唯美迷人，全身照，注视镜头。电影级面光，光线追踪，莫兰迪配色，INS风，侧光，发丝轻飘，甜美少女系，东方美女，冷白皮，偶像气质，皮肤美白透亮，构图优美。`
+      },
+      {
+        image: 'assets/inspiration/portrait-06.webp', title: '暖棕影棚韩系写真', author: '即梦创作者', source: '即梦AI公开灵感', likes: 242, category: '人像', model: '图片 4.0', ratio: '3:4', resolution: '1728 × 2304',
+        prompt: `韩系氛围照片，20岁左右网红美女，妆容精致，搭配精致项链和耳环，黑色露肩上衣，背景为暖棕色低饱和磨砂质感墙面，正面柔光打光，人物面部柔和阴影过渡，摄影棚网红照质感，双手抱臂歪头，可爱笑眯眯表情，眼神灵动，胶片风格，明显颗粒感，柔光暖调。`
+      },
+      {
+        image: 'assets/inspiration/portrait-07.webp', title: '法式窗边旗袍侧影', author: '即梦创作者', source: '即梦AI公开灵感', likes: 307, category: '人像', model: '图片 4.1', ratio: '9:16', resolution: '1350 × 2400',
+        prompt: `8K Ultra HD超高清人物写真，绝美东方女性，鹅蛋脸，黑长直秀发自然垂落，背身侧立在白色法式竖框落地窗旁，面部侧转45度，神态清冷慵懒；身穿浅杏色修身旗袍，豆沙粉与浅绿晕染花卉印花。自然光从右侧斜射，发丝边缘有细腻轮廓光，浅景深，背景自然虚化，真实皮肤肌理，低饱和暖调，写实摄影风格。`
+      },
+      {
+        image: 'assets/inspiration/portrait-08.webp', title: '薄荷绿春日花束少女', author: '即梦创作者', source: '即梦AI公开灵感', likes: 225, category: '人像', model: '图片 4.0', ratio: '2:3', resolution: '1600 × 2400',
+        prompt: `清甜治愈的春日氛围，19岁甜美少女，冷白皮，妆容清透，暖棕色侧编辫子。白色打底衫搭配薄荷绿色V领针织开衫，米白色蕾丝蛋糕长裙，怀抱透明玻璃纸包裹的小束鲜花，站在春日都市街道边，身后明黄色围墙与嫩绿树叶形成色彩对比，暖融融的自然光，写实摄影，画面明亮温柔。`
+      },
+      {
+        image: 'assets/inspiration/photography-01.webp', title: '云雾草原的落日溪流', author: '即梦创作者', source: '即梦AI公开灵感', likes: 183, category: '摄影', model: '图片 4.0', ratio: '9:16', resolution: '608 × 1080',
+        prompt: `远山云雾缭绕，碧绿草原一望无际，清澈溪流潺潺流淌，蓝天白云温柔治愈，落日霞光温柔绚烂，森林清新通透，光影柔和唯美，大自然原生态美景，高清细腻，氛围感拉满，极致治愈，超广角风景大片`
+      },
+      {
+        image: 'assets/inspiration/photography-02.webp', title: '黄金时刻的宏伟山脉', author: '即梦创作者', source: '即梦AI公开灵感', likes: 226, category: '摄影', model: '图片 5.0 Lite', ratio: '2:3', resolution: '720 × 1080',
+        prompt: `大师级风光摄影，真实摄影质感，高分辨率，自然光线。宏伟山脉高高耸起，前景有野花，黄金时刻的暖光，大气透视自然，层次丰富。三分法构图，12mm广角镜头，极致纵深感与透视，画面通透，色彩真实，保留自然纹理与轻微胶片颗粒。`
+      },
+      {
+        image: 'assets/inspiration/photography-03.webp', title: '炊烟村庄的金色霞光', author: '即梦创作者', source: '即梦AI公开灵感', likes: 241, category: '摄影', model: '图片 3.0', ratio: '9:16', resolution: '608 × 1080',
+        prompt: `超高清8K画质，大师级风光摄影，电影级柔和光影质感，超广角远景构图，夕阳西下暖金色落日霞光铺满整片天空，连绵翠绿山林间静谧小村庄错落分布，屋顶升起缕缕炊烟，氛围温柔治愈，柔和逆光，自然写实色彩。`
+      },
+      {
+        image: 'assets/inspiration/photography-04.webp', title: '蓝天草原的治愈远景', author: '即梦创作者', source: '即梦AI公开灵感', likes: 198, category: '摄影', model: '图片 5.0 Pro', ratio: '9:16', resolution: '608 × 1080',
+        prompt: `风景摄影，治愈心灵，蓝天，白云，森林，草原，溪流，远景，阳光，丁达尔效应，高速摄影，佳能 EOS R5，壁纸，高细节，8K，电影感自然光。`
+      },
+      {
+        image: 'assets/inspiration/photography-05.webp', title: '乌兰布统的秋日晨光', author: '即梦创作者', source: '即梦AI公开灵感', likes: 174, category: '摄影', model: '图片 5.0 Lite', ratio: '9:16', resolution: '608 × 1080',
+        prompt: `单反风光摄影，广角镜头，远景，清晨，秋日的乌兰布统五彩滩，零星白桦树点缀画面，小河穿过薄雾缭绕的草原，羊群与骏马，朝阳刚刚露出地平线，超现实主义美景，8K超高清，高饱和度。`
+      },
+      {
+        image: 'assets/inspiration/photography-06.webp', title: '蓝天青山的山野电影感', author: '即梦创作者', source: '即梦AI公开灵感', likes: 212, category: '摄影', model: '图片 5.0 Lite', ratio: '9:16', resolution: '608 × 1080',
+        prompt: `治愈山野风景，蓝天白云，青山连绵，自然氛围感拉满，超清画质，电影滤镜，柔和光影，简约高级，无杂质画面，意境感十足。`
+      },
+      {
+        image: 'assets/inspiration/photography-07.webp', title: '冰岛悬崖与飞鸟', author: '即梦创作者', source: '即梦AI公开灵感', likes: 268, category: '摄影', model: '图片 4.5', ratio: '3:4', resolution: '810 × 1080',
+        prompt: `航拍视角，鲜绿色草坡上一个黑色人影，黄色小花点缀，右侧深色陡峭悬崖，左侧深色水面数百只白色海鸥飞舞。冰岛海边悬崖，清晨晴朗，阳光斜射草坡，氛围空灵孤寂，航拍写实摄影风格，暗色调与绿色草坡形成强烈对比，8K分辨率，DJI Mavic 3 Pro Cine航拍。`
+      },
+      {
+        image: 'assets/inspiration/photography-08.webp', title: '雪山湖泊的橙色倒影', author: '即梦创作者', source: '即梦AI公开灵感', likes: 253, category: '摄影', model: '图片 5.0 Lite', ratio: '9:16', resolution: '608 × 1080',
+        prompt: `8K超清自然风光照片，写实风格，画面中央为壮丽雪山，前景是平静湖泊，湖面倒映雪山，夕阳照射下雪山呈现温暖橙色，云朵也被染成橙色，整体配色蓝色、橙色和白色，宁静而壮丽，细节精致，光影逼真。`
+      },
+      {
+        image: 'assets/inspiration/photography-09.webp', title: '墨绿色山居意境海报', author: '即梦创作者', source: '即梦AI公开灵感', likes: 191, category: '摄影', model: '图片 4.0', ratio: '3:4', resolution: '810 × 1080',
+        prompt: `翠绿山峦主题的意境海报，葱郁绿色山坡覆盖草皮与苔藓，云雾笼罩山脊，画面下方偏右是一栋实木色小木屋。整体设计偏文艺与极简风格，墨绿色低饱和色调，保留中英文字混排与留白，传达心灵栖息在山间的宁静意境。`
+      },
+      {
+        image: 'assets/inspiration/photography-10.webp', title: '国家地理感的远方', author: '即梦创作者', source: '即梦AI公开灵感', likes: 165, category: '摄影', model: '图片 3.1', ratio: '2:3', resolution: '720 × 1080',
+        prompt: `氛围感风景，胶片感，大师摄影作品，国家地理摄影风格，人物占十分之一画面，远景构图，真实自然光，细腻层次与故事感。`
+      },
+      {
+        image: 'assets/inspiration/portrait-09.webp', title: '红衣流苏的中式美人', author: '即梦创作者', source: '即梦AI公开灵感', likes: 286, category: '人像', model: '图片 4.1', ratio: '9:16', resolution: '1350 × 2400',
+        prompt: `中式风格摄影，镜头特写，暖色调，冷白皮东方美女，极繁超长精致流苏头链，红色奢华异域服饰绣有复杂纹路，手持华丽工艺扇，中国传统大师级配色，银色点缀，神秘深邃，宁静与热烈并存，故事感与场景感。`
+      },
+      {
+        image: 'assets/inspiration/portrait-10.webp', title: '暗黑蕾丝大家闺秀', author: '即梦创作者', source: '即梦AI公开灵感', likes: 232, category: '人像', model: '图片 4.0', ratio: '9:16', resolution: '1350 × 2400',
+        prompt: `大家闺秀真人写真，冷白皮，元气妆，亭亭玉立，高雅气质，柔和灯光，黑色长发编发，黑花发饰，黑色纱制衣服，蕾丝、蝴蝶结、绫罗绸缎与水晶首饰，暗黑甜美系，半身镜头，自然光线，高细节摄影。`
+      },
+      {
+        image: 'assets/inspiration/portrait-11.webp', title: '江景旁的生活感肖像', author: '即梦创作者', source: '即梦AI公开灵感', likes: 208, category: '人像', model: '图片 4.0', ratio: '9:16', resolution: '1350 × 2400',
+        prompt: `人像摄影，冷白皮美女，瓜子脸，柔顺长发垂落肩头，修身高领长袖针织衫，身体微微前倾，表情自然害羞。江景自然色调与深色服装相互映衬，日常快照风格，近景写实，自然光影，生活气息，32K超高清细节。`
+      },
+      {
+        image: 'assets/inspiration/portrait-12.webp', title: '迷雾山水中的蓝衣女性', author: '即梦创作者', source: '即梦AI公开灵感', likes: 274, category: '人像', model: '图片 4.0', ratio: '3:4', resolution: '1728 × 2304',
+        prompt: `电影级大片，25岁亚洲美女，清纯瓜子脸，冰瓷玉肌冷白皮，深蓝色休闲针织衫。背景为迷雾山水、冷蓝天空与飘动的深蓝围巾，人物表情从容坚定，复古文艺、大气磅礴，胶片颗粒，风吹发丝的动态。`
+      },
+      {
+        image: 'assets/inspiration/anime-01.webp', title: '蓝发洛丽塔萌系少女', author: '即梦创作者', source: '即梦AI公开灵感', likes: 318, category: '动漫', model: '图片 3.1', ratio: '1:1', resolution: '1080 × 1080',
+        prompt: `日式萌系动漫插画，蓝灰双马尾少女，蓝色眼眸清亮有高光，洛丽塔服饰，蝴蝶结、花朵、爱心等精致饰品，正面特写构图，手指摆出可爱姿势，浅蓝与白色主色调，清新治愈，细节丰富。`
+      },
+      {
+        image: 'assets/inspiration/anime-02.webp', title: '高冷少女的3D厚涂肖像', author: '即梦创作者', source: '即梦AI公开灵感', likes: 263, category: '动漫', model: '图片 3.0', ratio: '9:16', resolution: '936 × 1664',
+        prompt: `3D动漫厚涂风格，丙烯颜料质感，18岁高冷少女，深棕色单边麻花辫与空气刘海，精致清冷五官，斜挎白色针织大单肩包，柔焦、华丽通透光影，32K超高清，OC渲染，细腻发丝与肌理。`
+      },
+      {
+        image: 'assets/inspiration/anime-03.webp', title: '银白古风仙侠少年', author: '即梦创作者', source: '即梦AI公开灵感', likes: 291, category: '动漫', model: '图片 4.0', ratio: '9:16', resolution: '1350 × 2400',
+        prompt: `CG建模，古风美少年，面部特写，冷白皮肤，凤眼清冷，灰色发丝凌乱拂面，华丽银饰从发间垂落，银白服装领口袖口精致华丽，高级朦胧梦幻氛围，写实国漫质感。`
+      },
+      {
+        image: 'assets/inspiration/anime-04.webp', title: '樱花校园的治愈少年', author: '即梦创作者', source: '即梦AI公开灵感', likes: 245, category: '动漫', model: '图片 4.5', ratio: '9:16', resolution: '1350 × 2400',
+        prompt: `动漫风格精致厚涂，少年感亚洲面孔，黑色头发，宽松高中校服外套，樱花校园与蓝天白云，自然柔光，强烈而温暖的光影对比，半厚涂CG渲染，线条流畅，治愈系高级插画。`
+      },
+      {
+        image: 'assets/inspiration/anime-05.webp', title: '白泽相伴的国漫少女', author: '即梦创作者', source: '即梦AI公开灵感', likes: 337, category: '动漫', model: '图片 3.1', ratio: '9:16', resolution: '1350 × 2400',
+        prompt: `3D国漫仙侠风格，栗色双马尾少女，发间插野花与羽毛，琥珀色杏眼，浅棕渐变草绿劲装，绣山海异兽与草木纹样，身侧跟随白泽幼兽，翠绿色自然粒子灵光，虚幻引擎电影级渲染。`
+      },
+      {
+        image: 'assets/inspiration/anime-06.webp', title: '窗边热奶茶的治愈女性', author: '即梦创作者', source: '即梦AI公开灵感', likes: 224, category: '动漫', model: '图片 5.0 Lite', ratio: '9:16', resolution: '1350 × 2400',
+        prompt: `现代2D漫剧风格，日系治愈动画质感，24岁温柔女性，奶茶棕羊毛卷，中长发齐刘海，米白针织毛衣与浅咖围巾，手捧热奶茶，暖调窗边逆光，赛璐璐平涂，低饱和暖色，单人半身立绘。`
+      },
+      {
+        image: 'assets/inspiration/anime-07.webp', title: '深紫发少女的朦胧情绪', author: '即梦创作者', source: '即梦AI公开灵感', likes: 278, category: '动漫', model: '图片 4.5', ratio: '9:16', resolution: '1350 × 2400',
+        prompt: `灵动纯美的深紫发少女，动态发丝凌乱飘动，泛光、柔焦、颗粒质感与伦勃朗光，高饱和反射折射，情绪写意，前卫视觉艺术与电影美学，CGI虚幻引擎5渲染，高级大片感。`
+      },
+      {
+        image: 'assets/inspiration/anime-08.webp', title: '银发围巾的清冷特写', author: '即梦创作者', source: '即梦AI公开灵感', likes: 306, category: '动漫', model: '图片 5.0 Lite', ratio: '9:16', resolution: '1350 × 2400',
+        prompt: `3D动漫风格，浅银长发女性面部特写，眼尾淡粉，温柔湿润的眼眸略带忧郁，纤细手指轻拉浅雾灰针织围巾半遮脸颊，冷灰银白基底，柔和朦胧光影，清冷又温柔，细腻治愈。`
+      },
+      {
+        image: 'assets/inspiration/illustration-01.webp', title: '杭州地标凹版线稿海报', author: '即梦创作者', source: '即梦AI公开灵感', likes: 194, category: '插画', model: '图片 4.5', ratio: '9:16', resolution: '1350 × 2400',
+        prompt: `杭州现代地标建筑凹版印刷线稿，粗细线结合并保留铜版雕刻痕迹，橙白色调，西湖、三潭印月、灵隐寺、莲花体育场与江南山水，以清明上河图散点透视构图，大师级插画与现代海报排版。`
+      },
+      {
+        image: 'assets/inspiration/illustration-02.webp', title: '山楂山药的新中式图形', author: '即梦创作者', source: '即梦AI公开灵感', likes: 167, category: '插画', model: '图片 4.0', ratio: '3:4', resolution: '1728 × 2304',
+        prompt: `新中式扁平渐变插画，以山楂和山药为主体，高度概括的图形，噪点肌理与色彩颗粒，纯白背景，多巴胺配色，红色与浅棕色为主，弥散渐变，年轻现代，极简先锋图形设计。`
+      },
+      {
+        image: 'assets/inspiration/illustration-03.webp', title: '海滨小镇的冰淇淋车', author: '即梦创作者', source: '即梦AI公开灵感', likes: 228, category: '插画', model: '图片 4.7', ratio: '3:4', resolution: '1728 × 2304',
+        prompt: `丝网印刷风格，颗粒肌理，超广角平视视角，淡蓝色海滨小镇冰淇淋车，车顶有大型冰淇淋装饰，车门口摆放绿植与桌椅，蓝白双色为主，纯扁平插画，简约构图，高饱和8K。`
+      },
+      {
+        image: 'assets/inspiration/illustration-04.webp', title: '森林梦境的白发少年', author: '即梦创作者', source: '即梦AI公开灵感', likes: 213, category: '插画', model: '图片 3.1', ratio: '3:4', resolution: '1104 × 1472',
+        prompt: `极繁治愈系插画，童趣涂鸦与意识流梦境，白色及腰长发、蓝色眼睛的小男孩在森林玩耍，大色块、颗粒肌理、抽象扁平表现，非对称有角度构图。`
+      },
+      {
+        image: 'assets/inspiration/illustration-05.webp', title: '梦幻森林动物涂鸦', author: '即梦创作者', source: '即梦AI公开灵感', likes: 184, category: '插画', model: '图片 4.0', ratio: '1:1', resolution: '1080 × 1080',
+        prompt: `极繁治愈系插画，梦幻森林动物角色，大色块与颗粒质感，色彩鲜艳饱和，童趣涂鸦和意识流自由表达，纯色背景，角落点缀手写体小字，整体色调协调。`
+      },
+      {
+        image: 'assets/inspiration/illustration-06.webp', title: '蓝色菜篮子的日系海报', author: '即梦创作者', source: '即梦AI公开灵感', likes: 156, category: '插画', model: '图片 4.0', ratio: '1:1', resolution: '1080 × 1080',
+        prompt: `极简日系平面海报，丝网印刷与大面积留白，抽象变形的高饱和蓝色菜篮子，篮中露出樱桃，白色背景，简洁线条，90年代复古美学。`
+      },
+      {
+        image: 'assets/inspiration/illustration-07.webp', title: '我的阿勒泰三联长卷', author: '即梦创作者', source: '即梦AI公开灵感', likes: 251, category: '插画', model: '图片 3.1', ratio: '9:16', resolution: '936 × 1664',
+        prompt: `“我的阿勒泰”连续性三联竖版长卷，绘本与水彩插画，绿色高原、雪山、森林、绵羊和帐篷，鸟瞰视角，大色块与颗粒肌理，中英文字错落排版，简约高级，文艺留白，意识流叙事。`
+      },
+      {
+        image: 'assets/inspiration/illustration-08.webp', title: '复古水彩的疯孩子', author: '即梦创作者', source: '即梦AI公开灵感', likes: 203, category: '插画', model: '图片 3.1', ratio: '1:1', resolution: '1080 × 1080',
+        prompt: `一群充满活力的孩子，厚重色彩与复古水彩质感，超级简约手绘图，美漫风格，局部英文排版，极致细节，鲜明艺术感染力。`
+      },
+      {
+        image: 'assets/inspiration/illustration-09.webp', title: '神话山河的国风长卷', author: '即梦创作者', source: '即梦AI公开灵感', likes: 327, category: '插画', model: '图片 4.1', ratio: '9:16', resolution: '1350 × 2400',
+        prompt: `这些极繁主义的矢量图展现出独特的艺术魅力，它们以复杂的设计风格传达出丰富的情感。通过复杂的线条、形状和色彩，勾勒出国风插画，中式美学，中国神话故事场景与现代风相融合，体现出一种现代、时尚的美感，细节丰富，电影质感。`
+      },
+      {
+        image: 'assets/inspiration/illustration-10.webp', title: '白金牡丹凹版海报', author: '即梦创作者', source: '即梦AI公开灵感', likes: 284, category: '插画', model: '图片 4.5', ratio: '9:16', resolution: '1350 × 2400',
+        prompt: `视觉海报，凹版印刷，白金图片，金色，抽象变形牡丹，牡丹5-6朵。精致的线条细致线条刻画细节，白金关系，以点线表现明暗关系，大师级排线，细致的细节，高清画质。白色背景，大片美学，大师杰作，极具视觉冲击力，获奖作品，大师级配色，大师级排版，高细节，高级感。布局协调。`
+      },
+      {
+        image: 'assets/inspiration/illustration-11.webp', title: '云南地标古今图鉴', author: '即梦创作者', source: '即梦AI公开灵感', likes: 301, category: '插画', model: '图片 4.5', ratio: '9:16', resolution: '1350 × 2400',
+        prompt: `中国现代地标建筑凹版印刷线稿，0.8mm粗线勾勒外轮廓，0.2mm细线刻画细节，保留铜版雕刻痕迹，橙白色调，大师级排版，大标题“YUNNAN DESIGN ANCIENT”，极具艺术的现代海报版式设计。主体是中国现代地标建筑：云南勐焕大金塔，金马碧鸡坊，崇圣寺三塔，兴盛大桥，大理文庙，玉龙雪山，搭配山水，树木，孔雀，大象，绿植，采用清明上河图散点透视法构图。大师级别插画，高定风插画，画面丰富饱满，充满艺术性。`
+      },
+      {
+        image: 'assets/inspiration/design-01.webp', title: '山河无恙水墨字体', author: '即梦创作者', source: '即梦AI公开灵感', likes: 176, category: '设计', model: '图片 3.0', ratio: '3:2', resolution: '1080 × 720',
+        prompt: `文艺手写字体“山河无恙”，搭配英文小字“DESIGN BY BEIYU”，毛笔手写风格，水墨笔刷效果，笔画巧妙延长变形，黑底白字，视觉震撼的艺术字体设计。`
+      },
+      {
+        image: 'assets/inspiration/design-02.webp', title: '霓虹线框实验字体海报', author: '即梦创作者', source: '即梦AI公开灵感', likes: 296, category: '设计', model: '图片 4.0', ratio: '9:16', resolution: '1350 × 2400',
+        prompt: `瑞士平面设计风格，纯黑背景，巨型交织立体无衬线英文大字，细密渐变线条构成半透明霓虹蓝紫线框，多层错位穿插，赛博透光质感，细小白字分布于空隙，高级暗黑实验字体海报。`
+      },
+      {
+        image: 'assets/inspiration/design-03.webp', title: '行为艺术解构字体', author: '即梦创作者', source: '即梦AI公开灵感', likes: 162, category: '设计', model: '图片 4.1', ratio: '3:2', resolution: '1080 × 720',
+        prompt: `设计“行为艺术”四个汉字，下方配英文“Performance art”，解构主义字体，笔画不规则切割与错位，线条几何化，日式极简排版，充足留白，高对比黑白，扁平矢量图形。`
+      },
+      {
+        image: 'assets/inspiration/design-04.webp', title: '自由设计师街头字体', author: '即梦创作者', source: '即梦AI公开灵感', likes: 217, category: '设计', model: '图片 4.6', ratio: '3:4', resolution: '1728 × 2304',
+        prompt: `天蓝背景与黑色创意字体“自由设计师”，搭配“电商美工设计”和英文“Design”，夸张笔画弧度，街头涂鸦风格，尖锐边缘与流畅曲线，黄色线条和星星点缀，居中排版。`
+      },
+      {
+        image: 'assets/inspiration/design-05.webp', title: '流体能量状态视觉系统', author: '即梦创作者', source: '即梦AI公开灵感', likes: 244, category: '设计', model: '图片 4.0', ratio: '3:4', resolution: '1728 × 2304',
+        prompt: `视觉实验风格，“emi”形状的能量状态图标，以抽象流体、光和能量变化表达stillness、flow、surge，深色背景，现代数字艺术，实验性强但整体克制高级，非UI、非品牌logo。`
+      },
+      {
+        image: 'assets/inspiration/design-06.webp', title: '奇易居士极繁封面', author: '即梦创作者', source: '即梦AI公开灵感', likes: 231, category: '设计', model: '图片 4.1', ratio: '9:16', resolution: '1350 × 2400',
+        prompt: `极繁主义矢量封面，复杂线条、形状和色彩勾勒“奇易居士”汉字场景，传统元素与现代风融合，下方排版中文标题与拼音，现代时尚、视觉盛宴、大师级封面设计。`
+      },
+      {
+        image: 'assets/inspiration/design-07.webp', title: '心境篆刻极简标志', author: '即梦创作者', source: '即梦AI公开灵感', likes: 188, category: '设计', model: '图片 4.5', ratio: '1:1', resolution: '1080 × 1080',
+        prompt: `简约现代logo设计，浅米色背景，艺术化中文篆书篆刻字体“心境”，中间竖排小字拼音“XINJING”，文字居中构图，四周大量留白，富有文化内涵与艺术氛围。`
+      },
+      {
+        image: 'assets/inspiration/design-08.webp', title: '绿色包装设计字体', author: '即梦创作者', source: '即梦AI公开灵感', likes: 209, category: '设计', model: '图片 4.0', ratio: '1:1', resolution: '1080 × 1080',
+        prompt: `绿色背景与黑色创意字体“自由设计师”，搭配“包装设计”和英文“Design”，夸张笔画、街头涂鸦风格，尖锐边缘与流畅曲线，黄色线条和星星点缀，简约而有视觉冲击力。`
+      },
+      {
+        image: 'assets/inspiration/design-09.webp', title: '内在光辉年度视觉', author: '即梦创作者', source: '即梦AI公开灵感', likes: 276, category: '设计', model: '图片 3.0', ratio: '3:4', resolution: '1104 × 1472',
+        prompt: `风格：内在光辉，精神肖像，高级质感，大师级设计，强烈的光影效果，电影质感，国际流行色，抽象艺术，时尚风格，意识流风格，近景，神秘感。大师级排版，右下角半透明极小小字水印“ONE FLAIR DESIGN 2026”装饰性文字。`
+      },
+      {
+        image: 'assets/inspiration/design-10.webp', title: '粒子古风品牌主视觉', author: '即梦创作者', source: '即梦AI公开灵感', likes: 319, category: '设计', model: '图片 4.7', ratio: '9:16', resolution: '1350 × 2400',
+        prompt: `品牌设计，大师作品，国际化风格，精致排版，简约高级，纯藏青色背景，以碧蓝色背景为主色调平面图，沉稳高级，白色与碧蓝色渐变粒子线条形成古风人物，缩小，占画面1/3。显体态线条，抽象，营造轻奢、精致质感，强调稳定与聚焦，风格偏向商业美学，简约圆润、流畅对称、精致禅意、高级质感，银灰光泽，整体极简对称。空气感，设计感，没有文字，没有数字，没有英文。`
+      },
+      {
+        image: 'assets/inspiration/design-11.webp', title: '燕归荷间轻奢标志', author: '即梦创作者', source: '即梦AI公开灵感', likes: 292, category: '设计', model: '图片 5.0 Pro', ratio: '9:16', resolution: '768 × 1366',
+        prompt: `品牌设计，大师作品，国际化风格，精致排版，简约高级，纯藏青色背景，以碧蓝色背景为主色调平面图，沉稳高级，白色与碧蓝色渐变粒子线条形成燕子，内含荷叶与半开花蕾，整体标志占画面高度三分之一。体态线条抽象，营造轻奢、精致质感，强调稳定与聚焦，简约圆润、流畅对称、精致禅意、高级质感，银灰光泽，空气感与设计感。`
+      }
+    ];
+
+    const state = { page: 'inspiration', previousPage: 'inspiration', category: '推荐', query: '', selected: 0, loggedIn: false, pendingIntent: null, currentSessionId: null, creditsRemaining: 80, creditsTotal: 100, generationFilters: { query: '', time: 'all', mode: 'all', operation: 'all' }, draft: { prompt: '', model: '通用模型', ratio: '1:1', resolution: '2K', count: 2, reference: null } };
+    const pages = { inspiration: document.getElementById('inspirationPage'), detail: document.getElementById('detailPage'), generate: document.getElementById('generatePage'), login: document.getElementById('loginPage') };
+    const protectedRoutes = new Set(['generate']);
+    const toast = document.getElementById('toast');
+    const sessionTimelines = new Map();
+    let inspirationFeed = [];
+
+    function shuffleInspirationFeed() {
+      const previousFirst = inspirationFeed[0];
+      inspirationFeed = [...artworks];
+      for (let index = inspirationFeed.length - 1; index > 0; index -= 1) {
+        const randomIndex = Math.floor(Math.random() * (index + 1));
+        [inspirationFeed[index], inspirationFeed[randomIndex]] = [inspirationFeed[randomIndex], inspirationFeed[index]];
+      }
+      if (inspirationFeed.length > 1 && inspirationFeed[0] === previousFirst) {
+        [inspirationFeed[0], inspirationFeed[1]] = [inspirationFeed[1], inspirationFeed[0]];
+      }
+    }
+
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.add('show');
+      clearTimeout(showToast.timer);
+      showToast.timer = setTimeout(() => toast.classList.remove('show'), 1800);
+    }
+
+    function formatCreditValue(value) {
+      if (value >= 10000) return `${(value / 1000).toFixed(value >= 100000 ? 0 : 1).replace(/\.0$/, '')}K`;
+      return String(value);
+    }
+
+    function updateQuota() {
+      const display = document.getElementById('quotaDisplay');
+      if (!display) return;
+      const percent = Math.max(0, Math.min(100, (state.creditsRemaining / state.creditsTotal) * 100));
+      const english = document.documentElement.lang === 'en';
+      document.getElementById('quotaValue').textContent = `✦${formatCreditValue(state.creditsRemaining)}/${formatCreditValue(state.creditsTotal)}`;
+      document.getElementById('quotaLabel').textContent = english ? 'Credits' : '额度';
+      document.getElementById('quotaProgress').style.width = `${percent}%`;
+      display.classList.toggle('is-low', percent <= 30 && percent > 10);
+      display.classList.toggle('is-critical', percent <= 10);
+      display.setAttribute('aria-label', english ? `${state.creditsRemaining} of ${state.creditsTotal} credits remaining` : `剩余 ${state.creditsRemaining} / ${state.creditsTotal} 点额度`);
+    }
+
+    const searchHistoryStorageKey = 'dream-space-search-history';
+    let searchHistory = (() => {
+      try {
+        const saved = JSON.parse(localStorage.getItem(searchHistoryStorageKey));
+        return Array.isArray(saved) ? saved.filter(value => typeof value === 'string').slice(0, 8) : ['美女', '风光摄影', '国风插画'];
+      } catch (error) {
+        return ['美女', '风光摄影', '国风插画'];
+      }
+    })();
+
+    function saveSearchHistory() {
+      try { localStorage.setItem(searchHistoryStorageKey, JSON.stringify(searchHistory)); } catch (error) { /* File previews may disable storage. */ }
+    }
+
+    function renderSearchHistory() {
+      const list = document.getElementById('searchHistoryList');
+      list.replaceChildren();
+      document.getElementById('searchHistoryClear').disabled = searchHistory.length === 0;
+      if (!searchHistory.length) {
+        const empty = document.createElement('span');
+        empty.className = 'search-history-empty';
+        empty.textContent = document.documentElement.lang === 'en' ? 'No search history' : '暂无搜索历史';
+        list.appendChild(empty);
+        return;
+      }
+      searchHistory.forEach(value => {
+        const chip = document.createElement('button');
+        chip.className = 'search-history-chip';
+        chip.type = 'button';
+        chip.textContent = value;
+        chip.title = value;
+        chip.addEventListener('click', () => commitInspirationSearch(value));
+        list.appendChild(chip);
+      });
+    }
+
+    function commitInspirationSearch(value) {
+      const query = value.trim();
+      if (!query) return;
+      state.query = query;
+      document.getElementById('inspirationSearch').value = query;
+      document.getElementById('searchClear').classList.remove('hidden');
+      searchHistory = [query, ...searchHistory.filter(item => item !== query)].slice(0, 8);
+      saveSearchHistory();
+      renderSearchHistory();
+      document.getElementById('searchHistoryPanel').classList.add('hidden');
+      renderMasonry();
+    }
+
+    function route(page, options = {}) {
+      if (protectedRoutes.has(page) && !state.loggedIn && !options.skipAuth) {
+        state.pendingIntent = { type: 'route', page };
+        state.previousPage = state.page;
+        return route('login', { skipAuth: true });
+      }
+      state.previousPage = state.page;
+      state.page = page;
+      document.getElementById('accountMenu').classList.add('hidden');
+      document.getElementById('accountMenuButton').setAttribute('aria-expanded', 'false');
+      document.getElementById('parameterPopover').classList.add('hidden');
+      document.getElementById('parameterButton').setAttribute('aria-expanded', 'false');
+      Object.entries(pages).forEach(([name, element]) => element.classList.toggle('hidden', name !== page));
+      document.getElementById('primaryNav').classList.toggle('hidden', page === 'login');
+      document.querySelectorAll('.nav-btn[data-route]').forEach(button => button.classList.toggle('active', button.dataset.route === page || (page === 'detail' && button.dataset.route === 'inspiration')));
+      if (page === 'inspiration') {
+        shuffleInspirationFeed();
+        renderMasonry();
+      }
+      window.location.hash = page;
+      window.scrollTo(0, 0);
+    }
+
+    function renderMasonry() {
+      const grid = document.getElementById('masonry');
+      const query = state.query.trim().toLowerCase();
+      const english = document.documentElement.lang === 'en';
+      const visible = inspirationFeed.filter(item => (state.category === '推荐' || item.category === state.category) && (!query || `${item.title} ${item.author} ${item.prompt}`.toLowerCase().includes(query)));
+      grid.innerHTML = visible.map(item => {
+        const index = artworks.indexOf(item);
+        return `<button class="art-card" type="button" data-art-index="${index}" aria-label="${english ? 'Open artwork' : '打开作品'}：${item.title}"><img src="${item.image}" alt="${item.title}"><span class="art-overlay"><span class="art-meta"><span class="art-title">${item.title}</span><span class="art-author">${item.author} · ♡ ${item.likes}</span></span><span class="same-chip">${english ? 'Recreate' : '做同款'}</span></span></button>`;
+      }).join('');
+      document.getElementById('emptyState').classList.toggle('hidden', visible.length > 0);
+      grid.classList.toggle('hidden', visible.length === 0);
+      document.getElementById('emptyTitle').textContent = query ? (english ? 'No inspiration found' : '没有找到相关灵感') : (english ? 'This collection is being prepared' : `${state.category}作品正在整理`);
+      document.getElementById('emptyCopy').textContent = query ? (english ? 'Try another keyword or return to recommendations.' : '尝试其他关键词，或返回推荐内容。') : (english ? 'HD works for this category have not been imported yet.' : '该分类的即梦高清作品尚未导入，请先浏览已完成的人像作品。');
+      grid.querySelectorAll('[data-art-index]').forEach(card => card.addEventListener('click', () => openDetail(Number(card.dataset.artIndex))));
+    }
+
+    function openDetail(index) {
+      state.selected = index;
+      const item = artworks[index];
+      const english = document.documentElement.lang === 'en';
+      document.getElementById('detailComposer').classList.add('hidden');
+      document.querySelector('.detail-layout').classList.remove('has-detail-composer');
+      document.getElementById('detailImage').src = item.image;
+      document.getElementById('detailImage').alt = item.title;
+      document.getElementById('detailAuthor').textContent = item.author;
+      document.getElementById('detailAvatar').textContent = item.author.slice(0, 1);
+      document.getElementById('detailTitle').textContent = item.title;
+      document.getElementById('detailDate').textContent = item.source ? (english ? `Public prototype asset · Source: ${item.source}` : `原型公开展示素材 · 来源：${item.source}`) : (english ? '2026-07-31 · AI-generated content' : '2026-07-31 · 内容由 AI 生成');
+      document.getElementById('detailPrompt').textContent = item.prompt;
+      document.getElementById('detailComposerText').value = item.prompt;
+      document.getElementById('detailModel').textContent = item.model;
+      document.getElementById('detailRatio').textContent = item.ratio;
+      document.getElementById('detailResolution').textContent = item.resolution;
+      document.getElementById('detailModelButton').textContent = item.model;
+      document.getElementById('detailRatioButton').textContent = item.ratio;
+      document.getElementById('detailResolutionButton').textContent = item.resolution;
+      document.getElementById('likeCount').textContent = item.likes;
+      document.getElementById('prevArtwork').disabled = index === 0;
+      document.getElementById('nextArtwork').disabled = index === artworks.length - 1;
+      route('detail', { skipAuth: true });
+    }
+
+    function transferToGenerate(withReference) {
+      const item = artworks[state.selected];
+      state.draft = { prompt: item.prompt, model: item.model, ratio: item.ratio, resolution: item.resolution, count: 2, reference: withReference ? item.image : null };
+      document.getElementById('detailComposerText').value = item.prompt;
+      document.getElementById('detailModelButton').textContent = item.model;
+      document.getElementById('detailRatioButton').textContent = item.ratio;
+      document.getElementById('detailResolutionButton').textContent = item.resolution;
+      renderReferenceStrip(document.getElementById('detailRefStrip'), state.draft.reference);
+      document.getElementById('detailComposer').classList.remove('hidden');
+      document.querySelector('.detail-layout').classList.add('has-detail-composer');
+      document.getElementById('detailComposerText').focus();
+      showToast(withReference ? '参考图和参数已带入' : '提示词和参数已带入');
+    }
+
+    function submitDetailGeneration() {
+      state.draft.prompt = document.getElementById('detailComposerText').value.trim();
+      persistCurrentSession();
+      renderNewConversationState();
+      applyDraft();
+      route('generate', { skipAuth: true });
+    }
+
+    function downloadCurrentArtwork() {
+      const item = artworks[state.selected];
+      if (!item) return;
+      const link = document.createElement('a');
+      link.href = item.image;
+      link.download = `${item.title}.webp`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      showToast('高清图片已开始下载');
+    }
+
+    function downloadGeneratedImage(source) {
+      const link = document.createElement('a');
+      link.href = source;
+      link.download = `dream-space-${Date.now()}.webp`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      showToast(document.documentElement.lang === 'en' ? 'Image download started' : '图片已开始下载');
+    }
+
+    let imagePreviewTrigger = null;
+
+    function openImagePreview(source, alt, trigger = null) {
+      const backdrop = document.getElementById('imagePreviewBackdrop');
+      const image = document.getElementById('imagePreviewImage');
+      imagePreviewTrigger = trigger || document.activeElement;
+      image.src = source;
+      image.alt = alt;
+      document.getElementById('imagePreviewDownload').dataset.source = source;
+      backdrop.classList.remove('hidden');
+      document.body.classList.add('preview-open');
+      document.getElementById('imagePreviewClose').focus();
+    }
+
+    function closeImagePreview() {
+      document.getElementById('imagePreviewBackdrop').classList.add('hidden');
+      document.getElementById('imagePreviewImage').removeAttribute('src');
+      document.body.classList.remove('preview-open');
+      imagePreviewTrigger?.focus?.();
+      imagePreviewTrigger = null;
+    }
+
+    function localizedModelName(value) {
+      if (document.documentElement.lang !== 'en') return value;
+      return { '通用模型': 'General model', '写实模型': 'Realistic model', '动漫模型': 'Anime model' }[value] || value;
+    }
+
+    function renderReferenceStrip(strip, reference) {
+      strip.innerHTML = reference ? `<div class="ref-item"><img class="ref-thumb" src="${reference}" alt="已添加的参考图"><button class="ref-remove" type="button" data-remove-reference aria-label="删除参考图"><i data-lucide="x" aria-hidden="true"></i></button></div>` : '';
+      strip.classList.toggle('hidden', !reference);
+      if (reference && window.lucide) lucide.createIcons();
+    }
+
+    function removeReferenceImage() {
+      state.draft.reference = null;
+      renderReferenceStrip(document.getElementById('generateRefStrip'), null);
+      renderReferenceStrip(document.getElementById('detailRefStrip'), null);
+      document.getElementById('generateSubmit').disabled = !state.draft.prompt;
+      updateComposerState();
+      showToast(document.documentElement.lang === 'en' ? 'Reference removed' : '参考图已移除');
+    }
+
+    function applyDraft() {
+      document.getElementById('generatePrompt').value = state.draft.prompt;
+      document.getElementById('modelButton').textContent = localizedModelName(state.draft.model);
+      document.getElementById('ratioButton').textContent = state.draft.ratio;
+      document.getElementById('resolutionButton').textContent = state.draft.resolution;
+      document.getElementById('countButton').textContent = document.documentElement.lang === 'en' ? `${state.draft.count} images` : `${state.draft.count} 张`;
+      document.getElementById('costLabel').textContent = document.documentElement.lang === 'en' ? `Est. ${state.draft.count} credits` : `预计 ${state.draft.count} 点`;
+      document.getElementById('generateSubmit').disabled = !state.draft.prompt && !state.draft.reference;
+      const strip = document.getElementById('generateRefStrip');
+      renderReferenceStrip(strip, state.draft.reference);
+      renderReferenceStrip(document.getElementById('detailRefStrip'), state.draft.reference);
+      updateComposerState();
+      renderParameterOptions();
+    }
+
+    const ratios = ['智能', '21:9', '16:9', '3:2', '4:3', '1:1', '3:4', '2:3', '9:16'];
+    const resolutions = ['2K', '4K'];
+    const ratioValues = { '智能': [1, 1], '21:9': [21, 9], '16:9': [16, 9], '3:2': [3, 2], '4:3': [4, 3], '1:1': [1, 1], '3:4': [3, 4], '2:3': [2, 3], '9:16': [9, 16] };
+
+    function outputSize() {
+      const [widthRatio, heightRatio] = ratioValues[state.draft.ratio] || [1, 1];
+      const longEdge = state.draft.resolution === '4K' ? 4096 : 2048;
+      if (widthRatio >= heightRatio) return [longEdge, Math.round(longEdge * heightRatio / widthRatio)];
+      return [Math.round(longEdge * widthRatio / heightRatio), longEdge];
+    }
+
+    function renderParameterOptions() {
+      document.getElementById('ratioOptions').innerHTML = ratios.map(value => `<button class="option-btn ${value === state.draft.ratio ? 'active' : ''}" type="button" data-ratio="${value}">${value === '智能' && document.documentElement.lang === 'en' ? 'Auto' : value}</button>`).join('');
+      document.getElementById('resolutionOptions').innerHTML = resolutions.map(value => `<button class="option-btn ${value === state.draft.resolution ? 'active' : ''}" type="button" data-resolution="${value}">${value}</button>`).join('');
+      document.getElementById('countOptions').innerHTML = Array.from({ length: 8 }, (_, index) => index + 1).map(value => `<button class="option-btn ${value === state.draft.count ? 'active' : ''}" type="button" data-count="${value}">${value}</button>`).join('');
+      const [width, height] = outputSize();
+      document.getElementById('sizePreview').textContent = `${width} × ${height} px`;
+    }
+
+    function autoResizeTextarea() {
+      const textarea = document.getElementById('generatePrompt');
+      textarea.style.height = 'auto';
+      textarea.style.height = `${Math.min(textarea.scrollHeight, 130)}px`;
+    }
+
+    function updateComposerState(forceExpanded = false) {
+      const composer = document.getElementById('generateComposer');
+      const textarea = document.getElementById('generatePrompt');
+      const expanded = forceExpanded || document.activeElement === textarea || Boolean(textarea.value.trim()) || Boolean(state.draft.reference) || !document.getElementById('parameterPopover').classList.contains('hidden');
+      composer.classList.toggle('is-expanded', expanded);
+      autoResizeTextarea();
+    }
+
+    const generationFilterOptions = {
+      time: [{ value: 'all', zh: '全部时间', en: 'All time' }, { value: 'today', zh: '今天', en: 'Today' }, { value: 'week', zh: '近 7 天', en: 'Last 7 days' }],
+      mode: [{ value: 'all', zh: '全部模式', en: 'All models' }, { value: '通用模型', zh: '通用模型', en: 'General model' }, { value: '写实模型', zh: '写实模型', en: 'Realistic model' }, { value: '动漫模型', zh: '动漫模型', en: 'Anime model' }],
+      operation: [{ value: 'all', zh: '全部操作', en: 'All statuses' }, { value: '已完成', zh: '已完成', en: 'Completed' }, { value: '失败', zh: '失败', en: 'Failed' }, { value: '生成中', zh: '生成中', en: 'Generating' }]
+    };
+    const generationFilterKeys = { '时间': 'time', '生成模式': 'mode', '操作类型': 'operation' };
+    let openGenerationMenu = null;
+    const generationOptionLabel = option => option[document.documentElement.lang === 'en' ? 'en' : 'zh'];
+
+    function applyGenerationFilters() {
+      const filters = state.generationFilters;
+      const tasks = [...document.querySelectorAll('#timeline .task')];
+      let visibleCount = 0;
+      tasks.forEach(task => {
+        const prompt = task.querySelector('.task-prompt')?.textContent?.toLowerCase() || '';
+        const matches = (!filters.query || prompt.includes(filters.query.toLowerCase()))
+          && (filters.time === 'all' || task.dataset.time === filters.time || (filters.time === 'week' && task.dataset.time === 'today'))
+          && (filters.mode === 'all' || task.dataset.mode === filters.mode)
+          && (filters.operation === 'all' || task.dataset.operation === filters.operation);
+        task.hidden = !matches;
+        if (matches) visibleCount += 1;
+      });
+      let empty = document.querySelector('#timeline .generation-empty');
+      if (!tasks.length || visibleCount) { empty?.remove(); return; }
+      if (!empty) {
+        empty = document.createElement('div');
+        empty.className = 'generation-empty';
+        empty.textContent = document.documentElement.lang === 'en' ? 'No matching creation records' : '没有符合条件的创作记录';
+        document.getElementById('timeline').appendChild(empty);
+      }
+    }
+
+    function closeGenerationMenu() {
+      openGenerationMenu?.remove();
+      openGenerationMenu = null;
+      document.querySelectorAll('.generation-filter').forEach(button => button.classList.remove('active'));
+    }
+
+    function collapseGenerationSearch() {
+      document.getElementById('generationSearchControl').classList.remove('expanded');
+      document.getElementById('generationSearchPanel').classList.add('hidden');
+      document.getElementById('generationSearch').classList.remove('hidden');
+      document.getElementById('generationSearchInput').value = '';
+      state.generationFilters.query = '';
+      applyGenerationFilters();
+    }
+
+    function openGenerationFilter(button) {
+      if (openGenerationMenu) { closeGenerationMenu(); return; }
+      const key = generationFilterKeys[button.dataset.filterName];
+      const menu = document.createElement('div');
+      menu.className = 'generation-filter-menu';
+      const rect = button.getBoundingClientRect();
+      menu.style.top = `${rect.bottom + 8}px`;
+      menu.style.left = `${Math.max(8, rect.right - 160)}px`;
+      menu.innerHTML = generationFilterOptions[key].map(option => `<button type="button" data-value="${option.value}" class="${state.generationFilters[key] === option.value ? 'active' : ''}">${generationOptionLabel(option)}</button>`).join('');
+      menu.addEventListener('click', event => {
+        const option = event.target.closest('button');
+        if (!option) return;
+        state.generationFilters[key] = option.dataset.value;
+        button.querySelector('.filter-label').textContent = generationOptionLabel(generationFilterOptions[key].find(item => item.value === option.dataset.value));
+        closeGenerationMenu();
+        applyGenerationFilters();
+      });
+      document.body.appendChild(menu);
+      openGenerationMenu = menu;
+      button.classList.add('active');
+    }
+
+    const starterPrompts = [
+      { image: 'assets/inspiration/portrait-03.webp', zh: '电影感都市人像，雨后街道与霓虹倒影，自然抓拍', en: 'Cinematic urban portrait with wet streets, neon reflections and a candid mood' },
+      { image: 'assets/inspiration/photography-08.webp', zh: '雪山湖泊的黄金时刻，真实风光摄影，安静而辽阔', en: 'A quiet alpine lake at golden hour, expansive and photorealistic' },
+      { image: 'assets/inspiration/design-04.webp', zh: '极简香氛品牌视觉，通透玻璃材质与高级留白', en: 'Minimal fragrance campaign with translucent glass and refined negative space' }
+    ];
+
+    function persistCurrentSession() {
+      if (!state.currentSessionId) return;
+      const clone = document.getElementById('timeline').cloneNode(true);
+      clone.querySelector('.generation-empty')?.remove();
+      clone.querySelectorAll('.task[hidden]').forEach(task => task.removeAttribute('hidden'));
+      sessionTimelines.set(state.currentSessionId, clone.innerHTML);
+    }
+
+    function renderNewConversationState() {
+      const english = document.documentElement.lang === 'en';
+      state.currentSessionId = null;
+      state.generationFilters = { query: '', time: 'all', mode: 'all', operation: 'all' };
+      document.getElementById('generationSearchInput').value = '';
+      document.getElementById('generationSearchControl').classList.remove('expanded');
+      document.getElementById('generationSearchPanel').classList.add('hidden');
+      document.getElementById('generationSearch').classList.remove('hidden');
+      closeGenerationMenu();
+      updateGenerationFilterLabels();
+      document.querySelectorAll('.session-row').forEach(row => row.classList.remove('active'));
+      document.querySelector('.generation-main').classList.add('is-empty');
+      document.getElementById('timeline').innerHTML = `
+        <section class="empty-session" aria-labelledby="emptySessionTitle">
+          <div class="empty-session-mark"><i data-lucide="sparkles" aria-hidden="true"></i></div>
+          <div class="empty-session-eyebrow">${english ? 'DREAM SPACE STUDIO' : 'DREAM SPACE 创作空间'}</div>
+          <h1 id="emptySessionTitle">${english ? 'What will you imagine today?' : '今天，想创造怎样的画面？'}</h1>
+          <p class="empty-session-copy">${english ? 'Describe a moment, a style or an atmosphere. Dream Space will turn it into a visual starting point.' : '从一个瞬间、一种风格或一段氛围开始，让造梦空间把想象变成视觉作品。'}</p>
+          <div class="starter-prompts">${starterPrompts.map((item, index) => `<button class="starter-prompt" type="button" data-starter-index="${index}"><img src="${item.image}" alt=""><span>${english ? item.en : item.zh}</span></button>`).join('')}</div>
+        </section>`;
+      if (window.lucide) lucide.createIcons();
+    }
+
+    function createSessionFromPrompt(prompt) {
+      const english = document.documentElement.lang === 'en';
+      const normalized = prompt.replace(/\s+/g, ' ').trim() || (english ? 'Reference image creation' : '参考图创作');
+      const limit = english ? 28 : 14;
+      const characters = [...normalized];
+      const name = characters.length > limit ? `${characters.slice(0, limit).join('')}…` : normalized;
+      const sessionId = `session-${Date.now()}`;
+      const row = document.createElement('div');
+      row.className = 'session-row active';
+      row.dataset.sessionId = sessionId;
+      row.innerHTML = `<span class="session-thumb hidden"><img alt=""></span><button class="session-item" type="button"></button><button class="icon-btn session-rename" type="button"><i data-lucide="pencil" aria-hidden="true"></i></button><button class="icon-btn session-delete" type="button"><i data-lucide="trash-2" aria-hidden="true"></i></button>`;
+      row.querySelector('.session-item').textContent = name;
+      row.querySelector('.session-rename').setAttribute('aria-label', `${english ? 'Rename' : '重命名'} ${name}`);
+      row.querySelector('.session-delete').setAttribute('aria-label', `${english ? 'Delete' : '删除'} ${name}`);
+      document.querySelectorAll('.session-row').forEach(item => item.classList.remove('active'));
+      document.querySelector('.session-label').insertAdjacentElement('afterend', row);
+      state.currentSessionId = sessionId;
+      sessionTimelines.set(sessionId, '');
+      document.querySelector('.generation-main').classList.remove('is-empty');
+      document.getElementById('timeline').innerHTML = `<h1 class="date-heading">${english ? 'Today' : '今天'}</h1>`;
+      if (window.lucide) lucide.createIcons();
+      return sessionId;
+    }
+
+    function loadSession(sessionId) {
+      if (!sessionTimelines.has(sessionId)) return;
+      persistCurrentSession();
+      state.currentSessionId = sessionId;
+      document.querySelectorAll('.session-row').forEach(row => row.classList.toggle('active', row.dataset.sessionId === sessionId));
+      document.querySelector('.generation-main').classList.remove('is-empty');
+      document.getElementById('timeline').innerHTML = sessionTimelines.get(sessionId);
+      if (window.lucide) lucide.createIcons();
+      applyGenerationFilters();
+    }
+
+    function submitGeneration() {
+      const prompt = document.getElementById('generatePrompt').value.trim();
+      if (!prompt && !state.draft.reference) return;
+      const generationSessionId = state.currentSessionId || createSessionFromPrompt(prompt);
+      const taskCount = state.draft.count;
+      const english = document.documentElement.lang === 'en';
+      const generationRatio = state.draft.ratio;
+      const taskId = `task-${Date.now()}`;
+      const article = document.createElement('article');
+      article.className = 'task';
+      article.dataset.taskId = taskId;
+      article.dataset.time = 'today';
+      article.dataset.mode = state.draft.model;
+      article.dataset.operation = '生成中';
+      article.innerHTML = `<div class="task-prompt"></div><div class="status-line processing"><i data-lucide="loader-circle" aria-hidden="true"></i>${english ? 'Generating. This usually takes a few seconds.' : '正在生成，通常需要几十秒。'}</div><div class="progress-bar"><span></span></div>`;
+      article.querySelector('.task-prompt').textContent = `${prompt}  ${document.getElementById('modelButton').textContent} | ${state.draft.ratio} | ${state.draft.resolution} | ${taskCount} ${english ? 'images' : '张'}`;
+      document.getElementById('timeline').appendChild(article);
+      if (window.lucide) lucide.createIcons();
+      persistCurrentSession();
+      article.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      document.getElementById('generateSubmit').disabled = true;
+      setTimeout(() => {
+        const host = state.currentSessionId === generationSessionId ? document.getElementById('timeline') : document.createElement('div');
+        if (state.currentSessionId !== generationSessionId) host.innerHTML = sessionTimelines.get(generationSessionId) || '';
+        const completedArticle = host.querySelector(`[data-task-id="${taskId}"]`);
+        if (!completedArticle) return;
+        completedArticle.querySelector('.status-line').className = 'status-line';
+        completedArticle.dataset.operation = '已完成';
+        completedArticle.querySelector('.status-line').innerHTML = `<i data-lucide="circle-check" aria-hidden="true"></i>${english ? `Completed · ${taskCount} credits used` : `生成完成 · 消耗 ${taskCount} 点额度`}`;
+        const resultAssets = artworks.map(item => item.image);
+        const resultImages = resultAssets.slice(0, taskCount).map((src, index) => `<div class="result-item"><button class="result-preview" type="button" data-source="${src}" aria-label="${english ? 'Preview image' : '预览图片'} ${index + 1}"><img src="${src}" alt="${english ? 'Generated result' : '生成结果'} ${index + 1}"></button><button class="result-download" type="button" data-source="${src}" aria-label="${english ? 'Download image' : '下载图片'} ${index + 1}"><i data-lucide="download" aria-hidden="true"></i></button></div>`).join('');
+        const resultRatio = ratioValues[generationRatio]?.join(' / ') || '1 / 1';
+        completedArticle.querySelector('.progress-bar').outerHTML = `<div class="result-grid" style="--result-ratio: ${resultRatio}">${resultImages}</div><div class="task-actions"><button class="action-btn" type="button">${english ? 'Edit prompt' : '修改提示词'}</button><button class="action-btn rerun" type="button">${english ? 'Generate again' : '再次生成'}</button></div>`;
+        const sessionRow = document.querySelector(`[data-session-id="${generationSessionId}"]`);
+        const thumb = sessionRow?.querySelector('.session-thumb');
+        if (thumb) { thumb.classList.remove('hidden'); thumb.querySelector('img').src = resultAssets[0]; }
+        state.creditsRemaining = Math.max(0, state.creditsRemaining - taskCount);
+        updateQuota();
+        if (state.currentSessionId === generationSessionId) {
+          if (window.lucide) lucide.createIcons();
+          persistCurrentSession();
+          document.getElementById('generateSubmit').disabled = !state.draft.prompt && !state.draft.reference;
+          showToast(english ? 'Images generated' : '图片生成完成');
+          applyGenerationFilters();
+        } else {
+          sessionTimelines.set(generationSessionId, host.innerHTML);
+        }
+      }, 2200);
+      applyGenerationFilters();
+    }
+
+    document.querySelectorAll('[data-route]').forEach(button => button.addEventListener('click', () => {
+      if (button.dataset.route === 'login' && state.loggedIn) return showToast('当前已登录，可在桌面账户菜单中退出');
+      route(button.dataset.route);
+    }));
+    document.querySelectorAll('[data-category]').forEach(button => button.addEventListener('click', () => {
+      state.category = button.dataset.category;
+      document.querySelectorAll('[data-category]').forEach(item => item.classList.toggle('active', item === button));
+      renderMasonry();
+    }));
+    document.getElementById('inspirationSearch').addEventListener('input', event => {
+      state.query = event.target.value;
+      document.getElementById('searchClear').classList.toggle('hidden', !state.query);
+      renderMasonry();
+    });
+    document.getElementById('inspirationSearch').addEventListener('focus', () => {
+      renderSearchHistory();
+      document.getElementById('searchHistoryPanel').classList.remove('hidden');
+    });
+    document.getElementById('inspirationSearch').addEventListener('keydown', event => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        commitInspirationSearch(event.currentTarget.value);
+      }
+      if (event.key === 'Escape') document.getElementById('searchHistoryPanel').classList.add('hidden');
+    });
+    document.getElementById('searchHistoryPanel').addEventListener('click', event => event.stopPropagation());
+    document.getElementById('searchHistoryClear').addEventListener('click', () => {
+      searchHistory = [];
+      saveSearchHistory();
+      renderSearchHistory();
+    });
+    document.getElementById('searchClear').addEventListener('click', () => { state.query = ''; document.getElementById('inspirationSearch').value = ''; document.getElementById('searchClear').classList.add('hidden'); renderMasonry(); });
+    document.getElementById('resetSearch').addEventListener('click', () => { state.query = ''; state.category = '推荐'; document.getElementById('inspirationSearch').value = ''; document.querySelectorAll('[data-category]').forEach(button => button.classList.toggle('active', button.dataset.category === '推荐')); renderMasonry(); });
+    document.getElementById('detailClose').addEventListener('click', () => route('inspiration', { skipAuth: true }));
+    document.getElementById('detailFollow').addEventListener('click', event => {
+      const active = event.currentTarget.classList.toggle('active');
+      const english = document.documentElement.lang === 'en';
+      event.currentTarget.textContent = active ? (english ? 'Following' : '已关注') : (english ? '+ Follow' : '+ 关注');
+      showToast(active ? (english ? 'Following creator' : '已关注创作者') : (english ? 'Unfollowed creator' : '已取消关注'));
+    });
+    document.getElementById('prevArtwork').addEventListener('click', () => state.selected > 0 && openDetail(state.selected - 1));
+    document.getElementById('nextArtwork').addEventListener('click', () => state.selected < artworks.length - 1 && openDetail(state.selected + 1));
+    document.getElementById('makeSame').addEventListener('click', () => transferToGenerate(false));
+    document.getElementById('useReference').addEventListener('click', () => transferToGenerate(true));
+    document.getElementById('detailSubmit').addEventListener('click', submitDetailGeneration);
+    document.getElementById('copyPrompt').addEventListener('click', () => { navigator.clipboard?.writeText(artworks[state.selected].prompt); showToast('提示词已复制'); });
+    document.getElementById('downloadArtwork').addEventListener('click', () => state.loggedIn ? downloadCurrentArtwork() : (state.pendingIntent = { type: 'download' }, route('login', { skipAuth: true })));
+    document.getElementById('likeButton').addEventListener('click', () => {
+      if (!state.loggedIn) { state.pendingIntent = { type: 'like' }; return route('login', { skipAuth: true }); }
+      const item = artworks[state.selected]; item.likes += 1; document.getElementById('likeCount').textContent = item.likes; showToast('已点赞');
+    });
+    document.getElementById('generatePrompt').addEventListener('input', event => { state.draft.prompt = event.target.value; document.getElementById('generateSubmit').disabled = !event.target.value.trim() && !state.draft.reference; updateComposerState(true); });
+    document.getElementById('generatePrompt').addEventListener('focus', () => updateComposerState(true));
+    document.getElementById('generatePrompt').addEventListener('blur', () => setTimeout(() => updateComposerState(), 80));
+    document.getElementById('generateComposer').addEventListener('click', event => {
+      if (event.target.closest('[data-remove-reference]')) { removeReferenceImage(); return; }
+      if (!event.target.closest('button')) updateComposerState(true);
+    });
+    document.querySelector('.detail-composer').addEventListener('click', event => {
+      if (event.target.closest('[data-remove-reference]')) removeReferenceImage();
+    });
+    document.getElementById('parameterButton').addEventListener('click', () => {
+      const popover = document.getElementById('parameterPopover');
+      popover.classList.toggle('hidden');
+      document.getElementById('parameterButton').setAttribute('aria-expanded', String(!popover.classList.contains('hidden')));
+      updateComposerState(true);
+    });
+    document.getElementById('parameterPopover').addEventListener('click', event => {
+      event.stopPropagation();
+      const button = event.target.closest('.option-btn');
+      if (!button) return;
+      if (button.dataset.ratio) state.draft.ratio = button.dataset.ratio;
+      if (button.dataset.resolution) state.draft.resolution = button.dataset.resolution;
+      if (button.dataset.count) state.draft.count = Number(button.dataset.count);
+      document.getElementById('ratioButton').textContent = state.draft.ratio;
+      document.getElementById('resolutionButton').textContent = state.draft.resolution;
+      document.getElementById('countButton').textContent = document.documentElement.lang === 'en' ? `${state.draft.count} images` : `${state.draft.count} 张`;
+      document.getElementById('costLabel').textContent = document.documentElement.lang === 'en' ? `Est. ${state.draft.count} credits` : `预计 ${state.draft.count} 点`;
+      renderParameterOptions();
+    });
+    document.getElementById('generateSubmit').addEventListener('click', submitGeneration);
+    document.getElementById('mockUpload').addEventListener('click', () => { state.draft.reference = artworks[0].image; applyDraft(); showToast('已添加即梦高清参考图'); });
+    document.getElementById('newSession').addEventListener('click', () => {
+      persistCurrentSession();
+      state.draft = { prompt: '', model: '通用模型', ratio: '1:1', resolution: '2K', count: 2, reference: null };
+      applyDraft();
+      renderNewConversationState();
+    });
+    document.getElementById('generationSearch').addEventListener('click', () => {
+      document.getElementById('generationSearchControl').classList.add('expanded');
+      const panel = document.getElementById('generationSearchPanel');
+      panel.classList.remove('hidden');
+      document.getElementById('generationSearch').classList.add('hidden');
+      document.getElementById('generationSearchInput').focus();
+    });
+    document.getElementById('generationSearchInput').addEventListener('input', event => {
+      state.generationFilters.query = event.target.value.trim();
+      applyGenerationFilters();
+    });
+    document.getElementById('generationSearchInput').addEventListener('keydown', event => {
+      if (event.key === 'Escape') collapseGenerationSearch();
+    });
+    document.getElementById('generationSearchClear').addEventListener('click', () => {
+      state.generationFilters.query = '';
+      document.getElementById('generationSearchInput').value = '';
+      document.getElementById('generationSearchInput').focus();
+      applyGenerationFilters();
+    });
+    document.querySelectorAll('.generation-filter').forEach(button => button.addEventListener('click', event => {
+      event.stopPropagation();
+      if (document.getElementById('generationSearchControl').classList.contains('expanded')) collapseGenerationSearch();
+      openGenerationFilter(button);
+    }));
+    document.getElementById('accountMenuButton').addEventListener('click', event => {
+      event.stopPropagation();
+      const menu = document.getElementById('accountMenu');
+      menu.classList.toggle('hidden');
+      event.currentTarget.setAttribute('aria-expanded', String(!menu.classList.contains('hidden')));
+    });
+    document.getElementById('accountMenu').addEventListener('click', event => event.stopPropagation());
+    document.addEventListener('click', event => {
+      document.getElementById('accountMenu').classList.add('hidden');
+      document.getElementById('accountMenuButton').setAttribute('aria-expanded', 'false');
+      if (!event.target.closest('#parameterButton, #parameterPopover')) {
+        document.getElementById('parameterPopover').classList.add('hidden');
+        document.getElementById('parameterButton').setAttribute('aria-expanded', 'false');
+        updateComposerState();
+      }
+      if (!event.target.closest('.generation-filter, .generation-filter-menu')) closeGenerationMenu();
+      if (!event.target.closest('#generationSearchControl')) collapseGenerationSearch();
+      if (!event.target.closest('.language-control')) {
+        document.getElementById('languageMenu').classList.add('hidden');
+        document.getElementById('languageToggle').setAttribute('aria-expanded', 'false');
+      }
+      if (!event.target.closest('.search-wrap')) document.getElementById('searchHistoryPanel').classList.add('hidden');
+    });
+    document.getElementById('themeMenuButton').addEventListener('click', () => {
+      const options = document.getElementById('themeOptions');
+      options.classList.toggle('hidden');
+      document.getElementById('themeMenuButton').setAttribute('aria-expanded', String(!options.classList.contains('hidden')));
+    });
+    const themeStorageKey = 'dream-space-theme';
+    const systemThemeQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    let themePreference = (() => {
+      try { return localStorage.getItem(themeStorageKey) || '跟随系统'; } catch (error) { return '跟随系统'; }
+    })();
+    function applyThemePreference(preference = themePreference) {
+      themePreference = preference;
+      const dark = preference === '深色' || (preference === '跟随系统' && systemThemeQuery.matches);
+      document.body.classList.toggle('theme-dark', dark);
+      document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+      document.querySelectorAll('[data-theme]').forEach(item => item.classList.toggle('active', item.dataset.theme === preference));
+      const themeNames = document.documentElement.lang === 'en' ? { '跟随系统': 'System', '浅色': 'Light', '深色': 'Dark' } : { '跟随系统': '跟随系统', '浅色': '浅色', '深色': '深色' };
+      document.getElementById('themeLabel').textContent = themeNames[preference];
+      try { localStorage.setItem(themeStorageKey, preference); } catch (error) { /* File previews may disable storage. */ }
+    }
+    document.querySelectorAll('[data-theme]').forEach(button => button.addEventListener('click', () => {
+      applyThemePreference(button.dataset.theme);
+      document.getElementById('themeOptions').classList.add('hidden');
+      document.getElementById('themeMenuButton').setAttribute('aria-expanded', 'false');
+    }));
+    systemThemeQuery.addEventListener?.('change', () => { if (themePreference === '跟随系统') applyThemePreference('跟随系统'); });
+    applyThemePreference(themePreference);
+    const focusMessages = {
+      'zh-CN': [
+        '把想象变成看得见的作品。',
+        '慢一点打磨，画面会替你说话。',
+        '每一次尝试，都在靠近心中的画面。',
+        '灵感没有标准答案，先让它发生。',
+        '真正动人的作品，始于一次勇敢的表达。',
+        '保持好奇，世界会不断给你新的画面。',
+        '今天完成的一小步，也是创作的一大步。',
+        '用自己的目光，重新发现寻常事物的美。'
+      ],
+      en: [
+        'Turn imagination into something visible.',
+        'Take your time. Let the image speak.',
+        'Every attempt brings the vision closer.',
+        'There is no single answer. Let inspiration begin.',
+        'Meaningful work starts with a brave expression.',
+        'Stay curious and the world keeps offering new frames.'
+      ]
+    };
+    let focusIndex = -1;
+    const setMotivation = (language, randomize = false) => {
+      const messages = focusMessages[language];
+      if (randomize || focusIndex < 0 || focusIndex >= messages.length) {
+        let nextIndex = Math.floor(Math.random() * messages.length);
+        if (messages.length > 1 && nextIndex === focusIndex) nextIndex = (nextIndex + 1) % messages.length;
+        focusIndex = nextIndex;
+      }
+      const button = document.getElementById('dailyFocus');
+      const windowElement = button.querySelector('.motivation-window');
+      const textElement = document.getElementById('focusText');
+      button.classList.remove('is-scrolling');
+      textElement.textContent = messages[focusIndex];
+      requestAnimationFrame(() => {
+        const overflow = Math.max(0, textElement.scrollWidth - windowElement.clientWidth);
+        button.style.setProperty('--motivation-overflow', `${overflow}px`);
+        button.classList.toggle('is-scrolling', overflow > 2);
+      });
+    };
+    const interfaceTextPairs = [
+      ['额度', 'Credits'], ['平台协议', 'Terms'], ['更新日志', 'What\'s new'], ['外观', 'Appearance'],
+      ['跟随系统', 'System'], ['浅色', 'Light'], ['深色', 'Dark'], ['AI 水印', 'AI watermark'], ['登录', 'Sign in'], ['我的', 'Account'],
+      ['做同款', 'Recreate'], ['用作参考图', 'Use as reference'], ['复制提示词', 'Copy prompt'], ['下载图片', 'Download'],
+      ['图片提示词', 'Image prompt'], ['图片生成', 'Image generation'], ['通用模型', 'General model'], ['写实模型', 'Realistic model'], ['动漫模型', 'Anime model'], ['开启创作', 'Create'], ['新对话', 'New conversation'],
+      ['最近', 'Recent'], ['搜索', 'Search'], ['时间', 'Time'], ['生成模式', 'Model'], ['操作类型', 'Status'], ['今天', 'Today'],
+      ['历史样例图片已移除，等待导入高清作品。', 'Historical samples removed. Waiting for HD images.'],
+      ['生成完成 · 消耗 2 点额度', 'Completed · 2 credits used'], ['生成失败，服务暂时不可用，额度已返还。', 'Failed. Service unavailable and credits refunded.'],
+      ['修改提示词', 'Edit prompt'], ['再次生成', 'Generate again'], ['画面比例', 'Aspect ratio'], ['分辨率', 'Resolution'], ['生成数量', 'Images'],
+      ['登录造梦空间', 'Sign in to Dream Space'], ['登录后继续你的图片创作。', 'Sign in to continue creating images.'],
+      ['手机号', 'Mobile number'], ['验证码', 'Verification code'], ['获取验证码', 'Get code'], ['登录并继续', 'Sign in and continue'],
+      ['用户协议', 'Terms of Use'], ['隐私政策', 'Privacy Policy'], ['AI 功能使用协议', 'AI Terms'], ['我已阅读并同意', 'I have read and agree to'],
+      ['和', 'and'], ['造梦空间用户协议', 'Dream Space Terms of Use'],
+      ['造梦空间 Dream Space\n让每一次生成都可控、可追溯。', 'Dream Space\nEvery generation, controlled and traceable.'],
+      ['让脑海里的画面，成为看得见的作品。', 'Turn the images in your mind into visible work.']
+    ];
+
+    function translateInterfaceText(language) {
+      const translations = new Map(interfaceTextPairs.map(([zh, en]) => language === 'en' ? [zh, en] : [en, zh]));
+      const excluded = '.art-card, .detail-title, .prompt-text, .task-prompt, .session-item, .session-name-input, .search-history-chip, script, style';
+      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+      const nodes = [];
+      while (walker.nextNode()) nodes.push(walker.currentNode);
+      nodes.forEach(node => {
+        if (node.parentElement?.closest(excluded)) return;
+        const value = node.nodeValue.trim();
+        if (translations.has(value)) node.nodeValue = node.nodeValue.replace(value, translations.get(value));
+      });
+    }
+
+    function updateGenerationFilterLabels() {
+      const baseLabels = document.documentElement.lang === 'en'
+        ? { time: 'Time', mode: 'Model', operation: 'Status' }
+        : { time: '时间', mode: '生成模式', operation: '操作类型' };
+      document.querySelectorAll('.generation-filter').forEach(button => {
+        const key = generationFilterKeys[button.dataset.filterName];
+        const value = state.generationFilters[key];
+        const option = generationFilterOptions[key].find(item => item.value === value);
+        button.querySelector('.filter-label').textContent = value === 'all' ? baseLabels[key] : generationOptionLabel(option);
+      });
+    }
+    const applyInterfaceLanguage = language => {
+      const english = language === 'en';
+      document.documentElement.lang = language;
+      applyThemePreference(themePreference);
+      updateQuota();
+      document.getElementById('languageFlag').textContent = english ? '🇺🇸' : '🇨🇳';
+      document.getElementById('languageLabel').textContent = english ? 'EN' : 'ZH';
+      document.querySelectorAll('[data-language]').forEach(option => option.classList.toggle('active', option.dataset.language === language));
+      document.querySelector('[data-route="inspiration"] span').textContent = english ? 'Explore' : '灵感';
+      document.querySelector('[data-route="generate"] span').textContent = english ? 'Create' : '生成';
+      document.querySelector('[data-route="login"] span').textContent = english ? 'Account' : '我的';
+      const categories = english ? ['For you', 'Portrait', 'Photo', 'Anime', 'Illustration', 'Design'] : ['推荐', '人像', '摄影', '动漫', '插画', '设计'];
+      document.querySelectorAll('.category-btn').forEach((button, index) => { button.textContent = categories[index]; });
+      document.getElementById('inspirationSearch').placeholder = english ? 'Search themes, styles or prompts' : '搜索主题、风格或提示词';
+      document.getElementById('searchHistoryTitle').textContent = english ? 'Search history' : '搜索历史';
+      document.getElementById('searchHistoryClearLabel').textContent = english ? 'Clear' : '清空';
+      document.getElementById('emptyTitle').textContent = english ? 'No inspiration found' : '没有找到相关灵感';
+      document.getElementById('emptyCopy').textContent = english ? 'Try another keyword or return to recommendations.' : '尝试其他关键词，或返回推荐内容。';
+      document.getElementById('resetSearch').textContent = english ? 'Back to For you' : '返回推荐';
+      setMotivation(language, true);
+      document.getElementById('studioDate').textContent = new Intl.DateTimeFormat(language, { month: 'short', day: 'numeric', weekday: 'short' }).format(new Date());
+      document.getElementById('weatherText').textContent = english ? 'Shenzhen 29°' : '深圳 29°';
+      document.getElementById('generationSearchInput').placeholder = english ? 'Search current conversation' : '搜索当前会话';
+      document.getElementById('generatePrompt').placeholder = english ? 'Describe an image or upload a reference' : '输入你想生成的画面，或上传参考图';
+      translateInterfaceText(language);
+      updateGenerationFilterLabels();
+      applyDraft();
+      if (!state.currentSessionId) renderNewConversationState();
+      renderMasonry();
+      renderSearchHistory();
+      document.title = english ? 'Dream Space - Interactive Prototype' : '造梦空间 - 阶段 1 交互原型';
+    };
+    document.getElementById('dailyFocus').addEventListener('click', () => {
+      const language = document.documentElement.lang === 'en' ? 'en' : 'zh-CN';
+      setMotivation(language, true);
+    });
+    setMotivation('zh-CN', true);
+    document.getElementById('studioDate').textContent = new Intl.DateTimeFormat('zh-CN', { month: 'short', day: 'numeric', weekday: 'short' }).format(new Date());
+    document.getElementById('languageToggle').addEventListener('click', event => {
+      event.stopPropagation();
+      const menu = document.getElementById('languageMenu');
+      const open = menu.classList.toggle('hidden') === false;
+      document.getElementById('languageToggle').setAttribute('aria-expanded', String(open));
+    });
+    document.getElementById('languageMenu').addEventListener('click', event => {
+      event.stopPropagation();
+      const option = event.target.closest('[data-language]');
+      if (!option) return;
+      applyInterfaceLanguage(option.dataset.language);
+      document.getElementById('languageMenu').classList.add('hidden');
+      document.getElementById('languageToggle').setAttribute('aria-expanded', 'false');
+    });
+    const legalBackdrop = document.getElementById('legalBackdrop');
+    const openLegal = title => {
+      document.getElementById('legalTitle').textContent = `造梦空间${title}`;
+      legalBackdrop.classList.remove('hidden');
+      document.getElementById('legalClose').focus();
+    };
+    const closeLegal = () => legalBackdrop.classList.add('hidden');
+    document.getElementById('legalMenuButton').addEventListener('click', () => openLegal('平台协议'));
+    document.querySelectorAll('[data-legal]').forEach(button => button.addEventListener('click', event => { event.preventDefault(); openLegal(button.dataset.legal); }));
+    document.getElementById('legalClose').addEventListener('click', closeLegal);
+    legalBackdrop.addEventListener('click', event => { if (event.target === legalBackdrop) closeLegal(); });
+    document.getElementById('watermarkSwitch').addEventListener('change', event => showToast(event.target.checked ? 'AI 水印已开启' : 'AI 水印已关闭'));
+    document.getElementById('accountAction').addEventListener('click', () => {
+      if (!state.loggedIn) return route('login', { skipAuth: true });
+      state.loggedIn = false;
+      document.getElementById('accountLabel').textContent = '登录';
+      document.getElementById('accountMenuButton').classList.remove('logged-in');
+      document.getElementById('accountAction').querySelector('svg')?.setAttribute('data-lucide', 'log-in');
+      route('inspiration', { skipAuth: true });
+      showToast('已退出登录');
+    });
+    document.getElementById('loginClose').addEventListener('click', () => route(state.previousPage === 'login' ? 'inspiration' : state.previousPage, { skipAuth: true }));
+    document.getElementById('sendCode').addEventListener('click', () => showToast('演示验证码为 123456'));
+    document.getElementById('loginForm').addEventListener('submit', event => {
+      event.preventDefault();
+      const error = document.getElementById('loginError');
+      if (!/^1\d{10}$/.test(document.getElementById('phoneInput').value)) { error.textContent = '请输入正确的 11 位手机号。'; return; }
+      if (document.getElementById('codeInput').value !== '123456') { error.textContent = '验证码错误或已过期。'; return; }
+      if (!document.getElementById('agreement').checked) { error.textContent = '请先阅读并同意相关协议。'; return; }
+      error.textContent = '';
+      state.loggedIn = true;
+      document.getElementById('accountLabel').textContent = '我的';
+      document.getElementById('accountMenuButton').classList.add('logged-in');
+      const intent = state.pendingIntent;
+      state.pendingIntent = null;
+      if (intent?.type === 'transfer') { applyDraft(); route('generate', { skipAuth: true }); showToast(intent.withReference ? '登录成功，已恢复参考图' : '登录成功，已恢复创作参数'); }
+      else if (intent?.type === 'route') route(intent.page, { skipAuth: true });
+      else if (intent?.type === 'like') {
+        route('detail', { skipAuth: true });
+        const item = artworks[state.selected];
+        item.likes += 1;
+        document.getElementById('likeCount').textContent = item.likes;
+        showToast('登录成功，已完成点赞');
+      }
+      else if (intent?.type === 'download') {
+        route('detail', { skipAuth: true });
+        downloadCurrentArtwork();
+      }
+      else { route(state.previousPage === 'login' ? 'inspiration' : state.previousPage, { skipAuth: true }); showToast('登录成功'); }
+    });
+    document.getElementById('timeline').addEventListener('click', event => {
+      const starter = event.target.closest('.starter-prompt');
+      if (starter) {
+        const item = starterPrompts[Number(starter.dataset.starterIndex)];
+        const prompt = document.documentElement.lang === 'en' ? item.en : item.zh;
+        state.draft.prompt = prompt;
+        applyDraft();
+        document.getElementById('generatePrompt').focus();
+        return;
+      }
+      const downloadButton = event.target.closest('.result-download');
+      if (downloadButton) {
+        downloadGeneratedImage(downloadButton.dataset.source);
+        return;
+      }
+      const previewButton = event.target.closest('.result-preview');
+      if (previewButton) {
+        openImagePreview(previewButton.dataset.source, previewButton.querySelector('img')?.alt || 'Dream Space', previewButton);
+        return;
+      }
+      if (!event.target.closest('.rerun') && !event.target.closest('.task-actions .action-btn:first-child')) return;
+      const task = event.target.closest('.task');
+      const prompt = task?.querySelector('.task-prompt')?.textContent?.split(/通用模型|写实模型|动漫模型/)[0]?.trim() || '';
+      state.draft.prompt = prompt;
+      applyDraft();
+      document.getElementById('generatePrompt').focus();
+      showToast('原提示词已放回输入器');
+    });
+    document.getElementById('imagePreviewDownload').addEventListener('click', event => downloadGeneratedImage(event.currentTarget.dataset.source));
+    document.getElementById('imagePreviewClose').addEventListener('click', closeImagePreview);
+    document.getElementById('imagePreviewBackdrop').addEventListener('click', event => { if (event.target === event.currentTarget) closeImagePreview(); });
+    function beginSessionRename(row) {
+      const button = row.querySelector('.session-item');
+      if (!button) return;
+      const originalName = button.textContent.trim();
+      const input = document.createElement('input');
+      input.className = 'session-name-input';
+      input.value = originalName;
+      input.setAttribute('aria-label', document.documentElement.lang === 'en' ? 'Rename conversation' : '重命名会话');
+      button.replaceWith(input);
+      input.focus();
+      input.select();
+      let finished = false;
+      const finish = save => {
+        if (finished) return;
+        finished = true;
+        const nextName = save && input.value.trim() ? input.value.trim().slice(0, 40) : originalName;
+        const nextButton = document.createElement('button');
+        nextButton.className = 'session-item';
+        nextButton.type = 'button';
+        nextButton.textContent = nextName;
+        input.replaceWith(nextButton);
+        const english = document.documentElement.lang === 'en';
+        row.querySelector('.session-rename').setAttribute('aria-label', `${english ? 'Rename' : '重命名'} ${nextName}`);
+        row.querySelector('.session-delete').setAttribute('aria-label', `${english ? 'Delete' : '删除'} ${nextName}`);
+      };
+      input.addEventListener('keydown', event => {
+        if (event.key === 'Enter') { event.preventDefault(); finish(true); }
+        if (event.key === 'Escape') { event.preventDefault(); finish(false); }
+      });
+      input.addEventListener('blur', () => finish(true));
+    }
+    document.querySelector('.session-sidebar').addEventListener('click', event => {
+      const deleteButton = event.target.closest('.session-delete');
+      const renameButton = event.target.closest('.session-rename');
+      const row = event.target.closest('.session-row');
+      if (!row) return;
+      if (renameButton) {
+        beginSessionRename(row);
+        return;
+      }
+      if (deleteButton) {
+        const wasActive = row.classList.contains('active');
+        const deletedSessionId = row.dataset.sessionId;
+        sessionTimelines.delete(deletedSessionId);
+        row.remove();
+        if (wasActive) {
+          state.currentSessionId = null;
+          const fallback = document.querySelector('.session-row');
+          if (fallback) {
+            loadSession(fallback.dataset.sessionId);
+          } else {
+            state.draft = { prompt: '', model: '通用模型', ratio: '1:1', resolution: '2K', count: 2, reference: null };
+            applyDraft();
+            renderNewConversationState();
+          }
+        }
+        showToast(document.documentElement.lang === 'en' ? 'Conversation deleted' : '对话已删除');
+        return;
+      }
+      const button = event.target.closest('.session-item');
+      if (!button) return;
+      if (row.dataset.sessionId !== state.currentSessionId) loadSession(row.dataset.sessionId);
+    });
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && !document.getElementById('imagePreviewBackdrop').classList.contains('hidden')) { closeImagePreview(); return; }
+      if (event.key === 'Escape' && !legalBackdrop.classList.contains('hidden')) { closeLegal(); return; }
+      if (state.page !== 'detail') return;
+      if (event.key === 'Escape') route('inspiration', { skipAuth: true });
+      if (event.key === 'ArrowUp' && state.selected > 0) openDetail(state.selected - 1);
+      if (event.key === 'ArrowDown' && state.selected < artworks.length - 1) openDetail(state.selected + 1);
+    });
+
+    shuffleInspirationFeed();
+    renderMasonry();
+    renderSearchHistory();
+    renderParameterOptions();
+    renderNewConversationState();
+    updateQuota();
+    updateComposerState();
+    if (window.lucide) lucide.createIcons({ attrs: { width: 18, height: 18, 'stroke-width': 1.8 } });
+  </script>
+</body>
+</html>
