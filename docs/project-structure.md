@@ -1,154 +1,199 @@
 # 项目目录规划
 
-本文档是造梦空间从高保真原型进入正式开发时的目录基线。推荐采用 pnpm workspace + Turborepo 的 monorepo：用户端、管理端、API 和 Worker 可以独立部署，但共享类型、校验规则和 UI 基础能力只维护一份。
+本文档回答两个问题：正式开发时目录怎么放，以及第一步应该创建哪些目录。
 
-## 1. 目标目录
+## 一、先看懂整体关系
+
+项目先做成一个代码仓库，里面有四个可以独立运行的应用：
+
+```text
+用户浏览器  -> 用户端 web   -> API 服务 -> PostgreSQL
+管理员浏览器 -> 管理端 admin -> API 服务 -> Redis 任务队列 -> Worker -> 图片模型供应商
+                                               |
+                                               -> 对象存储（原图和缩略图）
+```
+
+- `web`：普通用户浏览灵感、登录、提交生成、查看和下载图片。
+- `admin`：运营人员管理灵感、用户、任务、审核和模型配置。
+- `api`：统一处理登录、权限、业务校验、数据库读写和任务创建。
+- `worker`：在后台执行耗时工作，例如调用图片模型、审核和处理图片。
+
+用户端和管理端都不能直接连接数据库，也不能直接调用图片模型。
+
+## 二、推荐目录
 
 ```text
 .
-├── apps/
-│   ├── web/                         # 用户端 Web（Next.js）
-│   │   ├── app/                     # 路由、页面和页面级布局
-│   │   │   ├── (public)/inspiration/
-│   │   │   ├── (auth)/login/
-│   │   │   ├── (workspace)/generate/
-│   │   │   ├── settings/
-│   │   │   ├── api/                 # 仅放 BFF/回调，不承载业务服务
-│   │   │   ├── layout.tsx
-│   │   │   └── error.tsx
-│   │   ├── components/              # 用户端业务组件
-│   │   │   ├── inspiration/
-│   │   │   ├── generation/
-│   │   │   ├── account/
-│   │   │   └── shared/
-│   │   ├── features/                # 用户端交互状态和 mutations
-│   │   ├── lib/                     # query client、auth、SSE、下载等适配
-│   │   ├── stores/                  # Zustand 临时输入器/草稿状态
-│   │   ├── styles/
-│   │   └── tests/                   # 用户端单测、组件测试、Playwright
-│   ├── admin/                       # 管理端 Web（独立鉴权和布局）
-│   │   ├── app/
-│   │   │   ├── (auth)/login/
-│   │   │   └── (console)/
-│   │   │       ├── dashboard/
-│   │   │       ├── inspirations/
-│   │   │       ├── users/
-│   │   │       ├── tasks/
-│   │   │       ├── moderation/
-│   │   │       ├── models/
-│   │   │       ├── configs/
-│   │   │       └── audit-logs/
-│   │   ├── components/              # 表格、筛选器、审核队列等后台组件
-│   │   ├── lib/                     # 权限守卫、API client、导出
-│   │   └── tests/
-│   ├── api/                         # NestJS 模块化单体 API
-│   │   ├── src/
-│   │   │   ├── modules/
-│   │   │   │   ├── auth/
-│   │   │   │   ├── users/
-│   │   │   │   ├── inspirations/
-│   │   │   │   ├── sessions/
-│   │   │   │   ├── uploads/
-│   │   │   │   ├── generation-tasks/
-│   │   │   │   ├── images/
-│   │   │   │   ├── quota/
-│   │   │   │   ├── moderation/
-│   │   │   │   ├── providers/
-│   │   │   │   └── admin/
-│   │   │   ├── common/               # guards、pipes、异常、日志、分页
-│   │   │   ├── config/
-│   │   │   ├── app.module.ts
-│   │   │   └── main.ts
-│   │   └── test/                     # API 集成测试和契约测试
-│   └── worker/                       # BullMQ 异步生成与媒体处理 Worker
-│       └── src/
-│           ├── jobs/                 # generate、moderate、process-image、reconcile
-│           ├── processors/
-│           ├── providers/             # 供应商适配器实现
-│           ├── queues/
-│           └── main.ts
-├── packages/
-│   ├── ui/                           # 跨用户端/管理端的无业务 UI
-│   ├── api-contract/                 # OpenAPI 生成的请求、响应、错误码、事件类型
-│   ├── domain/                       # 枚举、状态机、值对象和跨端业务常量
-│   ├── validation/                   # Zod/DTO 共享校验规则
-│   ├── database/                     # Prisma schema、迁移、seed、repository 基础实现
-│   ├── storage/                      # S3/TOS/OSS 文件存储接口和签名 URL
-│   ├── config/                       # 环境变量 schema 和默认配置
-│   ├── i18n/                         # 中英文文案与 locale 工具
-│   └── observability/                # 日志、追踪、指标封装
+├── apps/                         # 四个可独立运行和部署的应用
+│   ├── web/                      # 用户端，Next.js
+│   ├── admin/                    # 管理端，Next.js
+│   ├── api/                      # 服务端接口，NestJS
+│   └── worker/                   # 异步任务，BullMQ
+├── packages/                     # 多个应用共同使用的代码
+│   ├── ui/                       # web 和 admin 共用的基础组件
+│   ├── contracts/                # 接口类型、错误码、SSE 事件类型
+│   ├── core/                     # 业务规则和任务状态机
+│   ├── db/                       # Prisma schema、迁移、seed 和数据库客户端
+│   └── config/                   # 环境变量校验和公共工程配置
 ├── infrastructure/
-│   ├── docker/                       # Dockerfile、compose、启动脚本
-│   ├── nginx/
-│   ├── terraform/                    # 云资源（后续再启用）
-│   └── k8s/                          # 扩容后再启用，初期可不创建
-├── database/
-│   ├── seeds/                        # 演示灵感数据和开发账号
-│   └── fixtures/                     # 测试固定数据（不放真实用户数据）
-├── scripts/                          # lint、类型生成、数据导入、发布辅助脚本
-├── docs/
-│   ├── architecture/                 # ADR、领域边界、时序图
-│   ├── api/                          # OpenAPI 发布稿和 SSE 事件说明
-│   ├── runbooks/                     # 任务积压、供应商故障、审核事故处理
-│   ├── phase-1/                      # 已有产品与设计基线
-│   ├── deployment.md
-│   └── project-structure.md
-├── prototype/                        # 阶段 1 静态高保真原型，保持可独立运行
-├── e2e/                              # 跨应用关键链路测试
-├── .env.example
-├── package.json
-├── pnpm-workspace.yaml
-├── turbo.json
-└── tsconfig.base.json
+│   └── docker/                   # 本地 PostgreSQL、Redis、对象存储和容器配置
+├── e2e/                          # 跨应用关键流程测试
+├── scripts/                      # 数据导入、类型生成等项目脚本
+├── docs/                         # 产品、设计、架构和运维文档
+├── prototype/                    # 已完成的静态用户端原型
+├── .env.example                  # 环境变量示例，不包含真实密钥
+├── package.json                  # 根项目命令
+├── pnpm-workspace.yaml           # monorepo 工作区声明
+├── turbo.json                    # 多应用构建任务
+└── tsconfig.base.json            # TypeScript 公共配置
 ```
 
-## 2. 模块边界
+这就是开发初期需要的完整一级目录。暂时不创建 Kubernetes、Terraform、微服务等目录，出现实际部署需求后再增加。
 
-- `apps/web` 只负责用户体验和页面状态，不直接访问数据库或供应商。
-- `apps/admin` 与用户端分开部署、分开菜单和权限守卫；所有高风险操作必须经 API 的 RBAC 校验并写审计日志。
-- `apps/api` 是业务唯一入口，按领域模块组织 controller、application service、repository 和 DTO；不要按“controllers/services/utils”做全局大目录。
-- `apps/worker` 只消费队列并回写领域状态，不能绕过 API 修改额度或审核结论。
-- `packages/domain` 放纯 TypeScript 规则，不能依赖 NestJS、Next.js 或具体数据库；`packages/database` 负责持久化实现。
-- 供应商 SDK 只能出现在 `apps/worker/src/providers` 的适配器中，业务代码依赖统一的 `ImageGenerationProvider` 接口。
+## 三、各应用内部怎么放
 
-每个 API 领域模块建议保持如下形状：
+### 1. 用户端 `apps/web`
 
 ```text
-modules/generation-tasks/
-├── generation-tasks.controller.ts
-├── generation-tasks.service.ts
-├── generation-tasks.repository.ts
-├── generation-tasks.dto.ts
-├── generation-tasks.policy.ts
+apps/web/
+├── app/                          # Next.js 页面路由
+│   ├── inspiration/              # 灵感列表
+│   ├── inspiration/[id]/         # 灵感详情
+│   ├── generate/                 # 新建生成会话
+│   ├── generate/[sessionId]/     # 历史生成会话
+│   ├── login/                    # 登录
+│   ├── settings/                 # 账户设置
+│   ├── layout.tsx
+│   └── page.tsx                  # 首页，跳转到灵感页
+├── components/                   # 页面使用的组件
+│   ├── inspiration/
+│   ├── generation/
+│   ├── account/
+│   └── shared/
+├── lib/                          # API 请求、SSE、登录态、下载工具
+├── stores/                       # 输入器草稿等临时前端状态
+├── messages/                     # 中英文文案
+├── styles/
+└── tests/
+```
+
+页面专用组件留在对应页面附近；只有被多个页面使用的组件才放进 `components`。
+
+### 2. 管理端 `apps/admin`
+
+```text
+apps/admin/
+├── app/
+│   ├── login/
+│   ├── dashboard/                # 运营概览
+│   ├── inspirations/             # 灵感内容管理
+│   ├── users/                    # 用户与额度
+│   ├── tasks/                    # 生成任务
+│   ├── moderation/               # 审核与申诉
+│   ├── models/                   # 模型和供应商配置
+│   ├── system-configs/           # 系统配置
+│   └── audit-logs/               # 操作审计
+├── components/
+├── lib/                          # API 请求和前端权限判断
+└── tests/
+```
+
+管理端单独运行、单独登录。前端隐藏按钮只是改善体验，真正的管理员权限必须由 API 再校验一次。
+
+### 3. API 服务 `apps/api`
+
+```text
+apps/api/src/
+├── modules/                      # 按业务领域划分
+│   ├── auth/                     # 登录、刷新令牌、退出
+│   ├── users/                    # 用户资料和状态
+│   ├── inspirations/             # 灵感列表、详情和点赞
+│   ├── sessions/                 # 生成会话和消息
+│   ├── uploads/                  # 上传凭证和文件确认
+│   ├── generation-tasks/         # 创建、取消、重试和事件订阅
+│   ├── images/                   # 图片详情和下载凭证
+│   ├── quota/                    # 额度余额和流水
+│   ├── moderation/               # 审核记录和申诉
+│   ├── model-providers/          # 模型配置和流量路由
+│   └── admin/                    # 管理端专用接口
+├── common/                       # 权限守卫、异常、分页和请求日志
+├── config/
+├── app.module.ts
+└── main.ts
+```
+
+每个业务模块内部保持简单：
+
+```text
+generation-tasks/
+├── generation-tasks.controller.ts   # 接收 HTTP 请求
+├── generation-tasks.service.ts      # 编排业务流程
+├── generation-tasks.repository.ts   # 读写数据
+├── generation-tasks.dto.ts          # 输入和输出结构
 └── generation-tasks.module.ts
 ```
 
-## 3. 开发阶段
+不要在项目根部建立巨大的 `controllers/`、`services/`、`utils/`，否则业务增长后很难定位代码。
 
-### 阶段 A：工程骨架
+### 4. Worker `apps/worker`
 
-先建立 workspace、`apps/web`、`apps/api`、`packages/{domain,api-contract,validation,config}` 和 CI；把 `prototype/` 作为视觉验收参考，不急于迁移全部代码。
+```text
+apps/worker/src/
+├── jobs/                         # 任务名称和任务数据定义
+├── processors/                   # 生成、审核、图片处理、对账
+├── providers/                    # 火山、阿里等模型供应商适配器
+├── queues/                       # BullMQ 队列连接和配置
+└── main.ts
+```
 
-### 阶段 B：用户端 MVP
+API 创建任务并放入 Redis 队列，Worker 消费任务。API 和 Worker 共同调用 `packages/core` 中的状态机和额度规则，避免两边各写一套业务逻辑。供应商 SDK 只放在 Worker 的 `providers` 中。
 
-优先实现灵感列表/详情、登录、会话、上传、生成任务、SSE 事件、结果下载和额度流水。管理端先只提供登录、灵感录入和任务查询，避免阻塞主链路。
+## 四、共享包什么时候用
 
-### 阶段 C：异步与治理
+- `packages/ui`：按钮、弹窗、表单等真正被用户端和管理端共同使用时再放入。
+- `packages/contracts`：前后端共同使用的请求、响应、错误码和 SSE 事件定义，是接口类型的唯一来源。
+- `packages/core`：排队、生成中、成功、失败等状态迁移，以及冻结、消费、返还额度规则。
+- `packages/db`：只保留一份 Prisma schema、迁移和 seed，不再额外建立根目录 `database/`。
+- `packages/config`：集中校验数据库地址、Redis 地址、对象存储和供应商配置，启动时发现缺失配置就立即报错。
 
-接入 Redis/BullMQ、真实模型供应商、生成前后审核、图片处理、对象存储、重试/死信/对账；补齐 `moderation`、`providers`、`audit-logs`。
+不要为了“以后可能复用”提前拆包。代码至少被两个应用使用，或承担明确的业务规则时，再移入 `packages`。
 
-### 阶段 D：运营化与扩展
+## 五、实际开发顺序
 
-加入模型路由、供应商降级、批量内容运营、申诉、指标看板、备份恢复和基础设施即代码。只有出现明确的扩容需求后再启用 Kubernetes，不提前拆微服务。
+### 第一步：建立工程骨架
 
-## 4. 约定
+创建 workspace、四个应用、五个共享包、基础 lint/typecheck/test 和 Docker 本地依赖。此时先使用模拟模型，不接真实供应商。
 
-- 路由使用小写短横线，数据库表使用复数 snake_case，TypeScript 类型使用 PascalCase。
-- 所有时间在数据库以 UTC 保存；所有写接口支持 `Idempotency-Key`，列表接口使用游标分页。
-- 公共类型从 `packages/api-contract` 导出，禁止用户端和管理端各自复制 DTO。
-- `.env`、供应商密钥、真实手机号、真实图片和生产导出数据不进入仓库；仅维护 `.env.example` 和脱敏 fixtures。
-- 迁移每完成一个可验收能力就提交一次，保持 PR 可回滚；不要把数据库迁移、页面改造和供应商接入混在一个提交中。
+### 第二步：跑通最小业务闭环
 
-## 5. 原型迁移
+按以下顺序开发：
 
-`prototype/` 继续用于 GitHub Pages 和设计验收。正式开发时，按页面逐步迁移到 `apps/web`：先复用素材和交互验收清单，再将内联 CSS/脚本拆成组件、样式和服务端数据请求。迁移完成并稳定后再删除原型，不要在 MVP 开发中直接改造成生产应用。
+```text
+灵感列表 -> 灵感详情 -> 登录 -> 创建会话 -> 提交任务
+-> Worker 模拟生成 -> SSE 返回进度 -> 展示结果 -> 下载
+```
+
+管理端这一阶段只做登录、灵感管理和任务查询。
+
+### 第三步：接入真实生成能力
+
+接入对象存储、真实模型供应商、上传、生成前后审核、图片转码、失败重试、额度冻结与结算。
+
+### 第四步：补齐运营和上线能力
+
+完善用户与额度管理、审核申诉、模型切换、审计日志、监控告警、备份恢复和部署配置。达到需要多机扩容时，再评估 Kubernetes。
+
+## 六、现有原型怎么处理
+
+保留 `prototype/`，继续作为视觉和交互验收基线，不要直接把单个 `index.html` 改造成生产代码。
+
+正式用户端在 `apps/web` 中重新实现。每迁移一个页面，都对照 `prototype/` 和 `docs/phase-1/` 检查桌面/移动端、浅色/深色、中英文和完整交互状态。全部页面稳定后，再单独决定是否删除原型。
+
+## 七、必须遵守的规则
+
+- 用户端和管理端不直接访问数据库、Redis、对象存储或模型供应商。
+- 所有管理员操作由 API 做 RBAC 权限校验，高风险操作写入审计日志。
+- 所有写接口支持幂等控制；数据库时间统一保存为 UTC。
+- `.env`、密钥、真实手机号、真实用户图片和生产数据不得提交到仓库。
+- 数据库结构只通过 Prisma migration 变更，不手工修改生产数据库。
+- 一次 PR 聚焦一个可验收目标，不把页面、数据库和供应商接入混成一次大改。
