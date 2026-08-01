@@ -1,69 +1,79 @@
 # 造梦空间（Dream Space）
 
-造梦空间是一个专注文生图体验的 AI 图片创作平台。当前仓库包含产品方案、阶段 1 设计文档及可直接运行的高保真交互原型。
+造梦空间是一个面向中文用户的 AI 图片创作平台，核心链路是“发现灵感、复用灵感、提交生成、查看与下载结果”。项目已完成阶段 1 产品设计和高保真用户端原型，现进入正式工程开发。
 
-## 当前范围
+## 当前状态
 
-- 灵感瀑布流与分类检索
-- 灵感作品详情、提示词复用和参考图复用
-- 文生图参数设置与模拟生成流程
-- 创作会话、图片预览与下载
-- 中英文界面、浅色/深色/跟随系统主题
-- 登录、协议及账户设置原型
+| 阶段 | 状态 | 交付内容 |
+|---|---|---|
+| 阶段 0：产品与原型 | 已完成 | 产品需求、交互规范、高保真用户端原型 |
+| 阶段 A1：目录与文档基线 | 已完成 | 正式工程目录、模块 README、开发计划 |
+| 阶段 A2：可运行工程骨架 | 未开始 | monorepo 配置、四个应用、本地依赖、基础 CI |
+| 阶段 B：用户端 MVP | 未开始 | 灵感、登录、会话、模拟生成、结果下载 |
+| 阶段 C：真实生成能力 | 未开始 | 模型供应商、对象存储、审核、额度和任务可靠性 |
+| 阶段 D：运营与上线 | 未开始 | 完整管理后台、审计、监控、备份和部署 |
 
-不包含视频生成、画布编辑和资产管理模块。
+每个阶段的目标、验收条件和完成评估见 [开发阶段计划](docs/development-plan.md)。
+
+## 系统组成
+
+```text
+用户端 Web ─┐
+            ├─> API 服务 ─> PostgreSQL
+管理端 Web ─┘       │
+                    └─> Redis 队列 ─> Worker ─> 图片模型供应商
+                                         └────> 对象存储
+```
+
+- `web`：普通用户浏览灵感、登录、生成和下载图片。
+- `admin`：运营人员管理内容、用户、任务、审核和模型。
+- `api`：统一处理鉴权、业务校验、数据库读写和任务创建。
+- `worker`：后台执行模型调用、审核、图片处理和对账。
 
 ## 目录结构
 
 ```text
 .
-├── prototype/                # 高保真静态交互原型
-│   ├── index.html
-│   └── assets/inspiration/   # 原型图片素材
-├── docs/phase-1/             # 阶段 1 产品与设计文档
-├── docs/deployment.md        # 部署说明
-├── CONTRIBUTING.md           # 分支、提交和 PR 规范
-└── SECURITY.md               # 安全与凭据规范
+├── apps/                    # web、admin、api、worker 四个应用
+├── packages/                # UI、接口契约、业务规则、数据库和配置
+├── infrastructure/docker/  # 本地开发依赖与容器配置
+├── e2e/                     # 跨应用端到端测试
+├── scripts/                 # 项目维护和数据脚本
+├── docs/                    # 产品、设计、架构、开发与部署文档
+└── prototype/               # 阶段 1 高保真静态原型
 ```
 
-## 本地运行
+完整目录职责和内部结构见 [项目目录规划](docs/project-structure.md)。正式工程目录目前只是结构基线；进入阶段 A2 后才会加入框架代码和统一启动命令。
 
-原型为静态页面。建议通过本地 HTTP 服务运行：
+## 当前可运行内容
+
+当前只有高保真原型可以运行：
 
 ```bash
 python3 -m http.server 8080 -d prototype
 ```
 
-然后访问 [http://localhost:8080](http://localhost:8080)。
-
-也可以直接打开 `prototype/index.html`，但部分浏览器会限制 `file://` 页面存储或下载能力。
-
-## 部署
-
-仓库已包含 GitHub Pages 自动部署工作流。部署配置、验证和回滚方式见 [docs/deployment.md](docs/deployment.md)。
-
-## 协作流程
-
-`main` 为稳定分支。所有后续修改必须：
-
-1. 从最新 `main` 创建功能或修复分支。
-2. 在分支中提交，提交信息明确说明改造内容。
-3. 推送分支并创建 PR。
-4. 完成检查和人工审核后合并。
-
-具体规则见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+浏览器访问 [http://localhost:8080](http://localhost:8080)。正式用户端、管理端、API 和 Worker 将在阶段 A2 开始提供启动命令。
 
 ## 文档入口
 
-- [项目目录规划](docs/project-structure.md)
-- [阶段 1 文档索引](docs/phase-1/README.md)
+- [开发阶段计划](docs/development-plan.md)：阶段目标、验收条件和完成评估
+- [项目目录规划](docs/project-structure.md)：应用、共享包及内部目录职责
+- [阶段 1 文档索引](docs/phase-1/README.md)：产品和设计交付物
 - [产品需求](docs/phase-1/01-product-requirements.md)
 - [信息架构与用户流程](docs/phase-1/02-information-architecture-and-user-flows.md)
 - [页面与组件清单](docs/phase-1/03-page-and-component-inventory.md)
 - [交互状态矩阵](docs/phase-1/04-interaction-state-matrix.md)
 - [视觉规范](docs/phase-1/05-visual-specification.md)
 - [验收清单](docs/phase-1/06-acceptance-checklist.md)
+- [部署说明](docs/deployment.md)
 
-## 权利说明
+## 协作与安全
 
-本仓库用于造梦空间产品设计与研发。仓库内素材仅用于产品原型展示；正式商用前需完成素材授权、内容审核和版权复核。
+`main` 为保护分支。所有变更从独立分支提交，通过 Pull Request 审核后合并，具体见 [贡献规范](CONTRIBUTING.md)。凭据、真实用户数据和未脱敏生产数据不得进入仓库，具体见 [安全说明](SECURITY.md)。
+
+## 产品边界
+
+当前范围包含灵感瀑布流、作品详情、文生图、参考图、生成会话、图片下载、基础账户和免费额度。暂不建设视频、画布编辑、社区发布、支付、会员和完整资产管理。
+
+仓库内原型素材仅用于产品演示；正式商用前必须完成素材授权、内容审核和版权复核。
