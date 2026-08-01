@@ -105,17 +105,6 @@
     .nav-btn.active { color: var(--text); font-weight: 500; }
     .nav-btn.active svg { fill: currentColor; }
     .nav-btn span { font-size: 12px; }
-    .quota {
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 10px 4px;
-      text-align: center;
-      width: 56px;
-      margin-bottom: 12px;
-      font-size: 12px;
-      background: var(--surface);
-    }
-    .quota strong { display: block; font-size: 14px; margin-bottom: 2px; }
     .desktop-dock { width: 100%; display: grid; place-items: center; gap: 8px; }
     .account-avatar {
       width: 38px;
@@ -261,13 +250,18 @@
     @keyframes motivation-scroll { 0%, 15% { transform: translateX(0); } 85%, 100% { transform: translateX(calc(-1 * var(--motivation-overflow))); } }
     .utility-meta { height: 36px; padding: 0 8px; display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 13px; line-height: 1; white-space: nowrap; }
     .utility-meta svg { width: 15px; height: 15px; }
-    .quota { width: 56px; min-width: 56px; min-height: 58px; padding: 7px 4px; display: grid; grid-template-columns: 1fr; justify-items: center; align-content: center; row-gap: 4px; border: 0; background: transparent; color: var(--muted); font-size: 11px; line-height: 1; text-align: center; }
-    .quota strong { display: block; grid-row: auto; max-width: 48px; overflow: hidden; color: var(--text); font-size: 10px; font-weight: 600; line-height: 1.15; white-space: normal; overflow-wrap: anywhere; }
-    .quota-label { max-width: 48px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .quota-bar { width: 42px; height: 4px; overflow: hidden; border-radius: 99px; background: var(--surface-strong); }
-    .quota-bar span { display: block; width: 80%; height: 100%; border-radius: inherit; background: var(--primary); transition: width 220ms ease, background 220ms ease; }
-    .quota.is-low .quota-bar span { background: var(--warning); }
-    .quota.is-critical .quota-bar span { background: var(--danger); }
+    .quota-panel { margin: 7px 8px 8px; padding: 12px 4px 13px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+    .quota-heading { display: flex; align-items: center; gap: 9px; }
+    .quota-heading > svg { width: 18px; height: 18px; color: var(--primary); }
+    .quota-title { min-width: 0; display: grid; gap: 3px; }
+    .quota-title strong { font-size: 13px; font-weight: 600; }
+    .quota-title small { color: var(--muted); font-size: 10px; }
+    .quota-value { margin-left: auto; color: var(--text); font-size: 13px; font-weight: 600; white-space: nowrap; }
+    .quota-track { height: 5px; margin: 11px 0 7px 27px; overflow: hidden; border-radius: 99px; background: var(--surface-strong); }
+    .quota-track span { display: block; width: 80%; height: 100%; border-radius: inherit; background: var(--primary); transition: width 220ms ease, background 220ms ease; }
+    .quota-meta { margin-left: 27px; display: flex; justify-content: space-between; gap: 8px; color: var(--muted); font-size: 10px; }
+    .quota-panel.is-low .quota-track span { background: var(--warning); }
+    .quota-panel.is-critical .quota-track span { background: var(--danger); }
     .language-control { position: relative; }
     .language-trigger { min-width: 70px; justify-content: center; color: var(--text); }
     .language-trigger svg:last-child { transition: transform 150ms ease; }
@@ -669,7 +663,6 @@
       </div>
       <div class="nav-spacer"></div>
       <div class="desktop-dock">
-        <div class="quota" id="quotaDisplay" aria-label="剩余 80 / 100 点额度"><strong id="quotaValue">✦80/100</strong><span class="quota-label" id="quotaLabel">额度</span><span class="quota-bar" aria-hidden="true"><span id="quotaProgress"></span></span></div>
         <button class="dock-icon dock-tooltip" type="button" aria-label="通知" data-tooltip="通知"><i data-lucide="bell" aria-hidden="true"></i></button>
         <div class="dock-divider"></div>
         <button class="account-avatar dock-tooltip" id="accountMenuButton" type="button" aria-label="设置" aria-expanded="false" data-tooltip="设置"><i data-lucide="settings" aria-hidden="true"></i></button>
@@ -685,7 +678,12 @@
         <button class="menu-row" type="button" data-theme="深色">深色</button>
       </div>
       <label class="menu-row"><i data-lucide="badge-check" aria-hidden="true"></i>AI 水印<input class="menu-switch" id="watermarkSwitch" type="checkbox" checked></label>
-      <button class="menu-row" id="accountAction" type="button"><i data-lucide="log-in" aria-hidden="true"></i><span id="accountLabel">登录</span></button>
+      <section class="quota-panel hidden" id="quotaDisplay" aria-label="剩余 80 / 100 点额度">
+        <div class="quota-heading"><i data-lucide="sparkles" aria-hidden="true"></i><span class="quota-title"><strong id="quotaLabel">创作额度</strong><small id="quotaHint">本周期剩余</small></span><strong class="quota-value" id="quotaValue">80 / 100</strong></div>
+        <div class="quota-track" aria-hidden="true"><span id="quotaProgress"></span></div>
+        <div class="quota-meta"><span id="quotaPercent">剩余 80%</span><span id="quotaCostHint">每张预计 1 点</span></div>
+      </section>
+      <button class="menu-row" id="accountAction" type="button"><i data-account-icon data-lucide="log-in" aria-hidden="true"></i><span id="accountLabel">登录</span></button>
       <div class="menu-footer">造梦空间 Dream Space<br>让每一次生成都可控、可追溯。</div>
     </section>
 
@@ -1081,7 +1079,9 @@
       }
     ];
 
-    const state = { page: 'inspiration', previousPage: 'inspiration', category: '推荐', query: '', selected: 0, loggedIn: false, pendingIntent: null, currentSessionId: null, creditsRemaining: 80, creditsTotal: 100, generationFilters: { query: '', time: 'all', mode: 'all', operation: 'all' }, draft: { prompt: '', model: '通用模型', ratio: '1:1', resolution: '2K', count: 2, reference: null } };
+    const authStorageKey = 'dream-space-authenticated';
+    const initialLoggedIn = (() => { try { return localStorage.getItem(authStorageKey) === 'true'; } catch (error) { return false; } })();
+    const state = { page: 'inspiration', previousPage: 'inspiration', category: '推荐', query: '', selected: 0, loggedIn: initialLoggedIn, pendingIntent: null, currentSessionId: null, creditsRemaining: 80, creditsTotal: 100, generationFilters: { query: '', time: 'all', mode: 'all', operation: 'all' }, draft: { prompt: '', model: '通用模型', ratio: '1:1', resolution: '2K', count: 2, reference: null } };
     const pages = { inspiration: document.getElementById('inspirationPage'), detail: document.getElementById('detailPage'), generate: document.getElementById('generatePage'), login: document.getElementById('loginPage') };
     const protectedRoutes = new Set(['generate']);
     const toast = document.getElementById('toast');
@@ -1117,12 +1117,29 @@
       if (!display) return;
       const percent = Math.max(0, Math.min(100, (state.creditsRemaining / state.creditsTotal) * 100));
       const english = document.documentElement.lang === 'en';
-      document.getElementById('quotaValue').textContent = `✦${formatCreditValue(state.creditsRemaining)}/${formatCreditValue(state.creditsTotal)}`;
-      document.getElementById('quotaLabel').textContent = english ? 'Credits' : '额度';
+      document.getElementById('quotaValue').textContent = `${formatCreditValue(state.creditsRemaining)} / ${formatCreditValue(state.creditsTotal)}`;
+      document.getElementById('quotaLabel').textContent = english ? 'Creation credits' : '创作额度';
+      document.getElementById('quotaHint').textContent = english ? 'Remaining this cycle' : '本周期剩余';
+      document.getElementById('quotaPercent').textContent = english ? `${Math.round(percent)}% remaining` : `剩余 ${Math.round(percent)}%`;
+      document.getElementById('quotaCostHint').textContent = english ? 'Est. 1 per image' : '每张预计 1 点';
       document.getElementById('quotaProgress').style.width = `${percent}%`;
       display.classList.toggle('is-low', percent <= 30 && percent > 10);
       display.classList.toggle('is-critical', percent <= 10);
       display.setAttribute('aria-label', english ? `${state.creditsRemaining} of ${state.creditsTotal} credits remaining` : `剩余 ${state.creditsRemaining} / ${state.creditsTotal} 点额度`);
+    }
+
+    function syncAccountState() {
+      const english = document.documentElement.lang === 'en';
+      const action = document.getElementById('accountAction');
+      action.querySelector('[data-account-icon], svg')?.remove();
+      action.insertAdjacentHTML('afterbegin', `<i data-account-icon data-lucide="${state.loggedIn ? 'log-out' : 'log-in'}" aria-hidden="true"></i>`);
+      document.getElementById('accountLabel').textContent = state.loggedIn ? (english ? 'Sign out' : '退出登录') : (english ? 'Sign in' : '登录');
+      document.getElementById('quotaDisplay').classList.toggle('hidden', !state.loggedIn);
+      document.getElementById('accountMenuButton').classList.toggle('logged-in', state.loggedIn);
+      document.getElementById('accountMenuButton').setAttribute('aria-label', state.loggedIn ? (english ? 'Account settings' : '账户设置') : (english ? 'Settings' : '设置'));
+      try { localStorage.setItem(authStorageKey, String(state.loggedIn)); } catch (error) { /* File previews may disable storage. */ }
+      updateQuota();
+      if (window.lucide) lucide.createIcons();
     }
 
     const searchHistoryStorageKey = 'dream-space-search-history';
@@ -1812,7 +1829,7 @@
       const english = language === 'en';
       document.documentElement.lang = language;
       applyThemePreference(themePreference);
-      updateQuota();
+      syncAccountState();
       document.getElementById('languageFlag').textContent = english ? '🇺🇸' : '🇨🇳';
       document.getElementById('languageLabel').textContent = english ? 'EN' : 'ZH';
       document.querySelectorAll('[data-language]').forEach(option => option.classList.toggle('active', option.dataset.language === language));
@@ -1875,11 +1892,9 @@
     document.getElementById('accountAction').addEventListener('click', () => {
       if (!state.loggedIn) return route('login', { skipAuth: true });
       state.loggedIn = false;
-      document.getElementById('accountLabel').textContent = '登录';
-      document.getElementById('accountMenuButton').classList.remove('logged-in');
-      document.getElementById('accountAction').querySelector('svg')?.setAttribute('data-lucide', 'log-in');
+      syncAccountState();
       route('inspiration', { skipAuth: true });
-      showToast('已退出登录');
+      showToast(document.documentElement.lang === 'en' ? 'Signed out' : '已退出登录');
     });
     document.getElementById('loginClose').addEventListener('click', () => route(state.previousPage === 'login' ? 'inspiration' : state.previousPage, { skipAuth: true }));
     document.getElementById('sendCode').addEventListener('click', () => showToast('演示验证码为 123456'));
@@ -1891,8 +1906,7 @@
       if (!document.getElementById('agreement').checked) { error.textContent = '请先阅读并同意相关协议。'; return; }
       error.textContent = '';
       state.loggedIn = true;
-      document.getElementById('accountLabel').textContent = '我的';
-      document.getElementById('accountMenuButton').classList.add('logged-in');
+      syncAccountState();
       const intent = state.pendingIntent;
       state.pendingIntent = null;
       if (intent?.type === 'transfer') { applyDraft(); route('generate', { skipAuth: true }); showToast(intent.withReference ? '登录成功，已恢复参考图' : '登录成功，已恢复创作参数'); }
@@ -2018,7 +2032,7 @@
     renderSearchHistory();
     renderParameterOptions();
     renderNewConversationState();
-    updateQuota();
+    syncAccountState();
     updateComposerState();
     if (window.lucide) lucide.createIcons({ attrs: { width: 18, height: 18, 'stroke-width': 1.8 } });
   </script>
