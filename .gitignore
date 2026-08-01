@@ -1,7 +1,14 @@
 .DS_Store
 .env
 .env.*
+!.env.example
 node_modules/
 dist/
 .cache/
 *.log
+.turbo/
+.next/
+coverage/
+packages/db/generated/
+.pnpm-store/
+*.tsbuildinfo

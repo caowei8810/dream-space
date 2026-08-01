@@ -4,14 +4,14 @@
 
 ## 当前状态
 
-| 阶段 | 状态 | 交付内容 |
-|---|---|---|
-| 阶段 0：产品与原型 | 已完成 | 产品需求、交互规范、高保真用户端原型 |
-| 阶段 A1：目录与文档基线 | 已完成 | 正式工程目录、模块 README、开发计划 |
-| 阶段 A2：可运行工程骨架 | 未开始 | monorepo 配置、四个应用、本地依赖、基础 CI |
-| 阶段 B：用户端 MVP | 未开始 | 灵感、登录、会话、模拟生成、结果下载 |
-| 阶段 C：真实生成能力 | 未开始 | 模型供应商、对象存储、审核、额度和任务可靠性 |
-| 阶段 D：运营与上线 | 未开始 | 完整管理后台、审计、监控、备份和部署 |
+| 阶段                    | 状态   | 交付内容                                     |
+| ----------------------- | ------ | -------------------------------------------- |
+| 阶段 0：产品与原型      | 已完成 | 产品需求、交互规范、高保真用户端原型         |
+| 阶段 A1：目录与文档基线 | 已完成 | 正式工程目录、模块 README、开发计划          |
+| 阶段 A2：可运行工程骨架 | 进行中 | 本地验收已通过，等待 PR 上的 CI 验证         |
+| 阶段 B：用户端 MVP      | 未开始 | 灵感、登录、会话、模拟生成、结果下载         |
+| 阶段 C：真实生成能力    | 未开始 | 模型供应商、对象存储、审核、额度和任务可靠性 |
+| 阶段 D：运营与上线      | 未开始 | 完整管理后台、审计、监控、备份和部署         |
 
 每个阶段的目标、验收条件和完成评估见 [开发阶段计划](docs/development-plan.md)。
 
@@ -43,17 +43,56 @@
 └── prototype/               # 阶段 1 高保真静态原型
 ```
 
-完整目录职责和内部结构见 [项目目录规划](docs/project-structure.md)。正式工程目录目前只是结构基线；进入阶段 A2 后才会加入框架代码和统一启动命令。
+完整目录职责和内部结构见 [项目目录规划](docs/project-structure.md)。正式工程已具备可运行骨架，业务页面将在阶段 B 实现。
 
-## 当前可运行内容
+## 开发环境
 
-当前只有高保真原型可以运行：
+### 前置要求
+
+- Node.js 22.12 或更新的受支持 LTS 版本
+- pnpm 11.18.0
+- Docker Desktop 或 Docker Engine + Compose
+
+### 启动正式工程
+
+```bash
+cp .env.example .env
+pnpm install --frozen-lockfile
+pnpm infra:up
+pnpm db:generate
+pnpm dev
+```
+
+启动后访问：
+
+- 用户端：[http://localhost:3000](http://localhost:3000)
+- 管理端：[http://localhost:3001](http://localhost:3001)
+- API 健康检查：[http://localhost:4000/health](http://localhost:4000/health)
+
+停止本地依赖：
+
+```bash
+pnpm infra:down
+```
+
+### 运行项目检查
+
+```bash
+pnpm format:check
+pnpm check
+```
+
+`pnpm check` 会依次执行 lint、TypeScript 类型检查、单元测试和生产构建。
+
+### 运行高保真原型
+
+原型继续独立保留，用于阶段 B 的视觉和交互验收：
 
 ```bash
 python3 -m http.server 8080 -d prototype
 ```
 
-浏览器访问 [http://localhost:8080](http://localhost:8080)。正式用户端、管理端、API 和 Worker 将在阶段 A2 开始提供启动命令。
+浏览器访问 [http://localhost:8080](http://localhost:8080)。
 
 ## 文档入口
 
