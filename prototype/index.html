@@ -360,8 +360,10 @@
     .field-btn.active { border-color: var(--text); background: var(--surface-strong); }
     .submit-btn { margin-left: auto; flex: 0 0 40px; width: 40px; height: 40px; border: 0; border-radius: 50%; background: var(--text); color: white; display: grid; place-items: center; cursor: pointer; }
     .submit-btn:disabled { background: var(--disabled-bg); color: var(--disabled-text); cursor: not-allowed; }
-    body.theme-dark .submit-btn:not(:disabled) { background: #f4f5f6; color: #17191c; box-shadow: 0 4px 14px rgba(0,0,0,.24); }
+    body.theme-dark .submit-btn:not(:disabled) { background: #0e9f89; color: #ffffff; box-shadow: 0 5px 16px rgba(14,159,137,.24); }
+    body.theme-dark .submit-btn:not(:disabled) svg { color: #ffffff; stroke: #ffffff; }
     body.theme-dark .submit-btn:disabled { background: #34383d; color: #92999f; box-shadow: none; }
+    body.theme-dark .submit-btn:disabled svg { color: #92999f; stroke: #92999f; }
     .cost-label { color: var(--muted); font-size: 12px; margin-left: auto; }
     .ref-strip { display: flex; gap: 8px; margin-bottom: 8px; }
     .ref-item { position: relative; width: 58px; height: 58px; }
