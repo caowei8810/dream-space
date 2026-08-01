@@ -55,6 +55,7 @@ python3 -m http.server 8080 -d prototype
 
 ## 文档入口
 
+- [项目目录规划](docs/project-structure.md)
 - [阶段 1 文档索引](docs/phase-1/README.md)
 - [产品需求](docs/phase-1/01-product-requirements.md)
 - [信息架构与用户流程](docs/phase-1/02-information-architecture-and-user-flows.md)
