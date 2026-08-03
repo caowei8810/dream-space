@@ -1,8 +1,58 @@
 generator client {
   provider = "prisma-client"
-  output   = "../generated/client"
+  output   = "../src/generated/client"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+enum InspirationCategory {
+  PORTRAIT
+  PHOTOGRAPHY
+  ANIME
+  ILLUSTRATION
+  DESIGN
+}
+
+enum InspirationStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum InspirationSourceType {
+  AI_PUBLIC_GALLERY
+  LICENSED
+  INTERNAL
+}
+
+model Inspiration {
+  id                String                @id @default(cuid())
+  slug              String                @unique
+  title             String
+  prompt            String                @db.Text
+  category          InspirationCategory
+  imagePath         String
+  thumbnailPath     String
+  width             Int
+  height            Int
+  modelName         String
+  ratio             String
+  resolutionLabel   String
+  authorDisplayName String
+  sourceType        InspirationSourceType
+  sourceName        String
+  sourceUrl         String?
+  licenseBasis      String
+  isAiGenerated     Boolean               @default(true)
+  likeCount         Int                   @default(0)
+  sortOrder         Int                   @default(0)
+  status            InspirationStatus     @default(DRAFT)
+  publishedAt       DateTime?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+
+  @@index([status, category, sortOrder])
+  @@index([status, publishedAt])
 }

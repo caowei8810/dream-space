@@ -6,3 +6,43 @@ export interface HealthResponse {
   status: "ok";
   timestamp: string;
 }
+
+export const inspirationCategories = [
+  { id: "portrait", labelZh: "人像", labelEn: "Portrait" },
+  { id: "photography", labelZh: "摄影", labelEn: "Photography" },
+  { id: "anime", labelZh: "动漫", labelEn: "Anime" },
+  { id: "illustration", labelZh: "插画", labelEn: "Illustration" },
+  { id: "design", labelZh: "设计", labelEn: "Design" },
+] as const;
+
+export type InspirationCategory = (typeof inspirationCategories)[number]["id"];
+
+export interface InspirationSummary {
+  id: string;
+  slug: string;
+  title: string;
+  promptSummary: string;
+  category: InspirationCategory;
+  imageUrl: string;
+  thumbnailUrl: string;
+  width: number;
+  height: number;
+  authorDisplayName: string;
+  likeCount: number;
+  modelName: string;
+  ratio: string;
+  resolutionLabel: string;
+  isAiGenerated: boolean;
+}
+
+export interface InspirationListResponse {
+  items: InspirationSummary[];
+  total: number;
+}
+
+export interface InspirationDetail extends InspirationSummary {
+  prompt: string;
+  sourceName: string;
+  sourceUrl: string | null;
+  publishedAt: string | null;
+}

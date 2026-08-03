@@ -11,6 +11,7 @@ async function bootstrap() {
     credentials: true,
     origin: [env.WEB_ORIGIN, env.ADMIN_ORIGIN],
   });
+  app.enableShutdownHooks();
 
   await app.listen(env.API_PORT);
   console.log(`Dream Space API listening on http://localhost:${env.API_PORT}`);
