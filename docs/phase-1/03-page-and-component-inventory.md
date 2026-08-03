@@ -6,7 +6,7 @@
 |---|---|---|
 | 品牌 | `BrandMark` | 造梦空间标识、返回灵感 |
 | 一级导航 | `PrimaryNav` | 灵感、生成、当前项 |
-| 账户区 | `AccountDock` | 剩余额度、通知、头像、菜单 |
+| 账户区 | `AccountDock` | 设置图标、登录/退出、语言、外观、账户菜单 |
 | 全局反馈 | `ToastRegion` | 成功、警告、错误、操作撤销 |
 | 确认弹窗 | `ConfirmDialog` | 标题、说明、取消、确认 |
 | 登录拦截 | `AuthGate` | 来源动作、草稿快照、恢复策略 |
@@ -17,9 +17,9 @@
 
 | 区域 | 组件 | 内容 |
 |---|---|---|
-| 顶部工具栏 | `InspirationToolbar` | 分类、搜索、搜索清除 |
+| 顶部工具栏 | `InspirationToolbar` | 分类、搜索、搜索历史、搜索清除、语言与主题入口 |
 | 图片区域 | `MasonryGrid` | 不同宽高比的作品卡片 |
-| 作品卡片 | `InspirationCard` | 图片、作者、点赞、做同款 |
+| 作品卡片 | `InspirationCard` | 图片、作者、提示词摘要、分类、做同款 |
 | 加载区域 | `MasonrySkeleton` | 与瀑布流列宽匹配的骨架 |
 | 空状态 | `EmptyInspiration` | 搜索词、清空搜索、返回推荐 |
 | 失败状态 | `LoadError` | 错误说明、重新加载 |
@@ -40,14 +40,14 @@
 
 | 区域 | 组件 | 内容/动作 |
 |---|---|---|
-| 大图舞台 | `ArtworkStage` | 原比例图片、加载、失败、AI 标识 |
+| 大图舞台 | `ArtworkStage` | 原比例图片、加载、失败、AI 标识；无复用动作时放大展示 |
 | 作品导航 | `ArtworkPager` | 上一个、下一个、键盘方向键 |
 | 关闭 | `DetailCloseButton` | 返回列表上下文 |
 | 作者区 | `AuthorSummary` | 头像、展示名 |
 | 互动区 | `ArtworkActions` | 点赞、下载、更多 |
 | 信息区 | `ArtworkMetadata` | 描述、日期、提示词、模型、比例、清晰度 |
-| 主操作 | `ReuseActions` | 做同款、用作参考图 |
-| 快捷输入器 | `DetailComposer` | 参考图、提示词、参数、提交 |
+| 主操作 | `ReuseActions` | 做同款、用作参考图；点击后在当前详情页展开输入器 |
+| 快捷输入器 | `DetailComposer` | 默认隐藏；展开后带入提示词、图片和参数，参考图可删除，发送后进入生成页 |
 
 ## 4. 生成页
 
@@ -55,10 +55,10 @@
 
 | 组件 | 内容/动作 |
 |---|---|
-| `NewSessionButton` | 新建空白会话 |
+| `NewSessionButton` | 进入空白创作态，不立即创建会话 |
 | `SessionSearch` | 按会话标题搜索 |
 | `SessionGroup` | 今天、昨天、更早 |
-| `SessionItem` | 标题、选中、重命名、删除 |
+| `SessionItem` | 标题、生成缩略图、选中、重命名、删除 |
 | `SidebarCollapse` | 收起或展开二级侧栏 |
 
 ### 4.2 任务时间线
@@ -70,6 +70,7 @@
 | `TaskStatus` | 排队、生成中、成功、部分成功、失败、取消 |
 | `GenerationGrid` | 1/2/4 张结果图 |
 | `ResultToolbar` | 下载、再次生成、修改提示词、更多 |
+| `ResultPreview` | 单图放大预览、关闭、下载 |
 | `TaskError` | 用户可理解的错误、重试、反馈 |
 | `ScrollToBottom` | 回到底部及未读任务数量 |
 
@@ -85,8 +86,13 @@
 | `RatioSelect` | 智能、21:9、16:9、3:2、4:3、1:1、3:4、2:3、9:16 |
 | `ResolutionSelect` | 2K、4K，联动画面宽高预览 |
 | `CountSelect` | 1-8 |
-| `CostPreview` | 预计额度消耗 |
+| `CostPreview` | 预计额度消耗、账户菜单额度余额与百分比色条 |
 | `SubmitButton` | 禁用、提交、提交中 |
+
+### 4.4 空白创作态
+
+- `EmptyCreationState`：新对话或无历史时的高端引导区域。
+- `PromptSuggestionCard`：可点击的提示词灵感建议，点击后填入输入器，不直接提交。
 
 ## 5. 登录页
 
@@ -107,8 +113,10 @@
 - 额度不足。
 - 下载失败与重新获取。
 - 用户菜单。
+- 账户额度面板（余额、总量、百分比、色条和低余额提示）。
 - 参数选择菜单。
 - 登录协议详情。
+- 搜索历史菜单。
 
 ## 7. 字段命名约束
 
