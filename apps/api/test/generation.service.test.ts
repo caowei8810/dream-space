@@ -100,6 +100,30 @@ describe("GenerationService", () => {
     expect(repository.setQueueJobId).toHaveBeenCalledWith(task.id, task.id);
   });
 
+  it("returns API-driven generation options and validates mock reference uploads", () => {
+    const { service } = createService();
+
+    expect(service.getOptions()).toMatchObject({
+      externalServicesMode: "mock",
+      imageCount: { min: 1, max: 8 },
+      costPerImage: { "2K": 1, "4K": 2 },
+    });
+    expect(
+      service.createMockReference({
+        filename: "reference.webp",
+        mimeType: "image/webp",
+        byteSize: 1024,
+      }),
+    ).toMatchObject({ url: "/inspiration/design-01.webp", filename: "reference.webp" });
+    expect(() =>
+      service.createMockReference({
+        filename: "reference.gif",
+        mimeType: "image/gif",
+        byteSize: 1024,
+      }),
+    ).toThrow(BadRequestException);
+  });
+
   it("does not enqueue an already persisted idempotent request twice", async () => {
     const { queue, repository, service } = createService();
     vi.mocked(repository.createTask).mockResolvedValue({
