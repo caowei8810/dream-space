@@ -2,8 +2,7 @@ import type { LoginRequest, SendCodeRequest } from "@dream-space/contracts";
 import { parseApiEnv } from "@dream-space/config";
 import { Body, Controller, Get, Headers, HttpCode, Inject, Post, Res } from "@nestjs/common";
 import { AuthService } from "./auth.service";
-
-const sessionCookie = "dreamspace_session";
+import { readSessionToken, sessionCookieName } from "./session-cookie";
 
 interface CookieOptions {
   httpOnly: boolean;
@@ -16,19 +15,6 @@ interface CookieOptions {
 interface CookieResponse {
   cookie(name: string, value: string, options: CookieOptions): void;
   clearCookie(name: string, options: Omit<CookieOptions, "maxAge">): void;
-}
-
-function readCookie(header: string | undefined, name: string) {
-  const pair = header
-    ?.split(";")
-    .map((value) => value.trim())
-    .find((value) => value.startsWith(`${name}=`));
-  if (!pair) return null;
-  try {
-    return decodeURIComponent(pair.slice(name.length + 1));
-  } catch {
-    return null;
-  }
 }
 
 @Controller("auth")
@@ -46,7 +32,7 @@ export class AuthController {
   @HttpCode(200)
   async login(@Body() input: LoginRequest, @Res({ passthrough: true }) response: CookieResponse) {
     const result = await this.service.login(input);
-    response.cookie(sessionCookie, result.token, {
+    response.cookie(sessionCookieName, result.token, {
       httpOnly: true,
       maxAge: result.expiresAt.getTime() - Date.now(),
       path: "/",
@@ -58,7 +44,7 @@ export class AuthController {
 
   @Get("session")
   getSession(@Headers("cookie") cookieHeader: string | undefined) {
-    return this.service.getSession(readCookie(cookieHeader, sessionCookie));
+    return this.service.getSession(readSessionToken(cookieHeader));
   }
 
   @Post("logout")
@@ -67,8 +53,8 @@ export class AuthController {
     @Headers("cookie") cookieHeader: string | undefined,
     @Res({ passthrough: true }) response: CookieResponse,
   ) {
-    await this.service.logout(readCookie(cookieHeader, sessionCookie));
-    response.clearCookie(sessionCookie, {
+    await this.service.logout(readSessionToken(cookieHeader));
+    response.clearCookie(sessionCookieName, {
       httpOnly: true,
       path: "/",
       sameSite: "lax",

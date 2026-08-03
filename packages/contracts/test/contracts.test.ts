@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { authAgreementVersion, inspirationCategories, serviceNames } from "../src";
+import {
+  authAgreementVersion,
+  generationQueueName,
+  generationRatios,
+  generationTaskStatuses,
+  inspirationCategories,
+  serviceNames,
+} from "../src";
 
 describe("service contracts", () => {
   it("lists every runnable service", () => {
@@ -18,5 +25,18 @@ describe("service contracts", () => {
 
   it("publishes a fixed agreement version for auditable login consent", () => {
     expect(authAgreementVersion).toBe("2026-08-03");
+  });
+
+  it("publishes one generation queue and the complete task state contract", () => {
+    expect(generationQueueName).toBe("image-generation");
+    expect(generationTaskStatuses).toEqual([
+      "queued",
+      "generating",
+      "succeeded",
+      "partially_succeeded",
+      "failed",
+      "cancelled",
+    ]);
+    expect(generationRatios).toHaveLength(9);
   });
 });
