@@ -1092,6 +1092,7 @@ button:disabled {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  transition: padding-right 140ms ease;
 }
 .session-row.active .session-item {
   font-weight: 550;
@@ -1121,12 +1122,16 @@ button:disabled {
   top: 50%;
   right: 4px;
   z-index: 2;
-  transform: translateY(-50%);
+  transform: translate(4px, -50%);
   opacity: 0;
   pointer-events: none;
+  transition:
+    opacity 120ms ease,
+    transform 140ms ease;
 }
 .session-row:hover .session-row-actions,
 .session-row-actions:focus-within {
+  transform: translate(0, -50%);
   opacity: 1;
   pointer-events: auto;
 }
