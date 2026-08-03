@@ -3,6 +3,34 @@ import { describe, expect, it, vi } from "vitest";
 import { GenerationRepository } from "../src/modules/generation/generation.repository";
 
 describe("GenerationRepository idempotency", () => {
+  it("retries quota initialization after a concurrent unique-key race", async () => {
+    const now = new Date("2026-08-03T00:00:00.000Z");
+    const quota = {
+      userId: "user-1",
+      total: 100,
+      available: 100,
+      reserved: 0,
+      createdAt: now,
+      updatedAt: now,
+    };
+    const transaction = {
+      quotaAccount: { upsert: vi.fn().mockResolvedValue(quota) },
+      quotaLedgerEntry: { upsert: vi.fn().mockResolvedValue({}) },
+    };
+    const database = {
+      $transaction: vi
+        .fn()
+        .mockRejectedValueOnce({ code: "P2002" })
+        .mockImplementationOnce(async (callback: (client: typeof transaction) => unknown) =>
+          callback(transaction),
+        ),
+    } as unknown as DatabaseClient;
+    const repository = new GenerationRepository(database);
+
+    await expect(repository.getQuota("user-1")).resolves.toEqual(quota);
+    expect(database.$transaction).toHaveBeenCalledTimes(2);
+  });
+
   it("returns the committed task when a concurrent insert loses the unique-key race", async () => {
     const now = new Date("2026-08-03T00:00:00.000Z");
     const quota = {

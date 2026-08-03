@@ -1,4 +1,4 @@
-import type { CreateGenerationTaskRequest } from "@dream-space/contracts";
+import type { CreateGenerationTaskRequest, GenerationSessionDraft } from "@dream-space/contracts";
 import {
   encodeGenerationRatio,
   encodeGenerationResolution,
@@ -112,7 +112,10 @@ function isUniqueConstraintError(error: unknown): error is { code: "P2002" } {
 export class GenerationRepository {
   constructor(@Inject(DATABASE_CLIENT) private readonly database: DatabaseClient) {}
 
-  async createTask(input: CreateTaskInput): Promise<CreateTaskResult> {
+  async createTask(
+    input: CreateTaskInput,
+    retryInitializationRace = true,
+  ): Promise<CreateTaskResult> {
     try {
       return await this.database.$transaction(async (transaction) => {
         const replay = await transaction.generationTask.findUnique({
@@ -205,7 +208,10 @@ export class GenerationRepository {
         },
         include: taskInclude,
       });
-      if (!task) throw error;
+      if (!task) {
+        if (retryInitializationRace) return this.createTask(input, false);
+        throw error;
+      }
       if (!this.isSameRequest(task, input)) return { idempotencyConflict: true } as const;
       const [session, quota] = await Promise.all([
         this.database.generationSession.findUniqueOrThrow({ where: { id: task.sessionId } }),
@@ -291,6 +297,18 @@ export class GenerationRepository {
     return changed.count === 1 ? this.findSession(userId, sessionId) : null;
   }
 
+  async updateSessionDraft(
+    userId: string,
+    sessionId: string,
+    draft: GenerationSessionDraft,
+  ): Promise<SessionDetailRecord | null> {
+    const changed = await this.database.generationSession.updateMany({
+      where: { id: sessionId, userId },
+      data: { draft: draft as unknown as Prisma.InputJsonValue },
+    });
+    return changed.count === 1 ? this.findSession(userId, sessionId) : null;
+  }
+
   async deleteSession(
     userId: string,
     sessionId: string,
@@ -363,7 +381,14 @@ export class GenerationRepository {
   }
 
   async getQuota(userId: string): Promise<QuotaRecord> {
-    return this.database.$transaction((transaction) => this.ensureQuota(transaction, userId));
+    try {
+      return await this.database.$transaction((transaction) =>
+        this.ensureQuota(transaction, userId),
+      );
+    } catch (error) {
+      if (!isUniqueConstraintError(error)) throw error;
+      return this.database.$transaction((transaction) => this.ensureQuota(transaction, userId));
+    }
   }
 
   listEvents(taskId: string, afterId: bigint): Promise<TaskEventRecord[]> {

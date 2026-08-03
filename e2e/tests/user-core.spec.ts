@@ -4,6 +4,19 @@ import { expectHealthyDocument, loginUser, watchRuntimeErrors, webUrl } from "./
 test.describe.serial("用户端核心闭环", () => {
   test("登录后首次提交生成，并可重命名和删除会话", async ({ page }) => {
     const runtimeErrors = watchRuntimeErrors(page);
+    let eventRequestCount = 0;
+    await page.route("**/generation/tasks/*/events", async (route) => {
+      eventRequestCount += 1;
+      if (eventRequestCount === 1) {
+        await route.fulfill({
+          status: 200,
+          contentType: "text/event-stream",
+          body: "retry: 50\n\n",
+        });
+        return;
+      }
+      await route.continue();
+    });
     const phone = `136${String(Date.now()).slice(-8)}`;
     const prompt = `E2E 雨后玻璃花房 ${Date.now()}`;
     const renamed = `E2E 会话 ${String(Date.now()).slice(-6)}`;
@@ -18,6 +31,7 @@ test.describe.serial("用户端核心闭环", () => {
     await expect(page).toHaveURL(/\/generate\/[^/?]+$/);
     await expect(page.getByText(/模拟生成完成/)).toBeVisible({ timeout: 25_000 });
     await expect(page.getByRole("img", { name: "生成结果" })).toHaveCount(2);
+    expect(eventRequestCount).toBeGreaterThanOrEqual(2);
 
     const sessionRow = page.locator(".session-row.active");
     await expect(sessionRow).toHaveCount(1);
@@ -40,6 +54,45 @@ test.describe.serial("用户端核心闭环", () => {
     expect(runtimeErrors).toEqual([]);
   });
 
+  test("会话草稿在切换和刷新后独立恢复", async ({ page }) => {
+    const runtimeErrors = watchRuntimeErrors(page);
+    const suffix = String(Date.now()).slice(-6);
+    const phone = `137${String(Date.now()).slice(-8)}`;
+    const firstPrompt = `draft-alpha-${suffix}`;
+    const secondPrompt = `draft-beta-${suffix}`;
+    const savedDraft = `未提交的独立会话草稿 ${suffix}`;
+
+    await page.goto(`${webUrl}/generate`);
+    await loginUser(page, phone);
+    const composer = page.getByPlaceholder("输入你想生成的画面，或上传参考图", { exact: true });
+    await composer.fill(firstPrompt);
+    await page.getByRole("button", { name: "提交生成", exact: true }).click();
+    await expect(page.getByText(/模拟生成完成/)).toBeVisible({ timeout: 25_000 });
+    const firstSessionUrl = page.url();
+
+    await composer.fill(savedDraft);
+    await page.getByRole("button", { name: "新对话", exact: true }).click();
+    await expect(page).toHaveURL(/\/generate$/);
+    await expect(composer).toHaveValue("");
+
+    await composer.fill(secondPrompt);
+    await page.getByRole("button", { name: "提交生成", exact: true }).click();
+    await expect(page.getByText(/模拟生成完成/)).toBeVisible({ timeout: 25_000 });
+
+    const sessionList = page.locator(".session-list");
+    await sessionList.getByRole("button", { name: firstPrompt, exact: true }).click();
+    await expect(page).toHaveURL(firstSessionUrl);
+    await expect(composer).toHaveValue(savedDraft);
+
+    await page.reload();
+    await expect(composer).toHaveValue(savedDraft);
+    await sessionList.getByRole("button", { name: secondPrompt, exact: true }).click();
+    await expect(composer).toHaveValue("");
+
+    await expectHealthyDocument(page);
+    expect(runtimeErrors).toEqual([]);
+  });
+
   test("语言、深色主题和移动布局可持久化", async ({ page }) => {
     const runtimeErrors = watchRuntimeErrors(page);
     await page.goto(`${webUrl}/inspiration`);
@@ -55,8 +108,22 @@ test.describe.serial("用户端核心闭环", () => {
 
     await page.getByRole("button", { name: "Settings", exact: true }).click();
     await page.getByRole("button", { name: /Appearance/ }).click();
+    await page.getByRole("button", { name: "Light", exact: true }).click();
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+    await page.getByRole("button", { name: "System", exact: true }).click();
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "system");
     await page.getByRole("button", { name: "Dark", exact: true }).click();
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+
+    await page.locator(".language-trigger").click();
+    await page.getByRole("menu").getByRole("button", { name: /中文/ }).click();
+    await expect(page.locator("html")).toHaveAttribute("lang", "zh-CN");
+    await page.locator(".language-trigger").click();
+    await page
+      .getByRole("menu")
+      .getByRole("button", { name: /English/ })
+      .click();
+    await expectHealthyDocument(page);
 
     await page.reload();
     await expect(page.locator("html")).toHaveAttribute("lang", "en");

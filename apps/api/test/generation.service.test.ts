@@ -68,6 +68,7 @@ function createService() {
     listSessions: vi.fn().mockResolvedValue([]),
     findSession: vi.fn().mockResolvedValue(null),
     renameSession: vi.fn().mockResolvedValue(null),
+    updateSessionDraft: vi.fn().mockResolvedValue(null),
     deleteSession: vi.fn().mockResolvedValue("missing"),
     findTask: vi.fn().mockResolvedValue(task),
     cancelTask: vi.fn().mockResolvedValue(task),
@@ -182,6 +183,29 @@ describe("GenerationService", () => {
         available: 1,
       }),
     });
+  });
+
+  it("validates and persists a user-owned session draft", async () => {
+    const { repository, service } = createService();
+    const draft = {
+      prompt: "尚未提交的会话草稿",
+      model: "image-4.7",
+      ratio: "1:1" as const,
+      resolution: "2K" as const,
+      imageCount: 2,
+      referenceImageUrls: ["/inspiration/design-01.webp"],
+    };
+    vi.mocked(repository.updateSessionDraft).mockResolvedValue({ ...session, draft, tasks: [] });
+    vi.mocked(repository.findSession).mockResolvedValue({ ...session, draft, tasks: [] });
+
+    await expect(service.updateSessionDraft("user-1", session.id, draft)).resolves.toMatchObject({
+      id: session.id,
+      draft,
+    });
+    expect(repository.updateSessionDraft).toHaveBeenCalledWith("user-1", session.id, draft);
+    await expect(
+      service.updateSessionDraft("user-1", session.id, { ...draft, imageCount: 9 }),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it("replays only events newer than Last-Event-ID and completes on terminal state", async () => {

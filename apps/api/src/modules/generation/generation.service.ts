@@ -8,12 +8,14 @@ import {
   type CreateGenerationTaskResponse,
   type GenerationEventType,
   type GenerationOptionsResponse,
+  type GenerationSessionDraft,
   type GenerationSessionDetail,
   type GenerationSessionSummary,
   type GenerationTaskEventData,
   type GenerationTaskResponse,
   type GenerationTaskStatus,
   type QuotaResponse,
+  type UpdateGenerationSessionDraftRequest,
 } from "@dream-space/contracts";
 import { parseApiEnv } from "@dream-space/config";
 import {
@@ -171,6 +173,7 @@ export class GenerationService {
     if (!session) throw new NotFoundException("生成会话不存在");
     return {
       ...this.mapSessionSummary(session),
+      draft: this.parseStoredDraft(session.draft),
       tasks: session.tasks.map((task) => this.mapTask(task)),
     };
   }
@@ -179,6 +182,17 @@ export class GenerationService {
     const title = typeof rawTitle === "string" ? rawTitle.replace(/\s+/g, " ").trim() : "";
     if (!title || title.length > 80) throw new BadRequestException("会话名称长度应为 1-80 个字符");
     const session = await this.repository.renameSession(userId, sessionId, title);
+    if (!session) throw new NotFoundException("生成会话不存在");
+    return this.getSession(userId, sessionId);
+  }
+
+  async updateSessionDraft(
+    userId: string,
+    sessionId: string,
+    rawDraft: UpdateGenerationSessionDraftRequest,
+  ) {
+    const draft = this.validateSessionDraft(rawDraft);
+    const session = await this.repository.updateSessionDraft(userId, sessionId, draft);
     if (!session) throw new NotFoundException("生成会话不存在");
     return this.getSession(userId, sessionId);
   }
@@ -298,6 +312,48 @@ export class GenerationService {
       imageCount: input.imageCount,
       referenceImageUrls: [...input.referenceImageUrls],
     };
+  }
+
+  private validateSessionDraft(input: UpdateGenerationSessionDraftRequest): GenerationSessionDraft {
+    if (!input || typeof input !== "object") throw new BadRequestException("会话草稿不完整");
+    const prompt = typeof input.prompt === "string" ? input.prompt : "";
+    const model = typeof input.model === "string" ? input.model.trim() : "";
+    if (prompt.length > 4000) throw new BadRequestException("提示词长度应为 0-4000 个字符");
+    if (!this.getOptions().models.some((item) => item.id === model)) {
+      throw new BadRequestException("模型参数不正确");
+    }
+    if (!generationRatios.includes(input.ratio)) throw new BadRequestException("画面比例不正确");
+    if (!generationResolutions.includes(input.resolution)) {
+      throw new BadRequestException("清晰度参数不正确");
+    }
+    if (!Number.isInteger(input.imageCount) || input.imageCount < 1 || input.imageCount > 8) {
+      throw new BadRequestException("生成张数应为 1-8");
+    }
+    if (
+      !Array.isArray(input.referenceImageUrls) ||
+      input.referenceImageUrls.length > 4 ||
+      input.referenceImageUrls.some(
+        (url) => typeof url !== "string" || url.length > 2048 || !allowedReferenceUrl.test(url),
+      )
+    ) {
+      throw new BadRequestException("参考图应为最多 4 个站内或 HTTPS 地址");
+    }
+    return {
+      prompt,
+      model,
+      ratio: input.ratio,
+      resolution: input.resolution,
+      imageCount: input.imageCount,
+      referenceImageUrls: [...input.referenceImageUrls],
+    };
+  }
+
+  private parseStoredDraft(value: unknown): GenerationSessionDraft | null {
+    try {
+      return this.validateSessionDraft(value as UpdateGenerationSessionDraftRequest);
+    } catch {
+      return null;
+    }
   }
 
   private mapSessionSummary(session: {

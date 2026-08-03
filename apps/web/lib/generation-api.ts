@@ -4,6 +4,7 @@ import type {
   CreateMockReferenceRequest,
   CreateMockReferenceResponse,
   GenerationOptionsResponse,
+  GenerationSessionDraft,
   GenerationSessionDetail,
   GenerationSessionListResponse,
   GenerationTaskResponse,
@@ -35,6 +36,11 @@ export const generationApi = {
     request<GenerationSessionDetail>(`/generation/sessions/${sessionId}`, {
       method: "PATCH",
       body: JSON.stringify({ title }),
+    }),
+  updateSessionDraft: (sessionId: string, draft: GenerationSessionDraft) =>
+    request<GenerationSessionDetail>(`/generation/sessions/${sessionId}/draft`, {
+      method: "PATCH",
+      body: JSON.stringify(draft),
     }),
   deleteSession: (sessionId: string) =>
     request<void>(`/generation/sessions/${sessionId}`, { method: "DELETE" }),
