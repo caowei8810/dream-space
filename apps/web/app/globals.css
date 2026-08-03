@@ -1044,12 +1044,19 @@ button:disabled {
 }
 .session-list {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  width: 100%;
+  min-width: 0;
   gap: 3px;
 }
 .session-row {
   position: relative;
   display: flex;
   align-items: center;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
   gap: 3px;
   border-radius: var(--radius);
 }
@@ -1091,7 +1098,6 @@ button:disabled {
 }
 .session-row-actions,
 .session-inline-actions {
-  position: relative;
   display: flex;
   align-items: center;
   flex: 0 0 auto;
@@ -1109,18 +1115,24 @@ button:disabled {
   color: var(--muted);
   background: transparent;
   cursor: pointer;
-  cursor: pointer;
 }
 .session-row-actions {
-  margin-right: 4px;
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  z-index: 2;
+  transform: translateY(-50%);
   opacity: 0;
   pointer-events: none;
 }
 .session-row:hover .session-row-actions,
-.session-row.active .session-row-actions,
-.session-row:focus-within .session-row-actions {
+.session-row-actions:focus-within {
   opacity: 1;
   pointer-events: auto;
+}
+.session-row:hover .session-item,
+.session-row:has(.session-row-actions:focus-within) .session-item {
+  padding-right: 70px;
 }
 .session-row-action svg,
 .session-inline-action svg {
