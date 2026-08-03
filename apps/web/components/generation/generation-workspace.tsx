@@ -19,7 +19,6 @@ import {
   Download,
   Image as ImageIcon,
   LoaderCircle,
-  MoreHorizontal,
   PanelLeftClose,
   Pencil,
   Plus,
@@ -134,7 +133,6 @@ export function GenerationWorkspace({ initialSessionId }: { initialSessionId?: s
   const [renameId, setRenameId] = useState<string | null>(null);
   const [renameTitle, setRenameTitle] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<GenerationSessionSummary | null>(null);
-  const [menuSessionId, setMenuSessionId] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
@@ -143,7 +141,6 @@ export function GenerationWorkspace({ initialSessionId }: { initialSessionId?: s
       ? {
           create: "开启创作",
           newSession: "新对话",
-          sessionActions: "会话操作",
           searchAction: "搜索",
           emptyTitle: "让脑海里的画面，成为看得见的作品。",
           emptyCopy: "描述画面、选择参数并发送。会话只会在第一次提交时创建。",
@@ -175,7 +172,6 @@ export function GenerationWorkspace({ initialSessionId }: { initialSessionId?: s
       : {
           create: "Create",
           newSession: "New conversation",
-          sessionActions: "Conversation actions",
           searchAction: "Search",
           emptyTitle: "Make the images in your mind visible.",
           emptyCopy:
@@ -330,7 +326,6 @@ export function GenerationWorkspace({ initialSessionId }: { initialSessionId?: s
       setParameterOpen(false);
       setSearchExpanded(false);
       setSearch("");
-      setMenuSessionId(null);
     };
     window.addEventListener("keydown", close);
     return () => window.removeEventListener("keydown", close);
@@ -347,16 +342,6 @@ export function GenerationWorkspace({ initialSessionId }: { initialSessionId?: s
     document.addEventListener("mousedown", collapse);
     return () => document.removeEventListener("mousedown", collapse);
   }, [searchExpanded]);
-
-  useEffect(() => {
-    if (!menuSessionId) return;
-    const close = (event: MouseEvent) => {
-      const target = event.target as Element | null;
-      if (!target?.closest(".session-actions")) setMenuSessionId(null);
-    };
-    document.addEventListener("mousedown", close);
-    return () => document.removeEventListener("mousedown", close);
-  }, [menuSessionId]);
 
   const estimatedCost = draft.imageCount * (draft.resolution === "4K" ? 2 : 1);
   const size = dimensions(draft.ratio, draft.resolution);
@@ -441,7 +426,6 @@ export function GenerationWorkspace({ initialSessionId }: { initialSessionId?: s
     try {
       await generationApi.renameSession(renameId, renameTitle.trim());
       setRenameId(null);
-      setMenuSessionId(null);
       await loadSessions();
       if (detail?.id === renameId) await loadDetail(renameId);
     } catch (requestError) {
@@ -454,7 +438,6 @@ export function GenerationWorkspace({ initialSessionId }: { initialSessionId?: s
     try {
       await generationApi.deleteSession(deleteTarget.id);
       setDeleteTarget(null);
-      setMenuSessionId(null);
       const next = await loadSessions();
       if (detail?.id === deleteTarget.id) {
         setDetail(null);
@@ -528,7 +511,6 @@ export function GenerationWorkspace({ initialSessionId }: { initialSessionId?: s
             setTimeFilter("all");
             setModelFilter("all");
             setStatusFilter("all");
-            setMenuSessionId(null);
             router.push("/generate");
           }}
         >
@@ -554,7 +536,6 @@ export function GenerationWorkspace({ initialSessionId }: { initialSessionId?: s
                     if (event.key === "Enter") void saveRename();
                     if (event.key === "Escape") {
                       setRenameId(null);
-                      setMenuSessionId(null);
                     }
                   }}
                 />
@@ -563,8 +544,11 @@ export function GenerationWorkspace({ initialSessionId }: { initialSessionId?: s
                   className="session-item"
                   type="button"
                   onClick={() => {
-                    setMenuSessionId(null);
                     router.push(`/generate/${item.id}`);
+                  }}
+                  onDoubleClick={() => {
+                    setRenameId(item.id);
+                    setRenameTitle(item.title);
                   }}
                 >
                   {item.title}
@@ -590,45 +574,28 @@ export function GenerationWorkspace({ initialSessionId }: { initialSessionId?: s
                   </button>
                 </div>
               ) : (
-                <div className="session-actions">
+                <div className="session-row-actions">
                   <button
-                    className="session-menu-trigger"
+                    className="session-row-action"
                     type="button"
-                    aria-label={text.sessionActions}
-                    aria-expanded={menuSessionId === item.id}
-                    onClick={() =>
-                      setMenuSessionId((current) => (current === item.id ? null : item.id))
-                    }
+                    aria-label={text.rename}
+                    title={text.rename}
+                    onClick={() => {
+                      setRenameId(item.id);
+                      setRenameTitle(item.title);
+                    }}
                   >
-                    <MoreHorizontal aria-hidden="true" />
+                    <Pencil aria-hidden="true" />
                   </button>
-                  {menuSessionId === item.id ? (
-                    <div className="session-menu" role="menu">
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => {
-                          setRenameId(item.id);
-                          setRenameTitle(item.title);
-                          setMenuSessionId(null);
-                        }}
-                      >
-                        <Pencil aria-hidden="true" />
-                        {text.rename}
-                      </button>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => {
-                          setDeleteTarget(item);
-                          setMenuSessionId(null);
-                        }}
-                      >
-                        <Trash2 aria-hidden="true" />
-                        {text.remove}
-                      </button>
-                    </div>
-                  ) : null}
+                  <button
+                    className="session-row-action danger"
+                    type="button"
+                    aria-label={text.remove}
+                    title={text.remove}
+                    onClick={() => setDeleteTarget(item)}
+                  >
+                    <Trash2 aria-hidden="true" />
+                  </button>
                 </div>
               )}
             </div>
@@ -813,8 +780,8 @@ export function GenerationWorkspace({ initialSessionId }: { initialSessionId?: s
                       <div className="status-line">
                         <CircleCheck aria-hidden="true" />
                         {language === "zh"
-                          ? `生成完成 · 消耗 ${task.totalCost} 点额度`
-                          : `Completed · ${task.totalCost} credits used`}
+                          ? `${options?.externalServicesMode === "mock" ? "模拟生成完成" : "生成完成"} · 消耗 ${task.totalCost} 点额度`
+                          : `${options?.externalServicesMode === "mock" ? "Mock completed" : "Completed"} · ${task.totalCost} credits used`}
                       </div>
                       <div
                         className="result-grid"
@@ -822,6 +789,7 @@ export function GenerationWorkspace({ initialSessionId }: { initialSessionId?: s
                           {
                             "--result-ratio":
                               task.ratio === "smart" ? "1 / 1" : task.ratio.replace(":", " / "),
+                            "--result-columns": Math.min(task.results.length, 4),
                           } as React.CSSProperties
                         }
                       >
