@@ -96,6 +96,31 @@ export interface LoginRequest extends AgreementConsents {
   code: string;
 }
 
+export const adminDemoPhone = "18800000000" as const;
+
+export const adminRoles = ["viewer", "operator", "admin"] as const;
+export type AdminRole = (typeof adminRoles)[number];
+
+export const adminPermissions = ["tasks:read", "inspirations:read", "inspirations:write"] as const;
+export type AdminPermission = (typeof adminPermissions)[number];
+
+export interface AdminUser {
+  id: string;
+  displayName: string;
+  phoneMasked: string;
+  role: AdminRole;
+  permissions: AdminPermission[];
+}
+
+export type AdminSessionResponse =
+  { authenticated: false } | { authenticated: true; user: AdminUser };
+
+export interface AdminLoginRequest {
+  phone: string;
+  challengeId: string;
+  code: string;
+}
+
 export const generationQueueName = "image-generation" as const;
 
 export const generationTaskStatuses = [
@@ -251,4 +276,37 @@ export interface GenerationTaskEventData {
 
 export interface GenerationQueueJob {
   taskId: string;
+}
+
+export interface AdminGenerationTaskSummary {
+  id: string;
+  sessionId: string;
+  sessionTitle: string;
+  userPhoneMasked: string;
+  status: GenerationTaskStatus;
+  prompt: string;
+  model: string;
+  ratio: GenerationRatio;
+  resolution: GenerationResolution;
+  imageCount: number;
+  resultCount: number;
+  totalCost: number;
+  createdAt: string;
+  startedAt: string | null;
+  completedAt: string | null;
+}
+
+export interface AdminGenerationTaskDetail extends AdminGenerationTaskSummary {
+  referenceImageUrls: string[];
+  errorCode: string | null;
+  errorMessage: string | null;
+  results: GenerationResultResponse[];
+}
+
+export interface AdminGenerationTaskListResponse {
+  items: AdminGenerationTaskSummary[];
+  total: number;
+  page: number;
+  pageSize: number;
+  pageCount: number;
 }
