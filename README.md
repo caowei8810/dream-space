@@ -9,7 +9,7 @@
 | 阶段 0：产品与原型      | 已完成 | 产品需求、交互规范、高保真用户端原型         |
 | 阶段 A1：目录与文档基线 | 已完成 | 正式工程目录、模块 README、开发计划          |
 | 阶段 A2：可运行工程骨架 | 已完成 | 四个应用、本机依赖、完整检查和 PR CI 均通过  |
-| 阶段 B：用户端 MVP      | 未开始 | 灵感、登录、会话、模拟生成、结果下载         |
+| 阶段 B：用户端 MVP      | 进行中 | B1 灵感目录已完成，B2 登录与安全会话开发中   |
 | 阶段 C：真实生成能力    | 未开始 | 模型供应商、对象存储、审核、额度和任务可靠性 |
 | 阶段 D：运营与上线      | 未开始 | 完整管理后台、审计、监控、备份和部署         |
 
@@ -43,7 +43,7 @@
 └── prototype/               # 阶段 1 高保真静态原型
 ```
 
-完整目录职责和内部结构见 [项目目录规划](docs/project-structure.md)。正式工程已具备可运行骨架，业务页面将在阶段 B 实现。
+完整目录职责和内部结构见 [项目目录规划](docs/project-structure.md)。正式工程已提供公开灵感目录、作品详情以及开发中的演示登录流程。
 
 ## 开发环境
 
@@ -69,6 +69,8 @@ cp .env.example .env
 pnpm install --frozen-lockfile
 pnpm local:infra:up
 pnpm db:generate
+pnpm --filter @dream-space/db exec prisma migrate deploy
+pnpm db:seed
 pnpm dev
 ```
 
@@ -111,6 +113,12 @@ pnpm check
 ```
 
 `pnpm check` 会依次执行 lint、TypeScript 类型检查、单元测试和生产构建。
+
+服务启动后可单独验证本机认证闭环：
+
+```bash
+pnpm auth:smoke
+```
 
 ### 运行高保真原型
 

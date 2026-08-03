@@ -46,3 +46,52 @@ export interface InspirationDetail extends InspirationSummary {
   sourceUrl: string | null;
   publishedAt: string | null;
 }
+
+export const authAgreementVersion = "2026-08-03" as const;
+
+export interface AuthUser {
+  id: string;
+  phoneMasked: string;
+  createdAt: string;
+}
+
+export type AuthSessionResponse =
+  { authenticated: false } | { authenticated: true; user: AuthUser };
+
+export interface AuthIntent {
+  returnTo: string;
+  draft: AuthDraft | null;
+  action: "resume" | "generate" | "download" | "like";
+}
+
+export interface AuthDraft {
+  prompt: string;
+  model: string;
+  ratio: string;
+  resolution: string;
+  referenceImageUrl: string | null;
+}
+
+export interface SendCodeResponse {
+  challengeId: string;
+  expiresAt: string;
+  retryAfterSeconds: number;
+  demoCode: "123456";
+}
+
+export interface SendCodeRequest {
+  phone: string;
+}
+
+export interface AgreementConsents {
+  version: typeof authAgreementVersion;
+  termsAccepted: boolean;
+  privacyAccepted: boolean;
+  aiTermsAccepted: boolean;
+}
+
+export interface LoginRequest extends AgreementConsents {
+  phone: string;
+  challengeId: string;
+  code: string;
+}

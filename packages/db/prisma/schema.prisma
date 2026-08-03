@@ -56,3 +56,49 @@ model Inspiration {
   @@index([status, category, sortOrder])
   @@index([status, publishedAt])
 }
+
+model User {
+  id                   String                @id @default(cuid())
+  phone                String                @unique
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  sessions             UserSession[]
+  agreementAcceptances AgreementAcceptance[]
+}
+
+model VerificationCode {
+  id         String    @id @default(cuid())
+  phone      String
+  codeHash   String
+  expiresAt  DateTime
+  consumedAt DateTime?
+  attempts   Int       @default(0)
+  createdAt  DateTime  @default(now())
+
+  @@index([phone, createdAt])
+}
+
+model UserSession {
+  id         String   @id @default(cuid())
+  tokenHash  String   @unique
+  userId     String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model AgreementAcceptance {
+  id              String   @id @default(cuid())
+  userId          String
+  version         String
+  termsAccepted   Boolean  @default(false)
+  privacyAccepted Boolean  @default(false)
+  aiTermsAccepted Boolean  @default(false)
+  acceptedAt      DateTime @default(now())
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, version])
+}

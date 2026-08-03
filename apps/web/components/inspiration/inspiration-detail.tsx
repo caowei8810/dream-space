@@ -1,9 +1,19 @@
 "use client";
 
-import type { InspirationDetail as InspirationDetailData } from "@dream-space/contracts";
-import { ArrowLeft, Check, Copy, Heart, ImagePlus, Sparkles } from "lucide-react";
+import type {
+  AuthIntent,
+  InspirationDetail as InspirationDetailData,
+} from "@dream-space/contracts";
+import { ArrowLeft, Check, Copy, Heart, ImagePlus, ShieldCheck, Sparkles } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import {
+  consumeRestoredIntent,
+  createRecreateIntent,
+  savePendingIntent,
+} from "../../lib/auth-intent";
+import { useAuth } from "../../lib/use-auth";
 import { usePreferences } from "../../lib/use-preferences";
 import { InspirationShell } from "./inspiration-shell";
 
@@ -11,12 +21,38 @@ export function InspirationDetail({
   inspiration,
 }: Readonly<{ inspiration: InspirationDetailData }>) {
   const { language } = usePreferences();
+  const { session, loading } = useAuth();
+  const pathname = usePathname();
+  const router = useRouter();
   const [copied, setCopied] = useState(false);
+  const [restoredIntent, setRestoredIntent] = useState<AuthIntent | null>(null);
+
+  useEffect(() => {
+    setRestoredIntent(consumeRestoredIntent(window.sessionStorage, pathname));
+  }, [pathname]);
 
   const copyPrompt = async () => {
     await navigator.clipboard.writeText(inspiration.prompt);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1600);
+  };
+
+  const beginCreation = (withReference: boolean) => {
+    const baseIntent = createRecreateIntent(inspiration, pathname);
+    const intent: AuthIntent = withReference
+      ? {
+          ...baseIntent,
+          draft: baseIntent.draft
+            ? { ...baseIntent.draft, referenceImageUrl: inspiration.imageUrl }
+            : null,
+        }
+      : baseIntent;
+    if (session?.authenticated) {
+      setRestoredIntent(intent);
+      return;
+    }
+    savePendingIntent(window.sessionStorage, intent);
+    router.push("/login");
   };
 
   return (
@@ -89,12 +125,25 @@ export function InspirationDetail({
             </div>
             <p>{inspiration.prompt}</p>
           </section>
+          {restoredIntent?.draft ? (
+            <section className="restored-intent" role="status">
+              <ShieldCheck aria-hidden="true" />
+              <div>
+                <strong>{language === "zh" ? "创作草稿已恢复" : "Creation draft restored"}</strong>
+                <span>
+                  {language === "zh"
+                    ? `已保留 ${restoredIntent.draft.model}、${restoredIntent.draft.ratio} 和提示词，未自动提交。`
+                    : `${restoredIntent.draft.model}, ${restoredIntent.draft.ratio}, and the prompt were restored without submitting.`}
+                </span>
+              </div>
+            </section>
+          ) : null}
           <div className="detail-primary-actions">
-            <button type="button" disabled>
+            <button type="button" disabled={loading} onClick={() => beginCreation(false)}>
               <Sparkles aria-hidden="true" />
               {language === "zh" ? "做同款" : "Recreate"}
             </button>
-            <button type="button" disabled>
+            <button type="button" disabled={loading} onClick={() => beginCreation(true)}>
               <ImagePlus aria-hidden="true" />
               {language === "zh" ? "用作参考图" : "Use as reference"}
             </button>

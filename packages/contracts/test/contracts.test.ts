@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { inspirationCategories, serviceNames } from "../src";
+import { authAgreementVersion, inspirationCategories, serviceNames } from "../src";
 
 describe("service contracts", () => {
   it("lists every runnable service", () => {
@@ -14,5 +14,9 @@ describe("service contracts", () => {
       "illustration",
       "design",
     ]);
+  });
+
+  it("publishes a fixed agreement version for auditable login consent", () => {
+    expect(authAgreementVersion).toBe("2026-08-03");
   });
 });
