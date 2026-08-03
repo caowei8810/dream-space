@@ -5,16 +5,7 @@ import {
   type AuthSessionResponse,
   type SendCodeResponse,
 } from "@dream-space/contracts";
-import {
-  ArrowLeft,
-  Check,
-  Eye,
-  EyeOff,
-  LoaderCircle,
-  ShieldCheck,
-  Sparkles,
-  X,
-} from "lucide-react";
+import { LoaderCircle, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useEffect, useState } from "react";
 import { isSafeReturnTo, readPendingIntent, restorePendingIntent } from "../../lib/auth-intent";
@@ -22,14 +13,13 @@ import { notifyAuthChanged } from "../../lib/use-auth";
 import { usePreferences } from "../../lib/use-preferences";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
-
 type LegalDocument = "terms" | "privacy" | "ai";
 
 export function LoginScreen() {
   const router = useRouter();
   const { language } = usePreferences();
-  const [phone, setPhone] = useState("");
-  const [code, setCode] = useState("");
+  const [phone, setPhone] = useState("13800138000");
+  const [code, setCode] = useState("123456");
   const [challenge, setChallenge] = useState<SendCodeResponse | null>(null);
   const [countdown, setCountdown] = useState(0);
   const [agreed, setAgreed] = useState(false);
@@ -37,7 +27,6 @@ export function LoginScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [legal, setLegal] = useState<LegalDocument | null>(null);
-  const [showCode, setShowCode] = useState(false);
 
   useEffect(() => {
     if (countdown <= 0) return;
@@ -45,43 +34,37 @@ export function LoginScreen() {
     return () => window.clearInterval(timer);
   }, [countdown]);
 
-  const labels =
+  const text =
     language === "zh"
       ? {
           title: "登录造梦空间",
-          subtitle: "登录后继续你的图片创作，草稿和来源会为你保留。",
+          subtitle: "登录后继续你的图片创作。",
           phone: "手机号",
-          phonePlaceholder: "请输入 11 位手机号",
           code: "验证码",
-          codePlaceholder: "请输入 6 位验证码",
           send: "获取验证码",
           resend: "重新发送",
-          demo: "演示验证码",
           agree: "我已阅读并同意",
           terms: "用户协议",
           privacy: "隐私政策",
+          and: "和",
           ai: "AI 功能使用协议",
           submit: "登录并继续",
-          back: "返回",
-          secure: "安全会话由服务器签发，登录不会自动提交任务。",
+          close: "关闭登录",
         }
       : {
           title: "Sign in to Dream Space",
-          subtitle: "Continue creating with your source and draft preserved.",
+          subtitle: "Sign in to continue creating images.",
           phone: "Mobile number",
-          phonePlaceholder: "Enter an 11-digit number",
           code: "Verification code",
-          codePlaceholder: "Enter the 6-digit code",
           send: "Get code",
           resend: "Resend",
-          demo: "Demo code",
-          agree: "I have read and agree to the",
+          agree: "I have read and agree to",
           terms: "Terms of Use",
           privacy: "Privacy Policy",
+          and: "and",
           ai: "AI Terms",
           submit: "Sign in and continue",
-          back: "Back",
-          secure: "The server issues a secure session. Signing in never submits a task.",
+          close: "Close sign in",
         };
 
   const returnTo = () => {
@@ -146,147 +129,122 @@ export function LoginScreen() {
     }
   };
 
-  const legalCopy = {
-    terms: language === "zh" ? "用户协议" : "Terms of Use",
-    privacy: language === "zh" ? "隐私政策" : "Privacy Policy",
+  const legalTitle = {
+    terms: language === "zh" ? "造梦空间用户协议" : "Dream Space Terms of Use",
+    privacy: language === "zh" ? "造梦空间隐私政策" : "Dream Space Privacy Policy",
     ai: language === "zh" ? "AI 功能使用协议" : "AI Terms",
   };
 
   return (
     <main className="login-page">
-      <section className="login-visual" aria-hidden="true">
-        <img src="/inspiration/photography-08.webp" alt="" />
+      <section
+        className="login-visual"
+        aria-label={language === "zh" ? "造梦空间品牌视觉" : "Dream Space brand visual"}
+      >
+        <div className="login-scene" aria-hidden="true" />
         <div className="login-brand">
-          <Sparkles />
-          <strong>DREAM SPACE</strong>
-          <span>
-            {language === "zh"
-              ? "让每一个想象，都有清晰的起点。"
-              : "Give every idea a clear beginning."}
+          <span className="brand-mark" />
+          <span className="login-brand-copy">
+            <strong>造梦空间 · Dream Space</strong>
+            <small>AI IMAGE STUDIO</small>
           </span>
         </div>
+        <div className="login-quote">
+          <strong>
+            {language === "zh"
+              ? "让脑海里的画面，成为看得见的作品。"
+              : "Make the images in your mind visible."}
+          </strong>
+          <span>CREATE BEYOND IMAGINATION · 2026</span>
+        </div>
       </section>
-      <section className="login-form-area">
+      <section className="login-form-wrap">
         <button
-          className="login-back"
+          className="icon-btn login-close"
           type="button"
+          aria-label={text.close}
           onClick={() => router.replace(returnTo())}
-          aria-label={labels.back}
         >
-          <ArrowLeft aria-hidden="true" />
+          <X aria-hidden="true" />
         </button>
         <form className="login-form" onSubmit={(event) => void submit(event)}>
-          <div className="login-logo">
-            <Sparkles aria-hidden="true" />
+          <h1>{text.title}</h1>
+          <p className="login-subtitle">{text.subtitle}</p>
+          <label className="form-label" htmlFor="phoneInput">
+            {text.phone}
+          </label>
+          <input
+            className="form-input"
+            id="phoneInput"
+            type="tel"
+            value={phone}
+            autoComplete="tel"
+            onChange={(event) => setPhone(event.target.value.replace(/\D/g, ""))}
+          />
+          <label className="form-label" htmlFor="codeInput">
+            {text.code}
+          </label>
+          <div className="code-row">
+            <input
+              className="form-input"
+              id="codeInput"
+              inputMode="numeric"
+              value={code}
+              autoComplete="one-time-code"
+              onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+            />
+            <button
+              className="action-btn"
+              type="button"
+              disabled={sending || countdown > 0 || !/^1[3-9]\d{9}$/.test(phone)}
+              onClick={() => void sendCode()}
+            >
+              {sending ? (
+                <LoaderCircle className="spin" aria-hidden="true" />
+              ) : countdown > 0 ? (
+                `${countdown}s`
+              ) : challenge ? (
+                text.resend
+              ) : (
+                text.send
+              )}
+            </button>
           </div>
-          <h1>{labels.title}</h1>
-          <p className="login-subtitle">{labels.subtitle}</p>
-
-          <label className="auth-field">
-            <span>{labels.phone}</span>
-            <div className="phone-field">
-              <strong>+86</strong>
-              <input
-                value={phone}
-                inputMode="numeric"
-                autoComplete="tel"
-                maxLength={13}
-                placeholder={labels.phonePlaceholder}
-                onChange={(event) => setPhone(event.target.value.replace(/[^\d\s]/g, ""))}
-              />
-            </div>
-          </label>
-
-          <label className="auth-field">
-            <span>{labels.code}</span>
-            <div className="code-field">
-              <input
-                value={code}
-                type={showCode ? "text" : "password"}
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                maxLength={6}
-                placeholder={labels.codePlaceholder}
-                onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))}
-              />
-              <button
-                type="button"
-                className="code-visibility"
-                onClick={() => setShowCode((value) => !value)}
-                aria-label={showCode ? "Hide code" : "Show code"}
-              >
-                {showCode ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
-              </button>
-              <button
-                type="button"
-                className="send-code"
-                disabled={sending || countdown > 0 || !/^1[3-9]\d(?:\s?\d){8}$/.test(phone)}
-                onClick={() => void sendCode()}
-              >
-                {sending ? (
-                  <LoaderCircle className="spin" aria-hidden="true" />
-                ) : countdown > 0 ? (
-                  `${countdown}s`
-                ) : challenge ? (
-                  labels.resend
-                ) : (
-                  labels.send
-                )}
-              </button>
-            </div>
-          </label>
-
-          {challenge ? (
-            <p className="demo-code">
-              <Check aria-hidden="true" /> {labels.demo}: <strong>{challenge.demoCode}</strong>
-            </p>
-          ) : null}
-
-          <label className="agreement-row">
+          <label className="agreement">
             <input
               type="checkbox"
               checked={agreed}
               onChange={(event) => setAgreed(event.target.checked)}
             />
             <span>
-              {labels.agree}{" "}
-              <button type="button" onClick={() => setLegal("terms")}>
-                {labels.terms}
+              {text.agree}{" "}
+              <button className="agreement-link" type="button" onClick={() => setLegal("terms")}>
+                {text.terms}
               </button>
               、
-              <button type="button" onClick={() => setLegal("privacy")}>
-                {labels.privacy}
+              <button className="agreement-link" type="button" onClick={() => setLegal("privacy")}>
+                {text.privacy}
               </button>{" "}
-              {language === "zh" ? "和" : "and"}{" "}
-              <button type="button" onClick={() => setLegal("ai")}>
-                {labels.ai}
+              {text.and}{" "}
+              <button className="agreement-link" type="button" onClick={() => setLegal("ai")}>
+                {text.ai}
               </button>
+              。
             </span>
           </label>
-
-          {error ? (
-            <p className="auth-error" role="alert">
-              {error}
-            </p>
-          ) : null}
+          <div className="login-error" role="alert">
+            {error}
+          </div>
           <button
-            className="login-submit"
+            className="action-btn primary login-submit"
             type="submit"
             disabled={submitting || !challenge || code.length !== 6 || !agreed}
           >
-            {submitting ? (
-              <LoaderCircle className="spin" aria-hidden="true" />
-            ) : (
-              <ShieldCheck aria-hidden="true" />
-            )}
-            {labels.submit}
+            {submitting ? <LoaderCircle className="spin" aria-hidden="true" /> : null}
+            {text.submit}
           </button>
-          <p className="security-note">
-            <ShieldCheck aria-hidden="true" /> {labels.secure}
-          </p>
         </form>
       </section>
-
       {legal ? (
         <div
           className="legal-backdrop"
@@ -299,35 +257,45 @@ export function LoginScreen() {
             className="legal-dialog"
             role="dialog"
             aria-modal="true"
-            aria-labelledby="legal-title"
+            aria-labelledby="legalTitle"
           >
-            <header>
-              <h2 id="legal-title">{legalCopy[legal]}</h2>
+            <header className="legal-header">
+              <h2 id="legalTitle">{legalTitle[legal]}</h2>
               <button
+                className="icon-btn"
                 type="button"
+                aria-label={language === "zh" ? "关闭协议" : "Close terms"}
                 onClick={() => setLegal(null)}
-                aria-label={language === "zh" ? "关闭" : "Close"}
               >
                 <X aria-hidden="true" />
               </button>
             </header>
             <div className="legal-content">
+              <h3>一、协议范围</h3>
               <p>
-                {language === "zh"
-                  ? "本演示环境仅用于验证造梦空间的登录与创作流程。请勿输入真实敏感信息。"
-                  : "This demo environment validates Dream Space sign-in and creation flows. Do not enter sensitive personal information."}
+                本协议适用于用户访问和使用造梦空间提供的 AI
+                图片生成、灵感浏览及相关服务。用户使用服务前应完整阅读并理解本协议。
               </p>
-              <h3>{language === "zh" ? "使用原则" : "Usage principles"}</h3>
+              <h3>二、账号与使用规范</h3>
               <p>
-                {language === "zh"
-                  ? "你应确保上传内容和提示词具有合法来源，不侵犯他人权益，不用于违法、有害或欺骗性用途。"
-                  : "You must have lawful rights to submitted content and prompts, and must not use the service for illegal, harmful, or deceptive purposes."}
+                用户应提供真实、合法的注册信息并妥善保管账号。不得利用服务制作、上传或传播违法违规、侵权、欺诈、仇恨、色情或危害他人合法权益的内容。
               </p>
-              <h3>{language === "zh" ? "数据与 AI 说明" : "Data and AI notice"}</h3>
+              <h3>三、输入与生成内容</h3>
               <p>
-                {language === "zh"
-                  ? "正式环境将按隐私政策处理账户、草稿和生成记录，并对 AI 生成内容进行必要标识。当前阶段使用固定演示验证码，不发送短信。"
-                  : "The production service will process account, draft, and generation records under the privacy policy and label AI-generated content as required. This stage uses a fixed demo code and sends no SMS."}
+                用户应确保对上传的提示词、参考图片及其他素材拥有必要权利。AI
+                生成结果具有不确定性，用户在公开发布或商业使用前应自行审核真实性、合法性和知识产权风险。
+              </p>
+              <h3>四、个人信息保护</h3>
+              <p>
+                平台仅在实现账号登录、任务处理、安全审计和服务改进所必要的范围内处理个人信息，并依据隐私政策提供访问、更正、删除和撤回授权渠道。
+              </p>
+              <h3>五、服务变更与责任</h3>
+              <p>
+                平台可能因模型升级、维护、安全风险或不可抗力调整服务。对可预见的重要变更将通过站内通知等合理方式告知用户。
+              </p>
+              <h3>六、联系我们</h3>
+              <p>
+                如对本协议、隐私保护或生成内容处理有疑问，可通过平台内反馈入口联系我们。协议版本：2026-07-31。
               </p>
             </div>
           </section>
