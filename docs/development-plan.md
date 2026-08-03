@@ -51,7 +51,7 @@
 
 - 配置 pnpm workspace、Turborepo、TypeScript、ESLint、格式化和测试命令。
 - 初始化两个 Next.js 应用、NestJS API 和 BullMQ Worker。
-- 使用 Docker Compose 提供 PostgreSQL、Redis 和兼容 S3 的本地对象存储。
+- 同时支持 Docker Compose 和 macOS 物理机两种本地依赖启动方式；当前骨架需要 PostgreSQL、Redis，兼容 S3 的对象存储保留在 Docker 配置中供阶段 C 使用。
 - 提供 API 健康检查以及四个应用的最小启动页面/进程。
 - 建立 CI，对所有工作区执行 lint、typecheck、test 和 build。
 
@@ -64,21 +64,23 @@
 
 ### 当前评估
 
-评估日期：2026-08-01
+评估日期：2026-08-03
 
-| 检查项         | 结果     | 证据                                                                   |
-| -------------- | -------- | ---------------------------------------------------------------------- |
-| 依赖与供应链   | 通过     | pnpm 11 lockfile 校验通过，原生安装脚本使用显式白名单                  |
-| lint           | 通过     | Turbo 执行 12 个任务，全部成功                                         |
-| TypeScript     | 通过     | Turbo 执行 12 个任务，全部成功                                         |
-| 单元测试       | 通过     | 9 个测试文件、11 个测试全部通过                                        |
-| 生产构建       | 通过     | 9 个 workspace 构建成功，两个 Next.js 页面完成静态生成                 |
-| Prisma         | 通过     | Prisma Client 7.9.1 生成成功                                           |
-| Docker Compose | 配置通过 | 独立 `docker-compose config --quiet` 通过；本机 Docker daemon 未启动   |
-| 运行时         | 通过     | web/admin 返回 HTTP 200，API 健康检查正常，Redis PONG，Worker 完成任务 |
-| 远端 CI        | 待验证   | 分支推送并创建 PR 后由 GitHub Actions 执行                             |
+| 检查项         | 结果     | 证据                                                                  |
+| -------------- | -------- | --------------------------------------------------------------------- |
+| 依赖与供应链   | 通过     | pnpm 11 lockfile 校验通过，原生安装脚本使用显式白名单                 |
+| lint           | 通过     | Turbo 执行 12 个任务，全部成功                                        |
+| TypeScript     | 通过     | Turbo 执行 12 个任务，全部成功                                        |
+| 单元测试       | 通过     | 9 个测试文件、11 个测试全部通过                                       |
+| 生产构建       | 通过     | 9 个 workspace 构建成功，两个 Next.js 页面完成静态生成                |
+| Prisma         | 通过     | Prisma Client 7.9.1 生成成功                                          |
+| Docker Compose | 配置通过 | 独立 `docker-compose config --quiet` 通过；本机 Docker daemon 未启动  |
+| 本机依赖       | 通过     | Homebrew PostgreSQL 17 接受连接，项目专用 Redis 返回 PONG             |
+| 运行时         | 通过     | web/admin 返回 HTTP 200，API 健康检查正常，Worker 成功连接 Redis 队列 |
+| 本机脚本       | 通过     | `pnpm check` 包含两个 Shell 启动脚本的语法检查                        |
+| 远端 CI        | 待验证   | 分支推送并创建 PR 后由 GitHub Actions 执行                            |
 
-阶段结论：本地目标全部达成；在远端 CI 通过前保持“进行中”，不进入阶段 B。
+阶段结论：本地目标全部达成，物理机启动路径已实测；在远端 CI 通过前保持“进行中”，不进入阶段 B。
 
 ## 阶段 B：用户端 MVP
 
