@@ -1087,12 +1087,11 @@ button:disabled {
   border-radius: var(--radius);
   background: transparent;
   text-align: left;
-  padding: 0 10px;
+  padding: 0 6px 0 8px;
   cursor: pointer;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  transition: padding-right 140ms ease;
 }
 .session-row.active .session-item {
   font-weight: 550;
@@ -1122,6 +1121,10 @@ button:disabled {
   top: 50%;
   right: 4px;
   z-index: 2;
+  padding-left: 8px;
+  border-radius: 6px;
+  background: var(--surface-strong);
+  box-shadow: -8px 0 8px var(--surface-strong);
   transform: translate(4px, -50%);
   opacity: 0;
   pointer-events: none;
@@ -1134,10 +1137,6 @@ button:disabled {
   transform: translate(0, -50%);
   opacity: 1;
   pointer-events: auto;
-}
-.session-row:hover .session-item,
-.session-row:has(.session-row-actions:focus-within) .session-item {
-  padding-right: 70px;
 }
 .session-row-action svg,
 .session-inline-action svg {
