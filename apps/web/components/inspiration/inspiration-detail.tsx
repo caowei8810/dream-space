@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   consumeRestoredIntent,
   createRecreateIntent,
@@ -44,18 +44,11 @@ export function InspirationDetail({
   const [following, setFollowing] = useState(false);
   const [composer, setComposer] = useState<"same" | "reference" | null>(null);
   const [prompt, setPrompt] = useState(inspiration.prompt);
+  const initializedPath = useRef<string | null>(null);
   const [neighbors, setNeighbors] = useState<{ previous: string | null; next: string | null }>({
     previous: null,
     next: null,
   });
-
-  useEffect(() => {
-    const restored = consumeRestoredIntent(window.sessionStorage, pathname);
-    if (restored?.draft) {
-      setPrompt(restored.draft.prompt);
-      setComposer(restored.draft.referenceImageUrl ? "reference" : "same");
-    }
-  }, [pathname]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -78,11 +71,20 @@ export function InspirationDetail({
   }, [inspiration.slug]);
 
   useEffect(() => {
+    if (initializedPath.current === pathname) return;
+    initializedPath.current = pathname;
+
     setPrompt(inspiration.prompt);
     setComposer(null);
     setLiked(false);
     setFollowing(false);
-  }, [inspiration]);
+
+    const restored = consumeRestoredIntent(window.sessionStorage, pathname);
+    if (restored?.draft) {
+      setPrompt(restored.draft.prompt);
+      setComposer(restored.draft.referenceImageUrl ? "reference" : "same");
+    }
+  }, [inspiration, pathname]);
 
   const copyPrompt = async () => {
     await navigator.clipboard.writeText(inspiration.prompt);

@@ -1188,6 +1188,13 @@ button:disabled {
     display: none;
   }
 }
+
+@media (max-width: 1599px) {
+  .app[data-language="en"] .motivation-button {
+    display: none;
+  }
+}
+
 @media (max-width: 1199px) {
   .date-meta {
     display: none;
