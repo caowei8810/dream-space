@@ -1,30 +1,54 @@
 import { parseWorkerEnv } from "@dream-space/config";
+import type { GenerationQueueJob } from "@dream-space/contracts";
+import { createDatabaseClient, type DatabaseClient } from "@dream-space/db";
 import { Worker } from "bullmq";
 import IORedis from "ioredis";
-import { FOUNDATION_QUEUE } from "./queues/names";
+import { DeterministicMockProvider, GenerationProcessor } from "./generation/generation-processor";
+import { PrismaGenerationStore } from "./generation/prisma-generation-store";
+import { GENERATION_QUEUE } from "./queues/names";
 
-export function createFoundationWorker(redisUrl: string) {
+interface GenerationWorkerRuntime {
+  connection: IORedis;
+  database: DatabaseClient;
+  worker: Worker<GenerationQueueJob>;
+}
+
+export function createGenerationWorker(
+  redisUrl: string,
+  databaseUrl: string,
+  generationDelayMs: number,
+): GenerationWorkerRuntime {
   const connection = new IORedis(redisUrl, { maxRetriesPerRequest: null });
-  const worker = new Worker(
-    FOUNDATION_QUEUE,
-    async (job) => ({ jobId: job.id, status: "processed" }),
+  const database = createDatabaseClient(databaseUrl);
+  const processor = new GenerationProcessor(
+    new PrismaGenerationStore(database),
+    new DeterministicMockProvider(generationDelayMs),
+  );
+  const worker = new Worker<GenerationQueueJob>(
+    GENERATION_QUEUE,
+    async (job) => processor.process(job.data),
     { connection },
   );
 
   worker.on("ready", () => {
-    console.log(`Dream Space Worker ready on queue ${FOUNDATION_QUEUE}`);
+    console.log("Dream Space Worker ready on queue " + GENERATION_QUEUE);
   });
 
-  return { connection, worker };
+  return { connection, database, worker };
 }
 
 async function bootstrap() {
   const env = parseWorkerEnv(process.env);
-  const { connection, worker } = createFoundationWorker(env.REDIS_URL);
+  const { connection, database, worker } = createGenerationWorker(
+    env.REDIS_URL,
+    env.DATABASE_URL,
+    env.MOCK_GENERATION_DELAY_MS,
+  );
 
   const shutdown = async () => {
     await worker.close();
     await connection.quit();
+    await database.$disconnect();
     process.exit(0);
   };
 

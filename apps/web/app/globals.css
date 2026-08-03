@@ -350,6 +350,15 @@ button:disabled {
   height: 100%;
   border-radius: inherit;
   background: var(--primary);
+  transition:
+    width 220ms ease,
+    background 220ms ease;
+}
+.quota-panel.is-low .quota-track span {
+  background: var(--warning);
+}
+.quota-panel.is-critical .quota-track span {
+  background: var(--danger);
 }
 .quota-meta {
   margin-left: 27px;

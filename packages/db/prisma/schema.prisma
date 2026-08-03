@@ -27,6 +27,39 @@ enum InspirationSourceType {
   INTERNAL
 }
 
+enum GenerationTaskStatus {
+  QUEUED
+  GENERATING
+  SUCCEEDED
+  PARTIALLY_SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+enum QuotaLedgerType {
+  GRANT
+  RESERVE
+  CONSUME
+  RELEASE
+}
+
+enum GenerationRatio {
+  SMART      @map("smart")
+  RATIO_21_9 @map("21:9")
+  RATIO_16_9 @map("16:9")
+  RATIO_3_2  @map("3:2")
+  RATIO_4_3  @map("4:3")
+  RATIO_1_1  @map("1:1")
+  RATIO_3_4  @map("3:4")
+  RATIO_2_3  @map("2:3")
+  RATIO_9_16 @map("9:16")
+}
+
+enum GenerationResolution {
+  K2 @map("2K")
+  K4 @map("4K")
+}
+
 model Inspiration {
   id                String                @id @default(cuid())
   slug              String                @unique
@@ -64,6 +97,110 @@ model User {
   updatedAt            DateTime              @updatedAt
   sessions             UserSession[]
   agreementAcceptances AgreementAcceptance[]
+  generationSessions   GenerationSession[]
+  generationTasks      GenerationTask[]
+  quotaAccount         QuotaAccount?
+  quotaLedgerEntries   QuotaLedgerEntry[]
+}
+
+model GenerationSession {
+  id        String           @id @default(cuid())
+  userId    String
+  title     String
+  draft     Json?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks     GenerationTask[]
+
+  @@index([userId, updatedAt])
+}
+
+model GenerationTask {
+  id                 String                @id @default(cuid())
+  sessionId          String
+  userId             String
+  status             GenerationTaskStatus  @default(QUEUED)
+  prompt             String                @db.Text
+  model              String
+  ratio              GenerationRatio
+  resolution         GenerationResolution
+  imageCount         Int
+  referenceImageUrls Json
+  unitCost           Int
+  totalCost          Int
+  idempotencyKey     String
+  queueJobId         String?
+  errorCode          String?
+  errorMessage       String?
+  startedAt          DateTime?
+  completedAt        DateTime?
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+  session            GenerationSession     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user               User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  results            GenerationResult[]
+  events             GenerationTaskEvent[]
+  quotaLedgerEntries QuotaLedgerEntry[]
+
+  @@unique([userId, idempotencyKey])
+  @@index([sessionId, createdAt])
+  @@index([userId, status, createdAt])
+}
+
+model GenerationResult {
+  id            String         @id @default(cuid())
+  taskId        String
+  index         Int
+  imagePath     String
+  width         Int
+  height        Int
+  mimeType      String
+  byteSize      Int
+  isAiGenerated Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  task          GenerationTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, index])
+  @@index([taskId])
+}
+
+model GenerationTaskEvent {
+  id        BigInt               @id @default(autoincrement())
+  taskId    String
+  type      String
+  status    GenerationTaskStatus
+  payload   Json
+  createdAt DateTime             @default(now())
+  task      GenerationTask       @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId, id])
+}
+
+model QuotaAccount {
+  userId    String   @id
+  total     Int      @default(100)
+  available Int      @default(100)
+  reserved  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model QuotaLedgerEntry {
+  id             String          @id @default(cuid())
+  userId         String
+  taskId         String?
+  type           QuotaLedgerType
+  amount         Int
+  balanceAfter   Int
+  idempotencyKey String          @unique
+  createdAt      DateTime        @default(now())
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task           GenerationTask? @relation(fields: [taskId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([taskId])
 }
 
 model VerificationCode {

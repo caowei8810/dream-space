@@ -13,6 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DATABASE_URL: postgresql://dreamspace:dreamspace_ci@localhost:5432/dreamspace
+      MOCK_GENERATION_DELAY_MS: 1000
+      REDIS_URL: redis://localhost:6379
       NODE_ENV: test
     services:
       postgres:
@@ -25,6 +27,15 @@ jobs:
           - 5432:5432
         options: >-
           --health-cmd "pg_isready -U dreamspace -d dreamspace"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
@@ -50,17 +61,21 @@ jobs:
         run: pnpm check
       - name: Apply database migrations
         run: pnpm --filter @dream-space/db exec prisma migrate deploy
-      - name: Run authentication integration smoke
+      - name: Run authentication and generation integration smoke
         run: |
           pnpm --filter @dream-space/api start > /tmp/dreamspace-api.log 2>&1 &
           api_pid=$!
-          trap 'kill "$api_pid" 2>/dev/null || true' EXIT
+          pnpm --filter @dream-space/worker start > /tmp/dreamspace-worker.log 2>&1 &
+          worker_pid=$!
+          trap 'kill "$api_pid" "$worker_pid" 2>/dev/null || true' EXIT
           for attempt in $(seq 1 30); do
             if curl --fail --silent http://localhost:4000/health > /dev/null; then
               pnpm auth:smoke
+              pnpm generation:smoke
               exit 0
             fi
             sleep 1
           done
           cat /tmp/dreamspace-api.log
+          cat /tmp/dreamspace-worker.log
           exit 1

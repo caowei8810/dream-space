@@ -19,6 +19,7 @@ import {
 import Link from "next/link";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useAuth } from "../../lib/use-auth";
+import { useQuota } from "../../lib/use-quota";
 import { usePreferences, type Theme } from "../../lib/use-preferences";
 
 const themeLabels: Record<Theme, { zh: string; en: string }> = {
@@ -30,6 +31,7 @@ const themeLabels: Record<Theme, { zh: string; en: string }> = {
 export function InspirationShell({ children }: Readonly<{ children: ReactNode }>) {
   const { language, theme, setTheme } = usePreferences();
   const { session, loading, logout } = useAuth();
+  const quota = useQuota(session?.authenticated === true);
   const [accountOpen, setAccountOpen] = useState(false);
   const [themeOpen, setThemeOpen] = useState(false);
   const [legalOpen, setLegalOpen] = useState(false);
@@ -78,7 +80,7 @@ export function InspirationShell({ children }: Readonly<{ children: ReactNode }>
           logout: "退出登录",
           quota: "创作额度",
           cycle: "本周期剩余",
-          remaining: "剩余 80%",
+          remaining: `剩余 ${quota.remainingPercent}%`,
           cost: "每张预计 1 点",
         }
       : {
@@ -95,7 +97,7 @@ export function InspirationShell({ children }: Readonly<{ children: ReactNode }>
           logout: "Sign out",
           quota: "Creation quota",
           cycle: "Remaining this cycle",
-          remaining: "80% remaining",
+          remaining: `${quota.remainingPercent}% remaining`,
           cost: "About 1 credit per image",
         };
 
@@ -193,26 +195,34 @@ export function InspirationShell({ children }: Readonly<{ children: ReactNode }>
               onChange={(event) => setWatermark(event.target.checked)}
             />
           </label>
-          <section
-            className="quota-panel"
-            aria-label={language === "zh" ? "剩余 80 / 100 点额度" : "80 of 100 credits remaining"}
-          >
-            <div className="quota-heading">
-              <Sparkles aria-hidden="true" />
-              <span className="quota-title">
-                <strong>{text.quota}</strong>
-                <small>{text.cycle}</small>
-              </span>
-              <strong className="quota-value">80 / 100</strong>
-            </div>
-            <div className="quota-track" aria-hidden="true">
-              <span />
-            </div>
-            <div className="quota-meta">
-              <span>{text.remaining}</span>
-              <span>{text.cost}</span>
-            </div>
-          </section>
+          {session?.authenticated ? (
+            <section
+              className={`quota-panel${quota.remainingPercent <= 10 ? " is-critical" : quota.remainingPercent <= 30 ? " is-low" : ""}`}
+              aria-label={
+                language === "zh"
+                  ? `剩余 ${quota.available} / ${quota.total} 点额度`
+                  : `${quota.available} of ${quota.total} credits remaining`
+              }
+            >
+              <div className="quota-heading">
+                <Sparkles aria-hidden="true" />
+                <span className="quota-title">
+                  <strong>{text.quota}</strong>
+                  <small>{text.cycle}</small>
+                </span>
+                <strong className="quota-value">
+                  {quota.available} / {quota.total}
+                </strong>
+              </div>
+              <div className="quota-track" aria-hidden="true">
+                <span style={{ width: `${quota.remainingPercent}%` }} />
+              </div>
+              <div className="quota-meta">
+                <span>{text.remaining}</span>
+                <span>{text.cost}</span>
+              </div>
+            </section>
+          ) : null}
           {session?.authenticated ? (
             <button
               className="menu-row"
