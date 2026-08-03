@@ -1,0 +1,104 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum InspirationCategory {
+  PORTRAIT
+  PHOTOGRAPHY
+  ANIME
+  ILLUSTRATION
+  DESIGN
+}
+
+enum InspirationStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum InspirationSourceType {
+  AI_PUBLIC_GALLERY
+  LICENSED
+  INTERNAL
+}
+
+model Inspiration {
+  id                String                @id @default(cuid())
+  slug              String                @unique
+  title             String
+  prompt            String                @db.Text
+  category          InspirationCategory
+  imagePath         String
+  thumbnailPath     String
+  width             Int
+  height            Int
+  modelName         String
+  ratio             String
+  resolutionLabel   String
+  authorDisplayName String
+  sourceType        InspirationSourceType
+  sourceName        String
+  sourceUrl         String?
+  licenseBasis      String
+  isAiGenerated     Boolean               @default(true)
+  likeCount         Int                   @default(0)
+  sortOrder         Int                   @default(0)
+  status            InspirationStatus     @default(DRAFT)
+  publishedAt       DateTime?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+
+  @@index([status, category, sortOrder])
+  @@index([status, publishedAt])
+}
+
+model User {
+  id                   String                @id @default(cuid())
+  phone                String                @unique
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  sessions             UserSession[]
+  agreementAcceptances AgreementAcceptance[]
+}
+
+model VerificationCode {
+  id         String    @id @default(cuid())
+  phone      String
+  codeHash   String
+  expiresAt  DateTime
+  consumedAt DateTime?
+  attempts   Int       @default(0)
+  createdAt  DateTime  @default(now())
+
+  @@index([phone, createdAt])
+}
+
+model UserSession {
+  id         String   @id @default(cuid())
+  tokenHash  String   @unique
+  userId     String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model AgreementAcceptance {
+  id              String   @id @default(cuid())
+  userId          String
+  version         String
+  termsAccepted   Boolean  @default(false)
+  privacyAccepted Boolean  @default(false)
+  aiTermsAccepted Boolean  @default(false)
+  acceptedAt      DateTime @default(now())
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, version])
+}

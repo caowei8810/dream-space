@@ -1,0 +1,39 @@
+{
+  "name": "dream-space",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.18.0",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "lint:scripts": "sh -n scripts/docker-compose.sh scripts/local-services.sh scripts/auth-smoke.sh && node --check scripts/extract-inspiration-seed.mjs",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "check": "pnpm db:generate && pnpm lint:scripts && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:generate": "pnpm --filter @dream-space/db generate",
+    "db:push": "pnpm --filter @dream-space/db push",
+    "db:seed": "pnpm --filter @dream-space/db seed",
+    "db:seed:extract": "node scripts/extract-inspiration-seed.mjs",
+    "auth:smoke": "sh scripts/auth-smoke.sh",
+    "infra:up": "sh scripts/docker-compose.sh up -d",
+    "infra:down": "sh scripts/docker-compose.sh down",
+    "local:infra:up": "sh scripts/local-services.sh up",
+    "local:infra:down": "sh scripts/local-services.sh down",
+    "local:infra:status": "sh scripts/local-services.sh status"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "@types/node": "^26.1.2",
+    "eslint": "^9.39.2",
+    "prettier": "^3.9.6",
+    "turbo": "^2.10.8",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.65.0"
+  }
+}

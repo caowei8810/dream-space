@@ -1,0 +1,28 @@
+{
+  "name": "@dream-space/db",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint src test prisma.config.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "generate": "prisma generate",
+    "push": "prisma db push",
+    "seed": "prisma db seed"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.9.1",
+    "@prisma/client": "^7.9.1",
+    "pg": "^8.22.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.2",
+    "@types/pg": "^8.20.3",
+    "prisma": "^7.9.1",
+    "tsx": "^4.23.1",
+    "vitest": "^4.1.10"
+  }
+}
