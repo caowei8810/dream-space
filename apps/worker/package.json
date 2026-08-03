@@ -12,6 +12,9 @@
   },
   "dependencies": {
     "@dream-space/config": "workspace:*",
+    "@dream-space/contracts": "workspace:*",
+    "@dream-space/core": "workspace:*",
+    "@dream-space/db": "workspace:*",
     "bullmq": "^6.0.5",
     "ioredis": "^6.0.0"
   },

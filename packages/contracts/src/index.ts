@@ -95,3 +95,131 @@ export interface LoginRequest extends AgreementConsents {
   challengeId: string;
   code: string;
 }
+
+export const generationQueueName = "image-generation" as const;
+
+export const generationTaskStatuses = [
+  "queued",
+  "generating",
+  "succeeded",
+  "partially_succeeded",
+  "failed",
+  "cancelled",
+] as const;
+
+export type GenerationTaskStatus = (typeof generationTaskStatuses)[number];
+
+export const generationRatios = [
+  "smart",
+  "21:9",
+  "16:9",
+  "3:2",
+  "4:3",
+  "1:1",
+  "3:4",
+  "2:3",
+  "9:16",
+] as const;
+export type GenerationRatio = (typeof generationRatios)[number];
+
+export const generationResolutions = ["2K", "4K"] as const;
+export type GenerationResolution = (typeof generationResolutions)[number];
+
+export interface CreateGenerationTaskRequest {
+  idempotencyKey: string;
+  sessionId?: string | null;
+  prompt: string;
+  model: string;
+  ratio: GenerationRatio;
+  resolution: GenerationResolution;
+  imageCount: number;
+  referenceImageUrls: string[];
+}
+
+export interface GenerationResultResponse {
+  id: string;
+  index: number;
+  imageUrl: string;
+  width: number;
+  height: number;
+  mimeType: string;
+  byteSize: number;
+  isAiGenerated: true;
+}
+
+export interface GenerationTaskResponse {
+  id: string;
+  sessionId: string;
+  status: GenerationTaskStatus;
+  prompt: string;
+  model: string;
+  ratio: GenerationRatio;
+  resolution: GenerationResolution;
+  imageCount: number;
+  referenceImageUrls: string[];
+  unitCost: number;
+  totalCost: number;
+  errorCode: string | null;
+  errorMessage: string | null;
+  createdAt: string;
+  startedAt: string | null;
+  completedAt: string | null;
+  results: GenerationResultResponse[];
+}
+
+export interface GenerationSessionSummary {
+  id: string;
+  title: string;
+  thumbnailUrl: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GenerationSessionDetail extends GenerationSessionSummary {
+  tasks: GenerationTaskResponse[];
+}
+
+export interface GenerationSessionListResponse {
+  items: GenerationSessionSummary[];
+}
+
+export interface QuotaResponse {
+  total: number;
+  available: number;
+  reserved: number;
+  used: number;
+  remainingPercent: number;
+}
+
+export interface CreateGenerationTaskResponse {
+  session: GenerationSessionSummary;
+  task: GenerationTaskResponse;
+  quota: QuotaResponse;
+  replayed: boolean;
+}
+
+export interface RenameGenerationSessionRequest {
+  title: string;
+}
+
+export const generationEventTypes = [
+  "task.queued",
+  "task.generating",
+  "task.succeeded",
+  "task.partially_succeeded",
+  "task.failed",
+  "task.cancelled",
+] as const;
+export type GenerationEventType = (typeof generationEventTypes)[number];
+
+export interface GenerationTaskEventData {
+  id: string;
+  taskId: string;
+  type: GenerationEventType;
+  status: GenerationTaskStatus;
+  createdAt: string;
+}
+
+export interface GenerationQueueJob {
+  taskId: string;
+}

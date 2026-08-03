@@ -1,13 +1,6 @@
-export const generationTaskStatuses = [
-  "queued",
-  "generating",
-  "succeeded",
-  "partially_succeeded",
-  "failed",
-  "cancelled",
-] as const;
+import type { GenerationTaskStatus } from "@dream-space/contracts";
 
-export type GenerationTaskStatus = (typeof generationTaskStatuses)[number];
+export type { GenerationTaskStatus } from "@dream-space/contracts";
 
 const allowedTransitions: Record<GenerationTaskStatus, readonly GenerationTaskStatus[]> = {
   queued: ["generating", "cancelled", "failed"],
@@ -20,4 +13,8 @@ const allowedTransitions: Record<GenerationTaskStatus, readonly GenerationTaskSt
 
 export function canTransitionTask(from: GenerationTaskStatus, to: GenerationTaskStatus) {
   return allowedTransitions[from].includes(to);
+}
+
+export function isTerminalTaskStatus(status: GenerationTaskStatus) {
+  return ["succeeded", "partially_succeeded", "failed", "cancelled"].includes(status);
 }
