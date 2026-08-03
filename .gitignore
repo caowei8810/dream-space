@@ -11,5 +11,6 @@ dist/
 coverage/
 packages/db/generated/
 .pnpm-store/
+.local/
 *.tsbuildinfo
 next-env.d.ts

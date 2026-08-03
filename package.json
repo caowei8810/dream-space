@@ -18,7 +18,10 @@
     "db:generate": "pnpm --filter @dream-space/db generate",
     "db:push": "pnpm --filter @dream-space/db push",
     "infra:up": "sh scripts/docker-compose.sh up -d",
-    "infra:down": "sh scripts/docker-compose.sh down"
+    "infra:down": "sh scripts/docker-compose.sh down",
+    "local:infra:up": "sh scripts/local-services.sh up",
+    "local:infra:down": "sh scripts/local-services.sh down",
+    "local:infra:status": "sh scripts/local-services.sh status"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",

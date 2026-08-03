@@ -51,9 +51,37 @@
 
 - Node.js 22.12 或更新的受支持 LTS 版本
 - pnpm 11.18.0
-- Docker Desktop 或 Docker Engine + Compose
+- macOS 本机开发：Homebrew（推荐，不需要 Docker）
+- 可选：Docker Desktop 或 Docker Engine + Compose
 
-### 启动正式工程
+### 使用 macOS 本机服务启动（推荐）
+
+首次安装 PostgreSQL 和 Redis：
+
+```bash
+brew install postgresql@17 redis
+```
+
+安装完成后，在项目根目录执行：
+
+```bash
+cp .env.example .env
+pnpm install --frozen-lockfile
+pnpm local:infra:up
+pnpm db:generate
+pnpm dev
+```
+
+`local:infra:up` 会启动 PostgreSQL 和项目专用 Redis，自动创建本地开发角色与数据库。服务状态和停止命令：
+
+本机 PostgreSQL 默认通过 macOS 本地认证连接；如需设置密码，可在命令前临时传入 `DREAMSPACE_DB_PASSWORD`，不要将真实密码写入仓库。
+
+```bash
+pnpm local:infra:status
+pnpm local:infra:down
+```
+
+### 使用 Docker 启动（可选）
 
 ```bash
 cp .env.example .env
