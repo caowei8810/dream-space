@@ -17,7 +17,11 @@ export function createGenerationWorker(
   redisUrl: string,
   databaseUrl: string,
   generationDelayMs: number,
+  externalServicesMode: "mock" | "live" = "mock",
 ): GenerationWorkerRuntime {
+  if (externalServicesMode !== "mock") {
+    throw new Error("真实图片模型适配器尚未配置，请使用 EXTERNAL_SERVICES_MODE=mock");
+  }
   const connection = new IORedis(redisUrl, { maxRetriesPerRequest: null });
   const database = createDatabaseClient(databaseUrl);
   const processor = new GenerationProcessor(
@@ -43,6 +47,7 @@ async function bootstrap() {
     env.REDIS_URL,
     env.DATABASE_URL,
     env.MOCK_GENERATION_DELAY_MS,
+    env.EXTERNAL_SERVICES_MODE,
   );
 
   const shutdown = async () => {

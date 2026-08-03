@@ -37,6 +37,8 @@ export class PrismaGenerationStore implements GenerationStore {
         userId: task.userId,
         sessionId: task.sessionId,
         status: "generating" as const,
+        prompt: task.prompt,
+        model: task.model,
         ratio: decodeGenerationRatio(task.ratio),
         resolution: decodeGenerationResolution(task.resolution),
         imageCount: task.imageCount,

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  DeterministicMockProvider,
   GenerationProcessor,
   type GenerationProvider,
   type GenerationStore,
@@ -11,6 +12,8 @@ const task: GenerationTaskSnapshot = {
   userId: "user-1",
   sessionId: "session-1",
   status: "generating",
+  prompt: "雨后玻璃花房",
+  model: "image-4.7",
   ratio: "1:1",
   resolution: "2K",
   imageCount: 1,
@@ -74,5 +77,18 @@ describe("GenerationProcessor", () => {
       status: "ignored",
     });
     expect(provider.generate).not.toHaveBeenCalled();
+  });
+
+  it("keeps mock results in one prompt-matched theme", async () => {
+    const provider = new DeterministicMockProvider(0);
+    const results = await provider.generate({
+      ...task,
+      prompt: "真人写真，电影感美女人像",
+      imageCount: 8,
+    });
+
+    expect(results).toHaveLength(8);
+    expect(results.every((result) => result.imagePath.includes("/portrait-"))).toBe(true);
+    expect(new Set(results.map((result) => result.imagePath)).size).toBe(8);
   });
 });

@@ -28,7 +28,10 @@ const themeLabels: Record<Theme, { zh: string; en: string }> = {
   dark: { zh: "深色", en: "Dark" },
 };
 
-export function InspirationShell({ children }: Readonly<{ children: ReactNode }>) {
+export function InspirationShell({
+  children,
+  activePage = "inspiration",
+}: Readonly<{ children: ReactNode; activePage?: "inspiration" | "generate" }>) {
   const { language, theme, setTheme } = usePreferences();
   const { session, loading, logout } = useAuth();
   const quota = useQuota(session?.authenticated === true);
@@ -106,14 +109,17 @@ export function InspirationShell({ children }: Readonly<{ children: ReactNode }>
       <nav className="primary-nav" aria-label={language === "zh" ? "主导航" : "Primary navigation"}>
         <Link className="brand-mark" href="/inspiration" aria-label="返回灵感" />
         <div className="nav-stack">
-          <Link className="nav-btn active" href="/inspiration">
+          <Link
+            className={`nav-btn${activePage === "inspiration" ? " active" : ""}`}
+            href="/inspiration"
+          >
             <House aria-hidden="true" />
             <span>{text.inspiration}</span>
           </Link>
-          <button className="nav-btn" type="button">
+          <Link className={`nav-btn${activePage === "generate" ? " active" : ""}`} href="/generate">
             <Sparkles aria-hidden="true" />
             <span>{text.generate}</span>
-          </button>
+          </Link>
           <Link className="nav-btn mobile-only" href="/login">
             <UserRound aria-hidden="true" />
             <span>{text.mine}</span>

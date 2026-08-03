@@ -1,5 +1,9 @@
 import { authAgreementVersion, type LoginRequest } from "@dream-space/contracts";
-import { BadRequestException, UnauthorizedException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ServiceUnavailableException,
+  UnauthorizedException,
+} from "@nestjs/common";
 import { createHash } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 import type { AuthRepository } from "../src/modules/auth/auth.repository";
@@ -76,6 +80,20 @@ describe("AuthService", () => {
     expect(result.challengeId).toBe("existing-challenge");
     expect(result.retryAfterSeconds).toBeGreaterThanOrEqual(49);
     expect(repository.createChallenge).not.toHaveBeenCalled();
+  });
+
+  it("fails closed instead of using the demo code in live mode", async () => {
+    const previous = process.env.EXTERNAL_SERVICES_MODE;
+    process.env.EXTERNAL_SERVICES_MODE = "live";
+    try {
+      const { service } = createService();
+      await expect(service.sendCode({ phone: validLogin.phone })).rejects.toBeInstanceOf(
+        ServiceUnavailableException,
+      );
+    } finally {
+      if (previous === undefined) delete process.env.EXTERNAL_SERVICES_MODE;
+      else process.env.EXTERNAL_SERVICES_MODE = previous;
+    }
   });
 
   it("rejects invalid phone numbers and incomplete agreements", async () => {

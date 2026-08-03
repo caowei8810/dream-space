@@ -76,7 +76,7 @@ export interface SendCodeResponse {
   challengeId: string;
   expiresAt: string;
   retryAfterSeconds: number;
-  demoCode: "123456";
+  demoCode?: "123456";
 }
 
 export interface SendCodeRequest {
@@ -134,6 +134,35 @@ export interface CreateGenerationTaskRequest {
   resolution: GenerationResolution;
   imageCount: number;
   referenceImageUrls: string[];
+}
+
+export interface GenerationModelOption {
+  id: string;
+  labelZh: string;
+  labelEn: string;
+}
+
+export interface GenerationOptionsResponse {
+  models: GenerationModelOption[];
+  ratios: readonly GenerationRatio[];
+  resolutions: readonly GenerationResolution[];
+  imageCount: { min: number; max: number };
+  referenceImages: { max: number; maxBytes: number; mimeTypes: string[] };
+  costPerImage: Record<GenerationResolution, number>;
+  externalServicesMode: "mock" | "live";
+}
+
+export interface CreateMockReferenceRequest {
+  filename: string;
+  mimeType: string;
+  byteSize: number;
+}
+
+export interface CreateMockReferenceResponse {
+  url: string;
+  filename: string;
+  mimeType: string;
+  byteSize: number;
 }
 
 export interface GenerationResultResponse {

@@ -1,4 +1,5 @@
 import type {
+  CreateMockReferenceRequest,
   CreateGenerationTaskRequest,
   RenameGenerationSessionRequest,
 } from "@dream-space/contracts";
@@ -30,6 +31,21 @@ export class GenerationController {
   @Get("quota")
   async getQuota(@Headers("cookie") cookie: string | undefined) {
     return this.service.getQuota(await this.requireUserId(cookie));
+  }
+
+  @Get("options")
+  async getOptions(@Headers("cookie") cookie: string | undefined) {
+    await this.requireUserId(cookie);
+    return this.service.getOptions();
+  }
+
+  @Post("references/mock")
+  async createMockReference(
+    @Headers("cookie") cookie: string | undefined,
+    @Body() input: CreateMockReferenceRequest,
+  ) {
+    await this.requireUserId(cookie);
+    return this.service.createMockReference(input);
   }
 
   @Get("sessions")

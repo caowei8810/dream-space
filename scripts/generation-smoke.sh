@@ -46,7 +46,14 @@ login "$TEST_PHONE" "$COOKIE_JAR"
 quota_before=$(curl -fsS -b "$COOKIE_JAR" "$API_URL/generation/quota")
 available_before=$(printf '%s' "$quota_before" | jq -er '.available')
 used_before=$(printf '%s' "$quota_before" | jq -er '.used')
-printf '%s\n' "[generation-smoke] login and quota passed"
+options=$(curl -fsS -b "$COOKIE_JAR" "$API_URL/generation/options")
+[ "$(printf '%s' "$options" | jq -er '.externalServicesMode')" = "mock" ]
+[ "$(printf '%s' "$options" | jq -er '.models | length')" -ge 3 ]
+reference=$(curl -fsS -b "$COOKIE_JAR" -X POST "$API_URL/generation/references/mock" \
+  -H 'Content-Type: application/json' \
+  --data '{"filename":"smoke-reference.webp","mimeType":"image/webp","byteSize":1024}')
+[ "$(printf '%s' "$reference" | jq -er '.url')" = "/inspiration/design-01.webp" ]
+printf '%s\n' "[generation-smoke] login, quota, options and mock reference passed"
 
 payload=$(jq -cn --arg key "$IDEMPOTENCY_KEY" '{
   idempotencyKey:$key,
@@ -169,4 +176,4 @@ ownership_status=$(curl -sS -b "$OTHER_COOKIE_JAR" -o "$TEMP_DIR/ownership.json"
 [ "$ownership_status" = "404" ]
 
 printf '%s\n' \
-  "Generation smoke passed: anonymous=401 task=$status cancel=cancelled idempotent=true mismatch=409 results=1 quota=$available_after/100 sse=replayed ownership=404"
+  "Generation smoke passed: anonymous=401 mock=service-response task=$status cancel=cancelled idempotent=true mismatch=409 results=1 quota=$available_after/100 sse=replayed ownership=404"

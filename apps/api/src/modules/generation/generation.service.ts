@@ -1,10 +1,13 @@
 import {
+  type CreateMockReferenceRequest,
+  type CreateMockReferenceResponse,
   generationEventTypes,
   generationRatios,
   generationResolutions,
   type CreateGenerationTaskRequest,
   type CreateGenerationTaskResponse,
   type GenerationEventType,
+  type GenerationOptionsResponse,
   type GenerationSessionDetail,
   type GenerationSessionSummary,
   type GenerationTaskEventData,
@@ -12,6 +15,7 @@ import {
   type GenerationTaskStatus,
   type QuotaResponse,
 } from "@dream-space/contracts";
+import { parseApiEnv } from "@dream-space/config";
 import {
   calculateGenerationCost,
   createGenerationSessionTitle,
@@ -43,6 +47,7 @@ const allowedReferenceUrl = /^(https?:\/\/|\/)/;
 @Injectable()
 export class GenerationService {
   private readonly logger = new Logger(GenerationService.name);
+  private readonly env = parseApiEnv(process.env);
 
   constructor(
     @Inject(GenerationRepository) private readonly repository: GenerationRepository,
@@ -109,6 +114,51 @@ export class GenerationService {
 
   async getQuota(userId: string) {
     return this.mapQuota(await this.repository.getQuota(userId));
+  }
+
+  getOptions(): GenerationOptionsResponse {
+    return {
+      models: [
+        { id: "image-4.7", labelZh: "通用模型", labelEn: "General model" },
+        { id: "image-realistic", labelZh: "写实模型", labelEn: "Realistic model" },
+        { id: "image-anime", labelZh: "动漫模型", labelEn: "Anime model" },
+      ],
+      ratios: generationRatios,
+      resolutions: generationResolutions,
+      imageCount: { min: 1, max: 8 },
+      referenceImages: {
+        max: 4,
+        maxBytes: 10 * 1024 * 1024,
+        mimeTypes: ["image/jpeg", "image/png", "image/webp"],
+      },
+      costPerImage: { "2K": 1, "4K": 2 },
+      externalServicesMode: this.env.EXTERNAL_SERVICES_MODE,
+    };
+  }
+
+  createMockReference(input: CreateMockReferenceRequest): CreateMockReferenceResponse {
+    if (this.env.EXTERNAL_SERVICES_MODE !== "mock") {
+      throw new ServiceUnavailableException("参考图上传服务尚未配置");
+    }
+    const options = this.getOptions().referenceImages;
+    const filename = typeof input?.filename === "string" ? input.filename.trim() : "";
+    if (!filename || filename.length > 255) throw new BadRequestException("参考图文件名不正确");
+    if (!options.mimeTypes.includes(input?.mimeType)) {
+      throw new BadRequestException("参考图仅支持 JPG、PNG、WebP");
+    }
+    if (
+      !Number.isInteger(input?.byteSize) ||
+      input.byteSize < 1 ||
+      input.byteSize > options.maxBytes
+    ) {
+      throw new BadRequestException("参考图大小应不超过 10MB");
+    }
+    return {
+      url: "/inspiration/design-01.webp",
+      filename,
+      mimeType: input.mimeType,
+      byteSize: input.byteSize,
+    };
   }
 
   async listSessions(userId: string) {

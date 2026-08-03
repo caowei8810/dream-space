@@ -26,6 +26,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   consumeRestoredIntent,
   createRecreateIntent,
+  restorePendingIntent,
   savePendingIntent,
 } from "../../lib/auth-intent";
 import { useAuth } from "../../lib/use-auth";
@@ -103,13 +104,14 @@ export function InspirationDetail({
   };
 
   const submit = () => {
-    const intent = intentFor(composer === "reference");
+    const intent = { ...intentFor(composer === "reference"), returnTo: "/generate" };
+    savePendingIntent(window.sessionStorage, intent);
     if (!session?.authenticated) {
-      savePendingIntent(window.sessionStorage, intent);
       router.push("/login");
       return;
     }
-    savePendingIntent(window.sessionStorage, intent);
+    restorePendingIntent(window.sessionStorage);
+    router.push("/generate");
   };
 
   const date = inspiration.publishedAt
