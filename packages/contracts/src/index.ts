@@ -97,6 +97,7 @@ export interface LoginRequest extends AgreementConsents {
 }
 
 export const adminDemoPhone = "18800000000" as const;
+export const adminViewerDemoPhone = "18800000001" as const;
 
 export const adminRoles = ["viewer", "operator", "admin"] as const;
 export type AdminRole = (typeof adminRoles)[number];
@@ -305,6 +306,69 @@ export interface AdminGenerationTaskDetail extends AdminGenerationTaskSummary {
 
 export interface AdminGenerationTaskListResponse {
   items: AdminGenerationTaskSummary[];
+  total: number;
+  page: number;
+  pageSize: number;
+  pageCount: number;
+}
+
+export const adminInspirationStatuses = ["draft", "published", "archived"] as const;
+export type AdminInspirationStatus = (typeof adminInspirationStatuses)[number];
+
+export const adminInspirationSourceTypes = ["ai_public_gallery", "licensed", "internal"] as const;
+export type AdminInspirationSourceType = (typeof adminInspirationSourceTypes)[number];
+
+export interface AdminInspirationRecord {
+  id: string;
+  slug: string;
+  title: string;
+  prompt: string;
+  category: InspirationCategory;
+  imageUrl: string;
+  thumbnailUrl: string;
+  width: number;
+  height: number;
+  modelName: string;
+  ratio: string;
+  resolutionLabel: string;
+  authorDisplayName: string;
+  sourceType: AdminInspirationSourceType;
+  sourceName: string;
+  sourceUrl: string | null;
+  licenseBasis: string;
+  isAiGenerated: boolean;
+  likeCount: number;
+  sortOrder: number;
+  status: AdminInspirationStatus;
+  publishedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminInspirationInput {
+  slug: string;
+  title: string;
+  prompt: string;
+  category: InspirationCategory;
+  imageUrl: string;
+  thumbnailUrl: string;
+  width: number;
+  height: number;
+  modelName: string;
+  ratio: string;
+  resolutionLabel: string;
+  authorDisplayName: string;
+  sourceType: AdminInspirationSourceType;
+  sourceName: string;
+  sourceUrl?: string | null;
+  licenseBasis: string;
+  isAiGenerated: boolean;
+  likeCount: number;
+  sortOrder: number;
+}
+
+export interface AdminInspirationListResponse {
+  items: AdminInspirationRecord[];
   total: number;
   page: number;
   pageSize: number;

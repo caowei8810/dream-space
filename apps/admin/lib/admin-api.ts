@@ -1,6 +1,9 @@
 import type {
   AdminGenerationTaskDetail,
   AdminGenerationTaskListResponse,
+  AdminInspirationInput,
+  AdminInspirationListResponse,
+  AdminInspirationRecord,
   AdminLoginRequest,
   AdminSessionResponse,
   SendCodeRequest,
@@ -50,6 +53,14 @@ export interface AdminTaskFilters {
   pageSize?: number;
 }
 
+export interface AdminInspirationFilters {
+  status?: string;
+  category?: string;
+  query?: string;
+  page?: number;
+  pageSize?: number;
+}
+
 export function resolveAdminAssetUrl(value: string) {
   if (/^(?:https?:|data:|blob:)/i.test(value)) return value;
   return new URL(value, webAppUrl).toString();
@@ -85,4 +96,26 @@ export const adminApi = {
       })),
     };
   },
+  inspirations: (filters: AdminInspirationFilters) => {
+    const search = new URLSearchParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== "") search.set(key, String(value));
+    });
+    return request<AdminInspirationListResponse>(`/admin/inspirations?${search.toString()}`);
+  },
+  inspiration: (id: string) => request<AdminInspirationRecord>(`/admin/inspirations/${id}`),
+  createInspiration: (input: AdminInspirationInput) =>
+    request<AdminInspirationRecord>("/admin/inspirations", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  updateInspiration: (id: string, input: AdminInspirationInput) =>
+    request<AdminInspirationRecord>(`/admin/inspirations/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
+  publishInspiration: (id: string) =>
+    request<AdminInspirationRecord>(`/admin/inspirations/${id}/publish`, { method: "POST" }),
+  unpublishInspiration: (id: string) =>
+    request<AdminInspirationRecord>(`/admin/inspirations/${id}/unpublish`, { method: "POST" }),
 };

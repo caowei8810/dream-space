@@ -1,6 +1,6 @@
 "use client";
 
-import { ClipboardList, LogOut, PanelLeftClose, ShieldCheck } from "lucide-react";
+import { ClipboardList, Images, LogOut, PanelLeftClose, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useState } from "react";
@@ -48,6 +48,13 @@ export function AdminShell({ children }: { children: ReactNode }) {
           <Link className={pathname.startsWith("/tasks") ? "active" : ""} href="/tasks">
             <ClipboardList aria-hidden="true" />
             <span>生成任务</span>
+          </Link>
+          <Link
+            className={pathname.startsWith("/inspirations") ? "active" : ""}
+            href="/inspirations"
+          >
+            <Images aria-hidden="true" />
+            <span>灵感管理</span>
           </Link>
         </nav>
         <div className="admin-sidebar-account">
