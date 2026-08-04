@@ -120,6 +120,12 @@ pnpm check
 pnpm auth:smoke
 ```
 
+管理端、API 和 PostgreSQL 启动后，可验证管理员独立会话、普通用户隔离、任务筛选/详情和退出：
+
+```bash
+pnpm admin:smoke
+```
+
 API、Worker、PostgreSQL 和 Redis 启动后，可验证生成成功、取消、幂等重放与参数冲突、额度结算、SSE 重放和用户数据隔离：
 
 ```bash
