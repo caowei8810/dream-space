@@ -6,6 +6,7 @@ API_URL="${API_URL:-http://localhost:4000}"
 ADMIN_PHONE="${DREAMSPACE_ADMIN_SMOKE_PHONE:-18800000000}"
 VIEWER_PHONE="${DREAMSPACE_ADMIN_VIEWER_SMOKE_PHONE:-18800000001}"
 USER_PHONE="${DREAMSPACE_SMOKE_PHONE:-13800138000}"
+TODAY=$(date -u +%Y-%m-%d)
 TEMP_DIR=$(mktemp -d)
 ADMIN_COOKIE_JAR="$TEMP_DIR/admin-cookies.txt"
 USER_COOKIE_JAR="$TEMP_DIR/user-cookies.txt"
@@ -70,7 +71,7 @@ session_before=$(curl -fsS -b "$ADMIN_COOKIE_JAR" "$API_URL/admin/auth/session")
 printf '%s\n' "[admin-smoke] isolated login and session passed"
 
 tasks=$(curl -fsS -b "$ADMIN_COOKIE_JAR" \
-  "$API_URL/admin/tasks?status=succeeded&model=image-4.7&createdFrom=2026-08-03&createdTo=2026-08-03&page=1&pageSize=20")
+  "$API_URL/admin/tasks?status=succeeded&model=image-4.7&createdFrom=$TODAY&createdTo=$TODAY&page=1&pageSize=20")
 [ "$(printf '%s' "$tasks" | jq -er '.page')" = "1" ]
 [ "$(printf '%s' "$tasks" | jq -er '.pageSize')" = "20" ]
 [ "$(printf '%s' "$tasks" | jq -er '.total >= 1')" = "true" ]
