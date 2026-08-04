@@ -30,7 +30,8 @@ body {
 body,
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
   letter-spacing: 0;
 }
@@ -46,6 +47,11 @@ button:focus-visible,
 a:focus-visible,
 input:focus-visible,
 select:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--admin-accent) 65%, white);
+  outline-offset: 2px;
+}
+
+textarea:focus-visible {
   outline: 2px solid color-mix(in srgb, var(--admin-accent) 65%, white);
   outline-offset: 2px;
 }
@@ -951,6 +957,10 @@ button:disabled {
 
   .admin-sidebar nav {
     flex: 1;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 2px;
     padding: 0;
   }
 
@@ -1069,5 +1079,292 @@ button:disabled {
   .admin-detail-grid,
   .admin-result-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Inspiration management */
+.admin-page-header-actions,
+.admin-editor-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-readonly-badge {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  border: 1px solid var(--admin-border);
+  border-radius: 5px;
+  color: var(--admin-muted);
+  background: var(--admin-surface);
+  font-size: 11px;
+}
+
+.admin-inspiration-filters {
+  grid-template-columns: minmax(230px, 1.5fr) repeat(2, minmax(140px, 0.7fr)) auto;
+}
+
+.admin-inspiration-table th:first-child {
+  width: 34%;
+}
+
+.admin-inspiration-table th:nth-child(2),
+.admin-inspiration-table th:nth-child(3),
+.admin-inspiration-table th:nth-child(5) {
+  width: 10%;
+}
+
+.admin-inspiration-table th:nth-child(4) {
+  width: 16%;
+}
+
+.admin-inspiration-table th:nth-child(6) {
+  width: 13%;
+}
+
+.admin-inspiration-table th:last-child {
+  width: 7%;
+}
+
+.admin-inspiration-identity {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-inspiration-identity img {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  display: block;
+  object-fit: cover;
+  border-radius: 5px;
+  background: var(--admin-surface-muted);
+}
+
+.admin-inspiration-identity span {
+  min-width: 0;
+}
+
+.admin-status.inspiration-published {
+  color: #126554;
+  background: #e3f3ef;
+}
+
+.admin-status.inspiration-draft {
+  color: #76510a;
+  background: #fff2d7;
+}
+
+.admin-status.inspiration-archived {
+  color: #687279;
+  background: #eceff0;
+}
+
+.admin-inspiration-table .admin-table-action-cell {
+  white-space: normal;
+}
+
+.admin-inspiration-table .admin-table-action-cell .admin-icon-button {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  margin: 0 1px;
+}
+
+.admin-inspiration-drawer {
+  width: min(760px, calc(100vw - 24px));
+}
+
+.admin-inspiration-form {
+  height: calc(100% - 74px);
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.admin-inspiration-form > label,
+.admin-form-grid label {
+  min-width: 0;
+  display: block;
+}
+
+.admin-inspiration-form label > span {
+  display: block;
+  margin-bottom: 7px;
+  color: #4e575d;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.admin-inspiration-form input,
+.admin-inspiration-form select,
+.admin-inspiration-form textarea {
+  width: 100%;
+  border: 1px solid var(--admin-border);
+  border-radius: 6px;
+  padding: 0 10px;
+  color: var(--admin-text);
+  background: var(--admin-surface);
+  font-size: 12px;
+}
+
+.admin-inspiration-form input,
+.admin-inspiration-form select {
+  height: 38px;
+}
+
+.admin-inspiration-form textarea {
+  min-height: 84px;
+  padding-block: 9px;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.admin-inspiration-form input:disabled,
+.admin-inspiration-form select:disabled,
+.admin-inspiration-form textarea:disabled {
+  color: #59636a;
+  background: var(--admin-surface-muted);
+}
+
+.admin-inspiration-preview {
+  position: relative;
+  width: 100%;
+  height: 190px;
+  margin-bottom: 18px;
+  overflow: hidden;
+  border-radius: 6px;
+  background: var(--admin-surface-muted);
+}
+
+.admin-inspiration-preview img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.admin-inspiration-preview .admin-status {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+
+.admin-form-grid {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.admin-form-grid.two-columns {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.admin-form-grid.three-columns {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: end;
+  margin-top: 14px;
+}
+
+.admin-inspiration-form > label {
+  margin-bottom: 14px;
+}
+
+.admin-checkbox-field {
+  min-height: 38px;
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-checkbox-field input {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  margin: 0;
+}
+
+.admin-checkbox-field span {
+  margin: 0 !important;
+}
+
+.admin-editor-actions {
+  position: sticky;
+  bottom: -20px;
+  justify-content: flex-end;
+  margin: 22px -20px -20px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--admin-border);
+  background: var(--admin-surface);
+}
+
+@media (max-width: 1180px) {
+  .admin-inspiration-filters {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .admin-inspiration-table th:nth-child(2),
+  .admin-inspiration-table td:nth-child(2),
+  .admin-inspiration-table th:nth-child(6),
+  .admin-inspiration-table td:nth-child(6) {
+    display: none;
+  }
+}
+
+@media (max-width: 800px) {
+  .admin-page-header-actions {
+    align-self: flex-start;
+  }
+
+  .admin-inspiration-table th:nth-child(4),
+  .admin-inspiration-table td:nth-child(4),
+  .admin-inspiration-table th:nth-child(5),
+  .admin-inspiration-table td:nth-child(5) {
+    display: none;
+  }
+
+  .admin-inspiration-table th:last-child,
+  .admin-inspiration-table td:last-child {
+    display: table-cell;
+    width: 20%;
+  }
+
+  .admin-inspiration-table th:first-child {
+    width: 55%;
+  }
+
+  .admin-inspiration-table th:nth-child(3) {
+    width: 25%;
+  }
+}
+
+@media (max-width: 520px) {
+  .admin-page-header {
+    flex-wrap: wrap;
+  }
+
+  .admin-page-header-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .admin-inspiration-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-inspiration-drawer {
+    width: 100%;
+  }
+
+  .admin-form-grid.two-columns,
+  .admin-form-grid.three-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-inspiration-preview {
+    height: 150px;
   }
 }

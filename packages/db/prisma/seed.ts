@@ -1,4 +1,4 @@
-import { adminDemoPhone } from "@dream-space/contracts";
+import { adminDemoPhone, adminViewerDemoPhone } from "@dream-space/contracts";
 import { createDatabaseClient } from "../src";
 import inspirations from "./seed-data/inspirations.json";
 
@@ -29,11 +29,21 @@ async function main() {
         active: true,
       },
     });
+    await database.adminUser.upsert({
+      where: { phone: adminViewerDemoPhone },
+      update: { displayName: "本地审阅员", role: "VIEWER", active: true },
+      create: {
+        phone: adminViewerDemoPhone,
+        displayName: "本地审阅员",
+        role: "VIEWER",
+        active: true,
+      },
+    });
   } finally {
     await database.$disconnect();
   }
 
-  console.log(`Seeded ${inspirations.length} inspirations and one demo administrator`);
+  console.log(`Seeded ${inspirations.length} inspirations and two demo administrators`);
 }
 
 void main();

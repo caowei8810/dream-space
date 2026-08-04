@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { AdminInspirationInput } from "@dream-space/contracts";
 import { adminApi, type AdminApiError, resolveAdminAssetUrl } from "../lib/admin-api";
 
 afterEach(() => vi.unstubAllGlobals());
@@ -64,6 +65,60 @@ describe("admin API client", () => {
     );
     expect(resolveAdminAssetUrl("https://cdn.example.com/result.webp")).toBe(
       "https://cdn.example.com/result.webp",
+    );
+  });
+
+  it("calls real inspiration management endpoints", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockImplementation(() => Promise.resolve(new Response(JSON.stringify({}))));
+    vi.stubGlobal("fetch", fetchMock);
+    const input = {
+      slug: "managed-inspiration",
+      title: "管理端灵感",
+      prompt: "柔和自然光",
+      category: "portrait",
+      imageUrl: "/inspiration/portrait-01.webp",
+      thumbnailUrl: "/inspiration/portrait-01.webp",
+      width: 1350,
+      height: 2400,
+      modelName: "image-4.7",
+      ratio: "9:16",
+      resolutionLabel: "1350 × 2400",
+      authorDisplayName: "运营精选",
+      sourceType: "internal",
+      sourceName: "造梦空间",
+      sourceUrl: null,
+      licenseBasis: "内部生成素材",
+      isAiGenerated: true,
+      likeCount: 0,
+      sortOrder: 0,
+    } satisfies AdminInspirationInput;
+
+    await adminApi.createInspiration(input);
+    await adminApi.updateInspiration("inspiration-1", input);
+    await adminApi.publishInspiration("inspiration-1");
+    await adminApi.unpublishInspiration("inspiration-1");
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "http://localhost:4000/admin/inspirations",
+      expect.objectContaining({ method: "POST", credentials: "include" }),
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "http://localhost:4000/admin/inspirations/inspiration-1",
+      expect.objectContaining({ method: "PATCH", credentials: "include" }),
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      "http://localhost:4000/admin/inspirations/inspiration-1/publish",
+      expect.objectContaining({ method: "POST", credentials: "include" }),
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      4,
+      "http://localhost:4000/admin/inspirations/inspiration-1/unpublish",
+      expect.objectContaining({ method: "POST", credentials: "include" }),
     );
   });
 });

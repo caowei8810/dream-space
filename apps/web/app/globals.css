@@ -1852,6 +1852,9 @@ button:disabled {
   .motivation-button {
     display: none;
   }
+  .date-meta {
+    display: none;
+  }
 }
 
 @media (max-width: 1599px) {

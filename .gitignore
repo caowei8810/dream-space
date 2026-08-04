@@ -9,6 +9,8 @@ dist/
 .turbo/
 .next/
 coverage/
+playwright-report/
+test-results/
 packages/db/generated/
 packages/db/src/generated/
 .pnpm-store/

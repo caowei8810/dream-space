@@ -2,6 +2,7 @@ import type {
   CreateMockReferenceRequest,
   CreateGenerationTaskRequest,
   RenameGenerationSessionRequest,
+  UpdateGenerationSessionDraftRequest,
 } from "@dream-space/contracts";
 import {
   Body,
@@ -68,6 +69,15 @@ export class GenerationController {
     @Body() input: RenameGenerationSessionRequest,
   ) {
     return this.service.renameSession(await this.requireUserId(cookie), sessionId, input?.title);
+  }
+
+  @Patch("sessions/:sessionId/draft")
+  async updateSessionDraft(
+    @Headers("cookie") cookie: string | undefined,
+    @Param("sessionId") sessionId: string,
+    @Body() input: UpdateGenerationSessionDraftRequest,
+  ) {
+    return this.service.updateSessionDraft(await this.requireUserId(cookie), sessionId, input);
   }
 
   @Delete("sessions/:sessionId")
