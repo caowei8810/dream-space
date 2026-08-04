@@ -40,10 +40,16 @@ interface ResultRecord {
   taskId: string;
   index: number;
   imagePath: string;
+  objectKey: string | null;
+  thumbnailObjectKey: string | null;
+  checksumSha256: string | null;
   width: number;
   height: number;
   mimeType: string;
   byteSize: number;
+  thumbnailWidth: number | null;
+  thumbnailHeight: number | null;
+  thumbnailByteSize: number | null;
   isAiGenerated: boolean;
   createdAt: Date;
 }
@@ -111,6 +117,16 @@ function isUniqueConstraintError(error: unknown): error is { code: "P2002" } {
 @Injectable()
 export class GenerationRepository {
   constructor(@Inject(DATABASE_CLIENT) private readonly database: DatabaseClient) {}
+
+  findOwnedResult(userId: string, resultId: string): Promise<ResultRecord | null> {
+    return this.database.generationResult.findFirst({
+      where: { id: resultId, task: { userId } },
+    });
+  }
+
+  findResult(resultId: string): Promise<ResultRecord | null> {
+    return this.database.generationResult.findUnique({ where: { id: resultId } });
+  }
 
   async createTask(
     input: CreateTaskInput,

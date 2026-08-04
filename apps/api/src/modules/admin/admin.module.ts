@@ -1,4 +1,5 @@
 import { Module } from "@nestjs/common";
+import { GenerationModule } from "../generation/generation.module";
 import { AdminAuthController } from "./admin-auth.controller";
 import { AdminAuthRepository } from "./admin-auth.repository";
 import { AdminAuthService } from "./admin-auth.service";
@@ -11,6 +12,7 @@ import { AdminTasksRepository } from "./admin-tasks.repository";
 import { AdminTasksService } from "./admin-tasks.service";
 
 @Module({
+  imports: [GenerationModule],
   controllers: [AdminAuthController, AdminInspirationsController, AdminTasksController],
   providers: [
     AdminAuthRepository,

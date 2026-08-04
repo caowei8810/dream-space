@@ -1,7 +1,7 @@
 import { parseApiEnv } from "@dream-space/config";
+import { createObjectStorage } from "@dream-space/storage";
 import { Module } from "@nestjs/common";
 import { AuthModule } from "../auth/auth.module";
-import { LocalReferenceObjectStorage } from "./local-reference-object-storage";
 import { REFERENCE_OBJECT_STORAGE } from "./reference-object-storage";
 import { UploadsController } from "./uploads.controller";
 import { UploadsRepository } from "./uploads.repository";
@@ -17,13 +17,21 @@ import { UploadsService } from "./uploads.service";
       provide: REFERENCE_OBJECT_STORAGE,
       useFactory: () => {
         const env = parseApiEnv(process.env);
-        if (env.EXTERNAL_SERVICES_MODE !== "mock") {
-          throw new Error("真实对象存储适配器尚未配置");
-        }
-        return new LocalReferenceObjectStorage(env.LOCAL_STORAGE_DIR);
+        return createObjectStorage({
+          mode: env.OBJECT_STORAGE_MODE,
+          localRoot: env.LOCAL_STORAGE_DIR,
+          s3: {
+            endpoint: env.S3_ENDPOINT,
+            region: env.S3_REGION,
+            bucket: env.S3_BUCKET,
+            accessKey: env.S3_ACCESS_KEY,
+            secretKey: env.S3_SECRET_KEY,
+            forcePathStyle: env.S3_FORCE_PATH_STYLE,
+          },
+        });
       },
     },
   ],
-  exports: [UploadsService],
+  exports: [UploadsService, REFERENCE_OBJECT_STORAGE],
 })
 export class UploadsModule {}

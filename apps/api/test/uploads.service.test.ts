@@ -31,6 +31,7 @@ function createService() {
     put: vi.fn(async (key, data) => void stored.set(key, data)),
     get: vi.fn(async (key) => stored.get(key) ?? Buffer.alloc(0)),
     delete: vi.fn(async (key) => void stored.delete(key)),
+    createSignedGetUrl: vi.fn(async () => null),
   };
   const repository = {
     create: vi.fn(async (input) => ({
@@ -121,6 +122,6 @@ describe("LocalReferenceObjectStorage", () => {
     await storage.put(key, Buffer.from("image"));
 
     await expect(readFile(join(directory, key), "utf8")).resolves.toBe("image");
-    await expect(storage.get("../secret.webp")).rejects.toThrow("invalid reference object key");
+    await expect(storage.get("../secret.webp")).rejects.toThrow("invalid object key");
   });
 });

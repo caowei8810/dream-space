@@ -4,11 +4,18 @@ import { UploadsModule } from "../uploads/uploads.module";
 import { GenerationController } from "./generation.controller";
 import { GenerationQueue } from "./generation.queue";
 import { GenerationRepository } from "./generation.repository";
+import { GenerationResultAssetsService } from "./generation-result-assets.service";
 import { GenerationService } from "./generation.service";
 
 @Module({
   imports: [AuthModule, UploadsModule],
   controllers: [GenerationController],
-  providers: [GenerationQueue, GenerationRepository, GenerationService],
+  providers: [
+    GenerationQueue,
+    GenerationRepository,
+    GenerationResultAssetsService,
+    GenerationService,
+  ],
+  exports: [GenerationResultAssetsService],
 })
 export class GenerationModule {}

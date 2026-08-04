@@ -7,7 +7,7 @@ import {
 import type {
   GenerationStore,
   GenerationTaskSnapshot,
-  MockGenerationResult,
+  StoredGenerationResult,
 } from "./generation-processor";
 
 export class PrismaGenerationStore implements GenerationStore {
@@ -47,7 +47,10 @@ export class PrismaGenerationStore implements GenerationStore {
     });
   }
 
-  async succeed(taskId: string, results: MockGenerationResult[]): Promise<"succeeded" | "ignored"> {
+  async succeed(
+    taskId: string,
+    results: StoredGenerationResult[],
+  ): Promise<"succeeded" | "ignored"> {
     return this.database.$transaction(async (transaction) => {
       const task = await transaction.generationTask.findUnique({ where: { id: taskId } });
       if (!task || task.status !== "GENERATING" || !canTransitionTask("generating", "succeeded")) {
@@ -61,13 +64,20 @@ export class PrismaGenerationStore implements GenerationStore {
 
       await transaction.generationResult.createMany({
         data: results.map((result) => ({
+          id: result.id,
           taskId: task.id,
           index: result.index,
           imagePath: result.imagePath,
+          objectKey: result.objectKey,
+          thumbnailObjectKey: result.thumbnailObjectKey,
+          checksumSha256: result.checksumSha256,
           width: result.width,
           height: result.height,
           mimeType: result.mimeType,
           byteSize: result.byteSize,
+          thumbnailWidth: result.thumbnailWidth,
+          thumbnailHeight: result.thumbnailHeight,
+          thumbnailByteSize: result.thumbnailByteSize,
           isAiGenerated: true,
         })),
         skipDuplicates: true,

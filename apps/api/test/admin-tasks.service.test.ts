@@ -82,4 +82,36 @@ describe("admin tasks service", () => {
     ).rejects.toThrow("开始时间不能晚于结束时间");
     await expect(service.list({ page: "0" })).rejects.toThrow("页码不正确");
   });
+
+  it("maps stored objects to protected admin asset routes", async () => {
+    const repository = {
+      list: vi.fn(),
+      findById: vi.fn().mockResolvedValue({
+        ...task,
+        results: [
+          {
+            id: "result-1",
+            index: 0,
+            imagePath: "/legacy.webp",
+            objectKey: "results/task-1/result-1.webp",
+            thumbnailObjectKey: "thumbnails/task-1/result-1.webp",
+            width: 2048,
+            height: 2048,
+            mimeType: "image/webp",
+            byteSize: 1024,
+          },
+        ],
+      }),
+    };
+    const service = new AdminTasksService(repository as never);
+
+    await expect(service.get("task-1")).resolves.toMatchObject({
+      results: [
+        {
+          imageUrl: "http://localhost:4000/admin/tasks/results/result-1/content",
+          thumbnailUrl: "http://localhost:4000/admin/tasks/results/result-1/thumbnail",
+        },
+      ],
+    });
+  });
 });

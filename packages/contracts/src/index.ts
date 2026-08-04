@@ -193,6 +193,7 @@ export interface GenerationResultResponse {
   id: string;
   index: number;
   imageUrl: string;
+  thumbnailUrl: string;
   width: number;
   height: number;
   mimeType: string;

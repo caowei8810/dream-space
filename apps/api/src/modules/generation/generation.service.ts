@@ -49,6 +49,7 @@ const allowedReferenceUrl = /^(https?:\/\/|\/)/;
 export class GenerationService {
   private readonly logger = new Logger(GenerationService.name);
   private readonly env = parseApiEnv(process.env);
+  private readonly publicOrigin = new URL(this.env.API_PUBLIC_URL);
 
   constructor(
     @Inject(GenerationRepository) private readonly repository: GenerationRepository,
@@ -338,12 +339,22 @@ export class GenerationService {
     title: string;
     createdAt: Date;
     updatedAt: Date;
-    tasks?: Array<{ results: Array<{ imagePath: string }> }>;
+    tasks?: Array<{
+      results: Array<{
+        id: string;
+        imagePath: string;
+        objectKey: string | null;
+        thumbnailObjectKey: string | null;
+      }>;
+    }>;
   }): GenerationSessionSummary {
     return {
       id: session.id,
       title: session.title,
-      thumbnailUrl: session.tasks?.flatMap((task) => task.results)[0]?.imagePath ?? null,
+      thumbnailUrl: (() => {
+        const result = session.tasks?.flatMap((task) => task.results)[0];
+        return result ? this.resultAssetUrl(result, "thumbnail") : null;
+      })(),
       createdAt: session.createdAt.toISOString(),
       updatedAt: session.updatedAt.toISOString(),
     };
@@ -370,6 +381,8 @@ export class GenerationService {
       id: string;
       index: number;
       imagePath: string;
+      objectKey?: string | null;
+      thumbnailObjectKey?: string | null;
       width: number;
       height: number;
       mimeType: string;
@@ -399,7 +412,8 @@ export class GenerationService {
       results: task.results.map((result) => ({
         id: result.id,
         index: result.index,
-        imageUrl: result.imagePath,
+        imageUrl: this.resultAssetUrl(result, "content"),
+        thumbnailUrl: this.resultAssetUrl(result, "thumbnail"),
         width: result.width,
         height: result.height,
         mimeType: result.mimeType,
@@ -407,6 +421,20 @@ export class GenerationService {
         isAiGenerated: true,
       })),
     };
+  }
+
+  private resultAssetUrl(
+    result: {
+      id?: string;
+      imagePath: string;
+      objectKey?: string | null;
+      thumbnailObjectKey?: string | null;
+    },
+    variant: "content" | "thumbnail",
+  ) {
+    const hasStoredAsset = variant === "content" ? result.objectKey : result.thumbnailObjectKey;
+    if (!result.id || !hasStoredAsset) return result.imagePath;
+    return new URL(`/generation/results/${result.id}/${variant}`, this.publicOrigin).toString();
   }
 
   private mapQuota(quota: { total: number; available: number; reserved: number }): QuotaResponse {

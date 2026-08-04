@@ -1,7 +1,5 @@
-export const REFERENCE_OBJECT_STORAGE = Symbol("REFERENCE_OBJECT_STORAGE");
+import type { ObjectStorage } from "@dream-space/storage";
 
-export interface ReferenceObjectStorage {
-  put(objectKey: string, data: Buffer): Promise<void>;
-  get(objectKey: string): Promise<Buffer>;
-  delete(objectKey: string): Promise<void>;
-}
+export const OBJECT_STORAGE = Symbol("OBJECT_STORAGE");
+export const REFERENCE_OBJECT_STORAGE = OBJECT_STORAGE;
+export type ReferenceObjectStorage = ObjectStorage;

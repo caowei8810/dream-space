@@ -34,7 +34,7 @@ export class UploadsService {
     this.validateFileEnvelope(file);
     const sanitized = await this.sanitize(file);
     const objectKey = `references/${userId}/${randomUUID()}.webp`;
-    await this.storage.put(objectKey, sanitized.data);
+    await this.storage.put(objectKey, sanitized.data, "image/webp");
     try {
       const record = await this.repository.create({
         userId,
