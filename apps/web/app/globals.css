@@ -1059,6 +1059,7 @@ button:disabled {
   overflow: hidden;
   gap: 3px;
   border-radius: var(--radius);
+  --session-action-space: 0px;
 }
 .session-row:hover,
 .session-row.active {
@@ -1082,12 +1083,14 @@ button:disabled {
 .session-item {
   min-width: 0;
   flex: 1;
+  width: 100%;
   height: 40px;
   border: 0;
   border-radius: var(--radius);
   background: transparent;
   text-align: left;
   padding: 0 10px;
+  padding-right: calc(10px + var(--session-action-space));
   cursor: pointer;
   white-space: nowrap;
   overflow: hidden;
@@ -1135,9 +1138,9 @@ button:disabled {
   opacity: 1;
   pointer-events: auto;
 }
-.session-row:hover .session-item,
-.session-row:has(.session-row-actions:focus-within) .session-item {
-  padding-right: 70px;
+.session-row:hover,
+.session-row:has(.session-row-actions:focus-within) {
+  --session-action-space: 66px;
 }
 .session-row-action svg,
 .session-inline-action svg {
@@ -1328,13 +1331,13 @@ button:disabled {
 .generation-main.is-empty > .composer {
   grid-row: 2;
   width: clamp(680px, calc(100% - 96px), 920px);
-  min-height: 158px;
+  min-height: 116px;
   margin-bottom: 0;
-  padding: 18px 20px;
+  padding: 14px;
 }
 .generation-main > .composer.is-expanded {
   width: clamp(680px, calc(100% - 64px), 1180px);
-  min-height: 176px;
+  min-height: 116px;
 }
 .generation-main > .composer:not(.is-expanded) {
   min-height: 72px;
@@ -1458,7 +1461,7 @@ button:disabled {
   font-size: 12px;
 }
 .date-heading {
-  width: min(1120px, 100%);
+  width: min(1320px, 100%);
   margin: 4px auto 34px;
   font-size: 24px;
   font-weight: 500;
@@ -1469,7 +1472,7 @@ button:disabled {
   color: var(--muted);
 }
 .task {
-  width: min(1120px, 100%);
+  width: min(1320px, 100%);
   margin: 0 auto 48px;
 }
 .task-prompt {
@@ -1500,17 +1503,18 @@ button:disabled {
 }
 .result-grid {
   display: grid;
-  grid-template-columns: repeat(var(--result-columns, 4), minmax(0, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 260px));
+  gap: 3px;
   margin: 16px 0 10px;
-  max-width: 1080px;
+  width: 100%;
+  max-width: 1049px;
+  justify-content: start;
 }
 .result-item {
   min-width: 0;
   position: relative;
   overflow: hidden;
   border-radius: 4px;
-  background: var(--surface-strong);
 }
 .result-preview {
   width: 100%;
@@ -1522,9 +1526,8 @@ button:disabled {
 }
 .result-preview img {
   width: 100%;
-  aspect-ratio: var(--result-ratio, 1 / 1);
+  height: auto;
   display: block;
-  object-fit: cover;
 }
 .result-download {
   position: absolute;
@@ -1970,11 +1973,9 @@ button:disabled {
     margin: 0 12px 12px;
     padding: 14px;
   }
-  .generation-main.is-empty > .composer {
-    min-height: 146px;
-  }
+  .generation-main.is-empty > .composer,
   .generation-main > .composer.is-expanded {
-    min-height: 148px;
+    min-height: 116px;
   }
   .parameter-popover {
     left: 0;
@@ -2012,7 +2013,7 @@ button:disabled {
     white-space: normal;
   }
   .result-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(var(--mobile-result-columns, 1), minmax(0, 1fr));
   }
   .result-download {
     opacity: 1;

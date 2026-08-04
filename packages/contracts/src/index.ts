@@ -178,17 +178,15 @@ export interface GenerationOptionsResponse {
   externalServicesMode: "mock" | "live";
 }
 
-export interface CreateMockReferenceRequest {
-  filename: string;
-  mimeType: string;
-  byteSize: number;
-}
-
-export interface CreateMockReferenceResponse {
+export interface ReferenceUploadResponse {
+  id: string;
   url: string;
   filename: string;
   mimeType: string;
+  width: number;
+  height: number;
   byteSize: number;
+  checksumSha256: string;
 }
 
 export interface GenerationResultResponse {
