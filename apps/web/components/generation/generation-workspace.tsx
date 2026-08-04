@@ -108,6 +108,7 @@ export function GenerationWorkspace({ initialSessionId }: { initialSessionId?: s
   const { session, loading } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const searchControlRef = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<HTMLElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const draftSessionIdRef = useRef<string | null>(null);
   const [options, setOptions] = useState<GenerationOptionsResponse | null>(null);
@@ -374,6 +375,16 @@ export function GenerationWorkspace({ initialSessionId }: { initialSessionId?: s
     return () => document.removeEventListener("mousedown", collapse);
   }, [searchExpanded]);
 
+  useEffect(() => {
+    if (!parameterOpen) return;
+    const collapse = (event: PointerEvent) => {
+      if (composerRef.current?.contains(event.target as Node)) return;
+      setParameterOpen(false);
+    };
+    document.addEventListener("pointerdown", collapse);
+    return () => document.removeEventListener("pointerdown", collapse);
+  }, [parameterOpen]);
+
   const estimatedCost = draft.imageCount * (draft.resolution === "4K" ? 2 : 1);
   const size = dimensions(draft.ratio, draft.resolution);
   const expanded =
@@ -400,6 +411,7 @@ export function GenerationWorkspace({ initialSessionId }: { initialSessionId?: s
     }
     setSubmitting(true);
     setError("");
+    setDraft((current) => ({ ...current, prompt: "", referenceImageUrls: [] }));
     try {
       const response = await generationApi.createTask({
         idempotencyKey: crypto.randomUUID(),
@@ -420,7 +432,6 @@ export function GenerationWorkspace({ initialSessionId }: { initialSessionId?: s
       if (pathname !== `/generate/${response.session.id}`) {
         router.replace(`/generate/${response.session.id}`);
       }
-      setDraft((current) => ({ ...current, prompt: "", referenceImageUrls: [] }));
     } catch (requestError) {
       setError((requestError as Error).message);
     } finally {
@@ -436,11 +447,7 @@ export function GenerationWorkspace({ initialSessionId }: { initialSessionId?: s
       return;
     }
     try {
-      const result = await generationApi.mockReference({
-        filename: file.name,
-        mimeType: file.type,
-        byteSize: file.size,
-      });
+      const result = await generationApi.uploadReference(file);
       setDraft((current) => ({
         ...current,
         referenceImageUrls: [...current.referenceImageUrls, result.url],
@@ -834,9 +841,7 @@ export function GenerationWorkspace({ initialSessionId }: { initialSessionId?: s
                         className="result-grid"
                         style={
                           {
-                            "--result-ratio":
-                              task.ratio === "smart" ? "1 / 1" : task.ratio.replace(":", " / "),
-                            "--result-columns": Math.min(task.results.length, 4),
+                            "--mobile-result-columns": Math.min(task.results.length, 2),
                           } as React.CSSProperties
                         }
                       >
@@ -911,6 +916,7 @@ export function GenerationWorkspace({ initialSessionId }: { initialSessionId?: s
         </div>
 
         <section
+          ref={composerRef}
           className={`composer composer-shell${expanded ? " is-expanded" : ""}`}
           aria-label={text.imageGeneration}
         >

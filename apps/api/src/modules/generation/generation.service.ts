@@ -1,6 +1,4 @@
 import {
-  type CreateMockReferenceRequest,
-  type CreateMockReferenceResponse,
   generationEventTypes,
   generationRatios,
   generationResolutions,
@@ -43,6 +41,7 @@ import {
 import { Observable } from "rxjs";
 import { GenerationQueue } from "./generation.queue";
 import { GenerationRepository } from "./generation.repository";
+import { UploadsService } from "../uploads/uploads.service";
 
 const allowedReferenceUrl = /^(https?:\/\/|\/)/;
 
@@ -54,6 +53,7 @@ export class GenerationService {
   constructor(
     @Inject(GenerationRepository) private readonly repository: GenerationRepository,
     @Inject(GenerationQueue) private readonly queue: GenerationQueue,
+    @Inject(UploadsService) private readonly uploads: UploadsService,
   ) {}
 
   async createTask(
@@ -61,6 +61,7 @@ export class GenerationService {
     rawInput: CreateGenerationTaskRequest,
   ): Promise<CreateGenerationTaskResponse> {
     const input = this.validateCreateInput(rawInput);
+    await this.uploads.assertOwnedReferenceUrls(userId, input.referenceImageUrls);
     const unitCost = calculateGenerationCost(1, input.resolution);
     const totalCost = calculateGenerationCost(input.imageCount, input.resolution);
     const result = await this.repository.createTask({
@@ -138,31 +139,6 @@ export class GenerationService {
     };
   }
 
-  createMockReference(input: CreateMockReferenceRequest): CreateMockReferenceResponse {
-    if (this.env.EXTERNAL_SERVICES_MODE !== "mock") {
-      throw new ServiceUnavailableException("参考图上传服务尚未配置");
-    }
-    const options = this.getOptions().referenceImages;
-    const filename = typeof input?.filename === "string" ? input.filename.trim() : "";
-    if (!filename || filename.length > 255) throw new BadRequestException("参考图文件名不正确");
-    if (!options.mimeTypes.includes(input?.mimeType)) {
-      throw new BadRequestException("参考图仅支持 JPG、PNG、WebP");
-    }
-    if (
-      !Number.isInteger(input?.byteSize) ||
-      input.byteSize < 1 ||
-      input.byteSize > options.maxBytes
-    ) {
-      throw new BadRequestException("参考图大小应不超过 10MB");
-    }
-    return {
-      url: "/inspiration/design-01.webp",
-      filename,
-      mimeType: input.mimeType,
-      byteSize: input.byteSize,
-    };
-  }
-
   async listSessions(userId: string) {
     const sessions = await this.repository.listSessions(userId);
     return { items: sessions.map((session) => this.mapSessionSummary(session)) };
@@ -192,6 +168,7 @@ export class GenerationService {
     rawDraft: UpdateGenerationSessionDraftRequest,
   ) {
     const draft = this.validateSessionDraft(rawDraft);
+    await this.uploads.assertOwnedReferenceUrls(userId, draft.referenceImageUrls);
     const session = await this.repository.updateSessionDraft(userId, sessionId, draft);
     if (!session) throw new NotFoundException("生成会话不存在");
     return this.getSession(userId, sessionId);

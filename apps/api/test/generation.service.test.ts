@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { GenerationQueue } from "../src/modules/generation/generation.queue";
 import type { GenerationRepository } from "../src/modules/generation/generation.repository";
 import { GenerationService } from "../src/modules/generation/generation.service";
+import type { UploadsService } from "../src/modules/uploads/uploads.service";
 
 const input: CreateGenerationTaskRequest = {
   idempotencyKey: "request-12345678",
@@ -77,7 +78,10 @@ function createService() {
   const queue = {
     enqueue: vi.fn().mockResolvedValue(task.id),
   } as unknown as GenerationQueue;
-  return { queue, repository, service: new GenerationService(repository, queue) };
+  const uploads = {
+    assertOwnedReferenceUrls: vi.fn().mockResolvedValue(undefined),
+  } as unknown as UploadsService;
+  return { queue, repository, uploads, service: new GenerationService(repository, queue, uploads) };
 }
 
 describe("GenerationService", () => {
@@ -101,7 +105,7 @@ describe("GenerationService", () => {
     expect(repository.setQueueJobId).toHaveBeenCalledWith(task.id, task.id);
   });
 
-  it("returns API-driven generation options and validates mock reference uploads", () => {
+  it("returns API-driven generation options", () => {
     const { service } = createService();
 
     expect(service.getOptions()).toMatchObject({
@@ -109,20 +113,22 @@ describe("GenerationService", () => {
       imageCount: { min: 1, max: 8 },
       costPerImage: { "2K": 1, "4K": 2 },
     });
-    expect(
-      service.createMockReference({
-        filename: "reference.webp",
-        mimeType: "image/webp",
-        byteSize: 1024,
-      }),
-    ).toMatchObject({ url: "/inspiration/design-01.webp", filename: "reference.webp" });
-    expect(() =>
-      service.createMockReference({
-        filename: "reference.gif",
-        mimeType: "image/gif",
-        byteSize: 1024,
-      }),
-    ).toThrow(BadRequestException);
+  });
+
+  it("checks reference ownership before reserving quota", async () => {
+    const { repository, uploads, service } = createService();
+    const withReference = {
+      ...input,
+      referenceImageUrls: ["http://localhost:4000/uploads/references/upload-1/content"],
+    };
+
+    await service.createTask("user-1", withReference);
+
+    expect(uploads.assertOwnedReferenceUrls).toHaveBeenCalledWith(
+      "user-1",
+      withReference.referenceImageUrls,
+    );
+    expect(repository.createTask).toHaveBeenCalled();
   });
 
   it("does not enqueue an already persisted idempotent request twice", async () => {

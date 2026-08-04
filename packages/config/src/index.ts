@@ -7,9 +7,11 @@ const apiEnvSchema = z.object({
   API_PORT: z.coerce.number().int().positive().default(4000),
   WEB_ORIGIN: z.url().default("http://localhost:3000"),
   ADMIN_ORIGIN: z.url().default("http://localhost:3001"),
+  API_PUBLIC_URL: z.url().default("http://localhost:4000"),
   AUTH_CODE_TTL_SECONDS: z.coerce.number().int().min(60).max(900).default(300),
   AUTH_SESSION_DAYS: z.coerce.number().int().min(1).max(90).default(30),
   REDIS_URL: z.url().default("redis://localhost:6379"),
+  LOCAL_STORAGE_DIR: z.string().min(1).default(".local/storage"),
   EXTERNAL_SERVICES_MODE: externalServicesMode,
 });
 

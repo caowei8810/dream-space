@@ -1,5 +1,4 @@
 import type {
-  CreateMockReferenceRequest,
   CreateGenerationTaskRequest,
   RenameGenerationSessionRequest,
   UpdateGenerationSessionDraftRequest,
@@ -38,15 +37,6 @@ export class GenerationController {
   async getOptions(@Headers("cookie") cookie: string | undefined) {
     await this.requireUserId(cookie);
     return this.service.getOptions();
-  }
-
-  @Post("references/mock")
-  async createMockReference(
-    @Headers("cookie") cookie: string | undefined,
-    @Body() input: CreateMockReferenceRequest,
-  ) {
-    await this.requireUserId(cookie);
-    return this.service.createMockReference(input);
   }
 
   @Get("sessions")
