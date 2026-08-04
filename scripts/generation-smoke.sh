@@ -5,6 +5,7 @@ set -eu
 API_URL="${API_URL:-http://localhost:4000}"
 TEST_PHONE="${DREAMSPACE_GENERATION_PHONE:-13800138000}"
 OTHER_PHONE="${DREAMSPACE_GENERATION_OTHER_PHONE:-13900139000}"
+EXPECT_OBJECT_STORAGE_MODE="${DREAMSPACE_EXPECT_OBJECT_STORAGE_MODE:-local}"
 IDEMPOTENCY_KEY="${DREAMSPACE_GENERATION_IDEMPOTENCY_KEY:-generation-smoke-v1}"
 REFERENCE_FILE="${DREAMSPACE_GENERATION_REFERENCE_FILE:-apps/web/public/inspiration/design-01.webp}"
 TEMP_DIR=$(mktemp -d)
@@ -118,7 +119,33 @@ for _attempt in $(seq 1 60); do
 done
 [ "$status" = "succeeded" ]
 [ "$(printf '%s' "$task_response" | jq -er '.results | length')" = "1" ]
-printf '%s\n' "[generation-smoke] worker result passed"
+result_id=$(printf '%s' "$task_response" | jq -er '.results[0].id')
+result_url=$(printf '%s' "$task_response" | jq -er '.results[0].imageUrl')
+thumbnail_url=$(printf '%s' "$task_response" | jq -er '.results[0].thumbnailUrl')
+result_status=$(curl -sS -b "$COOKIE_JAR" -o /dev/null -D "$TEMP_DIR/result-headers.txt" \
+  -w '%{http_code}' "$result_url")
+thumbnail_status=$(curl -sS -b "$COOKIE_JAR" -o /dev/null -D "$TEMP_DIR/thumbnail-headers.txt" \
+  -w '%{http_code}' "$thumbnail_url")
+if [ "$EXPECT_OBJECT_STORAGE_MODE" = "s3" ]; then
+  [ "$result_status" = "302" ]
+  [ "$thumbnail_status" = "302" ]
+  grep -qi '^location: .*X-Amz-' "$TEMP_DIR/result-headers.txt"
+  grep -qi 'X-Amz-Expires=300' "$TEMP_DIR/result-headers.txt"
+else
+  [ "$result_status" = "200" ]
+  [ "$thumbnail_status" = "200" ]
+fi
+curl -fsSL -b "$COOKIE_JAR" -o "$TEMP_DIR/result.webp" "$result_url"
+curl -fsSL -b "$COOKIE_JAR" -o "$TEMP_DIR/thumbnail.webp" "$thumbnail_url"
+[ -s "$TEMP_DIR/result.webp" ]
+[ -s "$TEMP_DIR/thumbnail.webp" ]
+if command -v sips >/dev/null 2>&1; then
+  [ "$(sips -g pixelWidth "$TEMP_DIR/result.webp" | awk '/pixelWidth/ { print $2 }')" = "2048" ]
+  [ "$(sips -g pixelHeight "$TEMP_DIR/result.webp" | awk '/pixelHeight/ { print $2 }')" = "2048" ]
+  [ "$(sips -g pixelWidth "$TEMP_DIR/thumbnail.webp" | awk '/pixelWidth/ { print $2 }')" = "480" ]
+  [ "$(sips -g pixelHeight "$TEMP_DIR/thumbnail.webp" | awk '/pixelHeight/ { print $2 }')" = "480" ]
+fi
+printf '%s\n' "[generation-smoke] worker result, protected original and thumbnail passed"
 
 quota_after=$(curl -fsS -b "$COOKIE_JAR" "$API_URL/generation/quota")
 available_after=$(printf '%s' "$quota_after" | jq -er '.available')
@@ -180,6 +207,9 @@ login "$OTHER_PHONE" "$OTHER_COOKIE_JAR"
 ownership_status=$(curl -sS -b "$OTHER_COOKIE_JAR" -o "$TEMP_DIR/ownership.json" \
   -w '%{http_code}' "$API_URL/generation/tasks/$task_id")
 [ "$ownership_status" = "404" ]
+foreign_result_status=$(curl -sS -b "$OTHER_COOKIE_JAR" -o "$TEMP_DIR/foreign-result.json" \
+  -w '%{http_code}' "$API_URL/generation/results/$result_id/content")
+[ "$foreign_result_status" = "404" ]
 foreign_reference_payload=$(printf '%s' "$payload" | jq -c \
   --arg key "$IDEMPOTENCY_KEY-foreign-reference" '.idempotencyKey = $key')
 foreign_reference_status=$(curl -sS -b "$OTHER_COOKIE_JAR" \
@@ -190,4 +220,4 @@ foreign_reference_status=$(curl -sS -b "$OTHER_COOKIE_JAR" \
 [ "$foreign_reference_status" = "400" ]
 
 printf '%s\n' \
-  "Generation smoke passed: anonymous=401 upload=multipart task=$status cancel=cancelled idempotent=true mismatch=409 results=1 quota=$available_after/100 sse=replayed ownership=404 foreign-reference=400"
+  "Generation smoke passed: anonymous=401 upload=multipart task=$status cancel=cancelled idempotent=true mismatch=409 results=1 assets=$result_status/$thumbnail_status quota=$available_after/100 sse=replayed ownership=404 result-ownership=404 foreign-reference=400"

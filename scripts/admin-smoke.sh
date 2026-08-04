@@ -6,6 +6,7 @@ API_URL="${API_URL:-http://localhost:4000}"
 ADMIN_PHONE="${DREAMSPACE_ADMIN_SMOKE_PHONE:-18800000000}"
 VIEWER_PHONE="${DREAMSPACE_ADMIN_VIEWER_SMOKE_PHONE:-18800000001}"
 USER_PHONE="${DREAMSPACE_SMOKE_PHONE:-13800138000}"
+EXPECT_OBJECT_STORAGE_MODE="${DREAMSPACE_EXPECT_OBJECT_STORAGE_MODE:-local}"
 TODAY=$(date -u +%Y-%m-%d)
 TEMP_DIR=$(mktemp -d)
 ADMIN_COOKIE_JAR="$TEMP_DIR/admin-cookies.txt"
@@ -81,7 +82,24 @@ task=$(curl -fsS -b "$ADMIN_COOKIE_JAR" "$API_URL/admin/tasks/$task_id")
 [ "$(printf '%s' "$task" | jq -er '.id')" = "$task_id" ]
 [ "$(printf '%s' "$task" | jq -er '.results | length >= 1')" = "true" ]
 [ "$(printf '%s' "$task" | jq -er '.userPhoneMasked | test("^[0-9]{3}\\*{4}[0-9]{4}$")')" = "true" ]
-printf '%s\n' "[admin-smoke] task filters, pagination and detail passed"
+result_url=$(printf '%s' "$task" | jq -er '.results[0].imageUrl')
+thumbnail_url=$(printf '%s' "$task" | jq -er '.results[0].thumbnailUrl')
+result_status=$(curl -sS -b "$ADMIN_COOKIE_JAR" -o /dev/null -D "$TEMP_DIR/result-headers.txt" \
+  -w '%{http_code}' "$result_url")
+thumbnail_status=$(curl -sS -b "$ADMIN_COOKIE_JAR" -o /dev/null \
+  -w '%{http_code}' "$thumbnail_url")
+if [ "$EXPECT_OBJECT_STORAGE_MODE" = "s3" ]; then
+  [ "$result_status" = "302" ]
+  [ "$thumbnail_status" = "302" ]
+  grep -qi '^location: .*X-Amz-' "$TEMP_DIR/result-headers.txt"
+  grep -qi 'X-Amz-Expires=300' "$TEMP_DIR/result-headers.txt"
+else
+  [ "$result_status" = "200" ]
+  [ "$thumbnail_status" = "200" ]
+fi
+curl -fsSL -b "$ADMIN_COOKIE_JAR" -o "$TEMP_DIR/admin-result.webp" "$result_url"
+[ -s "$TEMP_DIR/admin-result.webp" ]
+printf '%s\n' "[admin-smoke] task filters, pagination, detail and protected assets passed"
 
 inspiration_payload=$(jq -cn '{
   slug:"b5-smoke-inspiration",
@@ -170,4 +188,4 @@ after_logout_status=$(curl -sS -b "$ADMIN_COOKIE_JAR" -o "$TEMP_DIR/after-logout
 [ "$after_logout_status" = "401" ]
 
 printf '%s\n' \
-  "Admin smoke passed: anonymous=401 normal-user=401 login=200 tasks=200 inspiration-crud=200 validation=400 public=404/200/404 viewer=200/403 logout=204 after-logout=401"
+  "Admin smoke passed: anonymous=401 normal-user=401 login=200 tasks=200 assets=$result_status/$thumbnail_status inspiration-crud=200 validation=400 public=404/200/404 viewer=200/403 logout=204 after-logout=401"

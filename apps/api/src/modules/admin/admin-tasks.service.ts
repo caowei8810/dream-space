@@ -12,6 +12,7 @@ import {
   type DatabaseGenerationResolution,
   type DatabaseGenerationTaskStatus,
 } from "@dream-space/db";
+import { parseApiEnv } from "@dream-space/config";
 import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { AdminTasksRepository } from "./admin-tasks.repository";
 
@@ -51,6 +52,7 @@ interface TaskListRecord extends TaskBaseRecord {
 
 @Injectable()
 export class AdminTasksService {
+  private readonly publicOrigin = new URL(parseApiEnv(process.env).API_PUBLIC_URL);
   constructor(@Inject(AdminTasksRepository) private readonly repository: AdminTasksRepository) {}
 
   async list(raw: RawAdminTaskQuery): Promise<AdminGenerationTaskListResponse> {
@@ -79,7 +81,8 @@ export class AdminTasksService {
       results: task.results.map((result) => ({
         id: result.id,
         index: result.index,
-        imageUrl: result.imagePath,
+        imageUrl: this.resultAssetUrl(result, "content"),
+        thumbnailUrl: this.resultAssetUrl(result, "thumbnail"),
         width: result.width,
         height: result.height,
         mimeType: result.mimeType,
@@ -87,6 +90,20 @@ export class AdminTasksService {
         isAiGenerated: true,
       })),
     };
+  }
+
+  private resultAssetUrl(
+    result: {
+      id: string;
+      imagePath: string;
+      objectKey: string | null;
+      thumbnailObjectKey: string | null;
+    },
+    variant: "content" | "thumbnail",
+  ) {
+    const objectKey = variant === "content" ? result.objectKey : result.thumbnailObjectKey;
+    if (!objectKey) return result.imagePath;
+    return new URL(`/admin/tasks/results/${result.id}/${variant}`, this.publicOrigin).toString();
   }
 
   private validateQuery(raw: RawAdminTaskQuery) {

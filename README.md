@@ -56,16 +56,17 @@
 
 ### 使用 macOS 本机服务启动（推荐）
 
-首次安装 PostgreSQL 和 Redis：
+首次安装 PostgreSQL、Redis 和 MinIO：
 
 ```bash
-brew install postgresql@17 redis
+brew install postgresql@17 redis minio minio-mc
 ```
 
 安装完成后，在项目根目录执行：
 
 ```bash
 cp .env.example .env
+# 在 .env 中替换 S3_ACCESS_KEY 和 S3_SECRET_KEY 占位值
 pnpm install --frozen-lockfile
 pnpm local:infra:up
 pnpm db:generate

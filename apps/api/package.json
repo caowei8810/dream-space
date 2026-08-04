@@ -15,6 +15,7 @@
     "@dream-space/contracts": "workspace:*",
     "@dream-space/core": "workspace:*",
     "@dream-space/db": "workspace:*",
+    "@dream-space/storage": "workspace:*",
     "@nestjs/common": "^11.1.28",
     "@nestjs/core": "^11.1.28",
     "@nestjs/platform-express": "^11.1.28",

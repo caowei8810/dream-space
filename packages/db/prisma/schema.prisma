@@ -193,17 +193,23 @@ model GenerationTask {
 }
 
 model GenerationResult {
-  id            String         @id @default(cuid())
-  taskId        String
-  index         Int
-  imagePath     String
-  width         Int
-  height        Int
-  mimeType      String
-  byteSize      Int
-  isAiGenerated Boolean        @default(true)
-  createdAt     DateTime       @default(now())
-  task          GenerationTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  id                 String         @id @default(cuid())
+  taskId             String
+  index              Int
+  imagePath          String
+  objectKey          String?        @unique
+  thumbnailObjectKey String?        @unique
+  checksumSha256     String?
+  width              Int
+  height             Int
+  mimeType           String
+  byteSize           Int
+  thumbnailWidth     Int?
+  thumbnailHeight    Int?
+  thumbnailByteSize  Int?
+  isAiGenerated      Boolean        @default(true)
+  createdAt          DateTime       @default(now())
+  task               GenerationTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
   @@unique([taskId, index])
   @@index([taskId])
