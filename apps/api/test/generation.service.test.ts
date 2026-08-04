@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { GenerationQueue } from "../src/modules/generation/generation.queue";
 import type { GenerationRepository } from "../src/modules/generation/generation.repository";
 import { GenerationService } from "../src/modules/generation/generation.service";
+import type { UploadsService } from "../src/modules/uploads/uploads.service";
 
 const input: CreateGenerationTaskRequest = {
   idempotencyKey: "request-12345678",
@@ -68,6 +69,7 @@ function createService() {
     listSessions: vi.fn().mockResolvedValue([]),
     findSession: vi.fn().mockResolvedValue(null),
     renameSession: vi.fn().mockResolvedValue(null),
+    updateSessionDraft: vi.fn().mockResolvedValue(null),
     deleteSession: vi.fn().mockResolvedValue("missing"),
     findTask: vi.fn().mockResolvedValue(task),
     cancelTask: vi.fn().mockResolvedValue(task),
@@ -76,7 +78,10 @@ function createService() {
   const queue = {
     enqueue: vi.fn().mockResolvedValue(task.id),
   } as unknown as GenerationQueue;
-  return { queue, repository, service: new GenerationService(repository, queue) };
+  const uploads = {
+    assertOwnedReferenceUrls: vi.fn().mockResolvedValue(undefined),
+  } as unknown as UploadsService;
+  return { queue, repository, uploads, service: new GenerationService(repository, queue, uploads) };
 }
 
 describe("GenerationService", () => {
@@ -100,7 +105,7 @@ describe("GenerationService", () => {
     expect(repository.setQueueJobId).toHaveBeenCalledWith(task.id, task.id);
   });
 
-  it("returns API-driven generation options and validates mock reference uploads", () => {
+  it("returns API-driven generation options", () => {
     const { service } = createService();
 
     expect(service.getOptions()).toMatchObject({
@@ -108,20 +113,22 @@ describe("GenerationService", () => {
       imageCount: { min: 1, max: 8 },
       costPerImage: { "2K": 1, "4K": 2 },
     });
-    expect(
-      service.createMockReference({
-        filename: "reference.webp",
-        mimeType: "image/webp",
-        byteSize: 1024,
-      }),
-    ).toMatchObject({ url: "/inspiration/design-01.webp", filename: "reference.webp" });
-    expect(() =>
-      service.createMockReference({
-        filename: "reference.gif",
-        mimeType: "image/gif",
-        byteSize: 1024,
-      }),
-    ).toThrow(BadRequestException);
+  });
+
+  it("checks reference ownership before reserving quota", async () => {
+    const { repository, uploads, service } = createService();
+    const withReference = {
+      ...input,
+      referenceImageUrls: ["http://localhost:4000/uploads/references/upload-1/content"],
+    };
+
+    await service.createTask("user-1", withReference);
+
+    expect(uploads.assertOwnedReferenceUrls).toHaveBeenCalledWith(
+      "user-1",
+      withReference.referenceImageUrls,
+    );
+    expect(repository.createTask).toHaveBeenCalled();
   });
 
   it("does not enqueue an already persisted idempotent request twice", async () => {
@@ -182,6 +189,29 @@ describe("GenerationService", () => {
         available: 1,
       }),
     });
+  });
+
+  it("validates and persists a user-owned session draft", async () => {
+    const { repository, service } = createService();
+    const draft = {
+      prompt: "尚未提交的会话草稿",
+      model: "image-4.7",
+      ratio: "1:1" as const,
+      resolution: "2K" as const,
+      imageCount: 2,
+      referenceImageUrls: ["/inspiration/design-01.webp"],
+    };
+    vi.mocked(repository.updateSessionDraft).mockResolvedValue({ ...session, draft, tasks: [] });
+    vi.mocked(repository.findSession).mockResolvedValue({ ...session, draft, tasks: [] });
+
+    await expect(service.updateSessionDraft("user-1", session.id, draft)).resolves.toMatchObject({
+      id: session.id,
+      draft,
+    });
+    expect(repository.updateSessionDraft).toHaveBeenCalledWith("user-1", session.id, draft);
+    await expect(
+      service.updateSessionDraft("user-1", session.id, { ...draft, imageCount: 9 }),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it("replays only events newer than Last-Event-ID and completes on terminal state", async () => {

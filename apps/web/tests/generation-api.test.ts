@@ -64,4 +64,32 @@ describe("generation API client", () => {
 
     await expect(generationApi.sessions()).rejects.toThrow("额度不足");
   });
+
+  it("uploads reference files as multipart without overriding the boundary", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          id: "upload-1",
+          url: "http://localhost:4000/uploads/references/upload-1/content",
+          filename: "reference.webp",
+          mimeType: "image/webp",
+          width: 12,
+          height: 8,
+          byteSize: 100,
+          checksumSha256: "a".repeat(64),
+        }),
+        { status: 201 },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const file = new File(["test"], "reference.png", { type: "image/png" });
+    await generationApi.uploadReference(file);
+
+    const [, request] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(request.credentials).toBe("include");
+    expect(request.method).toBe("POST");
+    expect(request.headers).toBeUndefined();
+    expect(request.body).toBeInstanceOf(FormData);
+  });
 });

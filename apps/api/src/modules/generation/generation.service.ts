@@ -1,6 +1,4 @@
 import {
-  type CreateMockReferenceRequest,
-  type CreateMockReferenceResponse,
   generationEventTypes,
   generationRatios,
   generationResolutions,
@@ -8,12 +6,14 @@ import {
   type CreateGenerationTaskResponse,
   type GenerationEventType,
   type GenerationOptionsResponse,
+  type GenerationSessionDraft,
   type GenerationSessionDetail,
   type GenerationSessionSummary,
   type GenerationTaskEventData,
   type GenerationTaskResponse,
   type GenerationTaskStatus,
   type QuotaResponse,
+  type UpdateGenerationSessionDraftRequest,
 } from "@dream-space/contracts";
 import { parseApiEnv } from "@dream-space/config";
 import {
@@ -41,6 +41,7 @@ import {
 import { Observable } from "rxjs";
 import { GenerationQueue } from "./generation.queue";
 import { GenerationRepository } from "./generation.repository";
+import { UploadsService } from "../uploads/uploads.service";
 
 const allowedReferenceUrl = /^(https?:\/\/|\/)/;
 
@@ -52,6 +53,7 @@ export class GenerationService {
   constructor(
     @Inject(GenerationRepository) private readonly repository: GenerationRepository,
     @Inject(GenerationQueue) private readonly queue: GenerationQueue,
+    @Inject(UploadsService) private readonly uploads: UploadsService,
   ) {}
 
   async createTask(
@@ -59,6 +61,7 @@ export class GenerationService {
     rawInput: CreateGenerationTaskRequest,
   ): Promise<CreateGenerationTaskResponse> {
     const input = this.validateCreateInput(rawInput);
+    await this.uploads.assertOwnedReferenceUrls(userId, input.referenceImageUrls);
     const unitCost = calculateGenerationCost(1, input.resolution);
     const totalCost = calculateGenerationCost(input.imageCount, input.resolution);
     const result = await this.repository.createTask({
@@ -136,31 +139,6 @@ export class GenerationService {
     };
   }
 
-  createMockReference(input: CreateMockReferenceRequest): CreateMockReferenceResponse {
-    if (this.env.EXTERNAL_SERVICES_MODE !== "mock") {
-      throw new ServiceUnavailableException("参考图上传服务尚未配置");
-    }
-    const options = this.getOptions().referenceImages;
-    const filename = typeof input?.filename === "string" ? input.filename.trim() : "";
-    if (!filename || filename.length > 255) throw new BadRequestException("参考图文件名不正确");
-    if (!options.mimeTypes.includes(input?.mimeType)) {
-      throw new BadRequestException("参考图仅支持 JPG、PNG、WebP");
-    }
-    if (
-      !Number.isInteger(input?.byteSize) ||
-      input.byteSize < 1 ||
-      input.byteSize > options.maxBytes
-    ) {
-      throw new BadRequestException("参考图大小应不超过 10MB");
-    }
-    return {
-      url: "/inspiration/design-01.webp",
-      filename,
-      mimeType: input.mimeType,
-      byteSize: input.byteSize,
-    };
-  }
-
   async listSessions(userId: string) {
     const sessions = await this.repository.listSessions(userId);
     return { items: sessions.map((session) => this.mapSessionSummary(session)) };
@@ -171,6 +149,7 @@ export class GenerationService {
     if (!session) throw new NotFoundException("生成会话不存在");
     return {
       ...this.mapSessionSummary(session),
+      draft: this.parseStoredDraft(session.draft),
       tasks: session.tasks.map((task) => this.mapTask(task)),
     };
   }
@@ -179,6 +158,18 @@ export class GenerationService {
     const title = typeof rawTitle === "string" ? rawTitle.replace(/\s+/g, " ").trim() : "";
     if (!title || title.length > 80) throw new BadRequestException("会话名称长度应为 1-80 个字符");
     const session = await this.repository.renameSession(userId, sessionId, title);
+    if (!session) throw new NotFoundException("生成会话不存在");
+    return this.getSession(userId, sessionId);
+  }
+
+  async updateSessionDraft(
+    userId: string,
+    sessionId: string,
+    rawDraft: UpdateGenerationSessionDraftRequest,
+  ) {
+    const draft = this.validateSessionDraft(rawDraft);
+    await this.uploads.assertOwnedReferenceUrls(userId, draft.referenceImageUrls);
+    const session = await this.repository.updateSessionDraft(userId, sessionId, draft);
     if (!session) throw new NotFoundException("生成会话不存在");
     return this.getSession(userId, sessionId);
   }
@@ -298,6 +289,48 @@ export class GenerationService {
       imageCount: input.imageCount,
       referenceImageUrls: [...input.referenceImageUrls],
     };
+  }
+
+  private validateSessionDraft(input: UpdateGenerationSessionDraftRequest): GenerationSessionDraft {
+    if (!input || typeof input !== "object") throw new BadRequestException("会话草稿不完整");
+    const prompt = typeof input.prompt === "string" ? input.prompt : "";
+    const model = typeof input.model === "string" ? input.model.trim() : "";
+    if (prompt.length > 4000) throw new BadRequestException("提示词长度应为 0-4000 个字符");
+    if (!this.getOptions().models.some((item) => item.id === model)) {
+      throw new BadRequestException("模型参数不正确");
+    }
+    if (!generationRatios.includes(input.ratio)) throw new BadRequestException("画面比例不正确");
+    if (!generationResolutions.includes(input.resolution)) {
+      throw new BadRequestException("清晰度参数不正确");
+    }
+    if (!Number.isInteger(input.imageCount) || input.imageCount < 1 || input.imageCount > 8) {
+      throw new BadRequestException("生成张数应为 1-8");
+    }
+    if (
+      !Array.isArray(input.referenceImageUrls) ||
+      input.referenceImageUrls.length > 4 ||
+      input.referenceImageUrls.some(
+        (url) => typeof url !== "string" || url.length > 2048 || !allowedReferenceUrl.test(url),
+      )
+    ) {
+      throw new BadRequestException("参考图应为最多 4 个站内或 HTTPS 地址");
+    }
+    return {
+      prompt,
+      model,
+      ratio: input.ratio,
+      resolution: input.resolution,
+      imageCount: input.imageCount,
+      referenceImageUrls: [...input.referenceImageUrls],
+    };
+  }
+
+  private parseStoredDraft(value: unknown): GenerationSessionDraft | null {
+    try {
+      return this.validateSessionDraft(value as UpdateGenerationSessionDraftRequest);
+    } catch {
+      return null;
+    }
   }
 
   private mapSessionSummary(session: {

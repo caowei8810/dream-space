@@ -5,6 +5,7 @@ import {
   type GenerationOptionsResponse,
   type GenerationRatio,
   type GenerationResolution,
+  type GenerationSessionDraft,
   type GenerationSessionDetail,
   type GenerationSessionSummary,
   type GenerationTaskResponse,
@@ -35,14 +36,7 @@ import { useAuth } from "../../lib/use-auth";
 import { notifyQuotaChanged } from "../../lib/use-quota";
 import { usePreferences } from "../../lib/use-preferences";
 
-interface Draft {
-  prompt: string;
-  model: string;
-  ratio: GenerationRatio;
-  resolution: GenerationResolution;
-  imageCount: number;
-  referenceImageUrls: string[];
-}
+type Draft = GenerationSessionDraft;
 
 const defaultDraft: Draft = {
   prompt: "",
@@ -114,7 +108,9 @@ export function GenerationWorkspace({ initialSessionId }: { initialSessionId?: s
   const { session, loading } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const searchControlRef = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<HTMLElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const draftSessionIdRef = useRef<string | null>(null);
   const [options, setOptions] = useState<GenerationOptionsResponse | null>(null);
   const [sessions, setSessions] = useState<GenerationSessionSummary[]>([]);
   const [detail, setDetail] = useState<GenerationSessionDetail | null>(null);
@@ -224,6 +220,12 @@ export function GenerationWorkspace({ initialSessionId }: { initialSessionId?: s
     return value;
   }, []);
 
+  const persistCurrentDraft = useCallback(async () => {
+    const sessionId = draftSessionIdRef.current;
+    if (!sessionId) return;
+    await generationApi.updateSessionDraft(sessionId, draft);
+  }, [draft]);
+
   useEffect(() => {
     if (loading) return;
     if (!session?.authenticated) {
@@ -243,32 +245,45 @@ export function GenerationWorkspace({ initialSessionId }: { initialSessionId?: s
     }
 
     let active = true;
+    draftSessionIdRef.current = null;
     void Promise.all([generationApi.options(), loadSessions(), loadQuota()])
       .then(async ([generationOptions]) => {
         if (!active) return;
         setOptions(generationOptions);
-        if (initialSessionId) await loadDetail(initialSessionId);
+        let nextDraft: Draft = {
+          ...defaultDraft,
+          model: generationOptions.models[0]?.id ?? defaultDraft.model,
+          referenceImageUrls: [],
+        };
+        if (initialSessionId) {
+          const nextDetail = await loadDetail(initialSessionId);
+          nextDraft = nextDetail.draft ?? nextDraft;
+          draftSessionIdRef.current = nextDetail.id;
+        } else {
+          setDetail(null);
+        }
         const restored = consumeRestoredIntent(window.sessionStorage, pathname);
         if (restored?.draft) {
-          setDraft((current) => ({
-            ...current,
-            prompt: restored.draft?.prompt ?? current.prompt,
+          nextDraft = {
+            ...nextDraft,
+            prompt: restored.draft.prompt,
             model: generationOptions.models.some((model) => model.id === restored.draft?.model)
-              ? (restored.draft?.model ?? current.model)
-              : generationOptions.models[0]?.id || current.model,
+              ? restored.draft.model
+              : nextDraft.model,
             ratio: generationOptions.ratios.includes(restored.draft?.ratio as GenerationRatio)
               ? (restored.draft?.ratio as GenerationRatio)
-              : current.ratio,
+              : nextDraft.ratio,
             resolution: generationOptions.resolutions.includes(
               restored.draft?.resolution as GenerationResolution,
             )
               ? (restored.draft?.resolution as GenerationResolution)
-              : current.resolution,
+              : nextDraft.resolution,
             referenceImageUrls: restored.draft?.referenceImageUrl
               ? [restored.draft.referenceImageUrl]
               : [],
-          }));
+          };
         }
+        setDraft(nextDraft);
       })
       .catch((requestError: Error) => active && setError(requestError.message))
       .finally(() => active && setLoadingPage(false));
@@ -287,37 +302,54 @@ export function GenerationWorkspace({ initialSessionId }: { initialSessionId?: s
   ]);
 
   useEffect(() => {
-    if (!detail) return;
-    const sources = detail.tasks
-      .filter((task) => !terminalStatuses.has(task.status))
-      .map((task) => {
-        const source = new EventSource(`${generationApiUrl}/generation/tasks/${task.id}/events`, {
-          withCredentials: true,
-        });
-        const refresh = () => {
-          void generationApi.task(task.id).then((nextTask) => {
-            setDetail((current) =>
-              current
-                ? {
-                    ...current,
-                    tasks: current.tasks.map((item) => (item.id === nextTask.id ? nextTask : item)),
-                  }
-                : current,
-            );
-            if (terminalStatuses.has(nextTask.status)) {
-              source.close();
-              void loadSessions();
-              void loadQuota();
-              notifyQuotaChanged();
-            }
-          });
-        };
-        generationEventTypes.forEach((eventType) => source.addEventListener(eventType, refresh));
-        source.onerror = () => source.close();
-        return source;
+    const sessionId = draftSessionIdRef.current;
+    if (!sessionId || detail?.id !== sessionId || loadingPage) return;
+    const timer = window.setTimeout(() => {
+      void generationApi
+        .updateSessionDraft(sessionId, draft)
+        .catch((requestError: Error) => setError(requestError.message));
+    }, 350);
+    return () => window.clearTimeout(timer);
+  }, [detail?.id, draft, loadingPage]);
+
+  const activeTaskIds = useMemo(
+    () =>
+      detail?.tasks
+        .filter((task) => !terminalStatuses.has(task.status))
+        .map((task) => task.id)
+        .join(",") ?? "",
+    [detail?.tasks],
+  );
+
+  useEffect(() => {
+    if (!detail?.id || !activeTaskIds) return;
+    const sources = activeTaskIds.split(",").map((taskId) => {
+      const source = new EventSource(`${generationApiUrl}/generation/tasks/${taskId}/events`, {
+        withCredentials: true,
       });
+      const refresh = () => {
+        void generationApi.task(taskId).then((nextTask) => {
+          setDetail((current) =>
+            current
+              ? {
+                  ...current,
+                  tasks: current.tasks.map((item) => (item.id === nextTask.id ? nextTask : item)),
+                }
+              : current,
+          );
+          if (terminalStatuses.has(nextTask.status)) {
+            source.close();
+            void loadSessions();
+            void loadQuota();
+            notifyQuotaChanged();
+          }
+        });
+      };
+      generationEventTypes.forEach((eventType) => source.addEventListener(eventType, refresh));
+      return source;
+    });
     return () => sources.forEach((source) => source.close());
-  }, [detail?.id, detail?.tasks, loadQuota, loadSessions]);
+  }, [activeTaskIds, detail?.id, loadQuota, loadSessions]);
 
   useEffect(() => {
     const close = (event: KeyboardEvent) => {
@@ -342,6 +374,16 @@ export function GenerationWorkspace({ initialSessionId }: { initialSessionId?: s
     document.addEventListener("mousedown", collapse);
     return () => document.removeEventListener("mousedown", collapse);
   }, [searchExpanded]);
+
+  useEffect(() => {
+    if (!parameterOpen) return;
+    const collapse = (event: PointerEvent) => {
+      if (composerRef.current?.contains(event.target as Node)) return;
+      setParameterOpen(false);
+    };
+    document.addEventListener("pointerdown", collapse);
+    return () => document.removeEventListener("pointerdown", collapse);
+  }, [parameterOpen]);
 
   const estimatedCost = draft.imageCount * (draft.resolution === "4K" ? 2 : 1);
   const size = dimensions(draft.ratio, draft.resolution);
@@ -369,6 +411,7 @@ export function GenerationWorkspace({ initialSessionId }: { initialSessionId?: s
     }
     setSubmitting(true);
     setError("");
+    setDraft((current) => ({ ...current, prompt: "", referenceImageUrls: [] }));
     try {
       const response = await generationApi.createTask({
         idempotencyKey: crypto.randomUUID(),
@@ -389,7 +432,6 @@ export function GenerationWorkspace({ initialSessionId }: { initialSessionId?: s
       if (pathname !== `/generate/${response.session.id}`) {
         router.replace(`/generate/${response.session.id}`);
       }
-      setDraft((current) => ({ ...current, prompt: "", referenceImageUrls: [] }));
     } catch (requestError) {
       setError((requestError as Error).message);
     } finally {
@@ -405,11 +447,7 @@ export function GenerationWorkspace({ initialSessionId }: { initialSessionId?: s
       return;
     }
     try {
-      const result = await generationApi.mockReference({
-        filename: file.name,
-        mimeType: file.type,
-        byteSize: file.size,
-      });
+      const result = await generationApi.uploadReference(file);
       setDraft((current) => ({
         ...current,
         referenceImageUrls: [...current.referenceImageUrls, result.url],
@@ -443,6 +481,33 @@ export function GenerationWorkspace({ initialSessionId }: { initialSessionId?: s
         setDetail(null);
         router.replace(next[0] ? `/generate/${next[0].id}` : "/generate");
       }
+    } catch (requestError) {
+      setError((requestError as Error).message);
+    }
+  };
+
+  const openNewSession = async () => {
+    try {
+      await persistCurrentDraft();
+      draftSessionIdRef.current = null;
+      setDetail(null);
+      setDraft({ ...defaultDraft, referenceImageUrls: [] });
+      setSearch("");
+      setSearchExpanded(false);
+      setTimeFilter("all");
+      setModelFilter("all");
+      setStatusFilter("all");
+      router.push("/generate");
+    } catch (requestError) {
+      setError((requestError as Error).message);
+    }
+  };
+
+  const openSession = async (sessionId: string) => {
+    if (detail?.id === sessionId) return;
+    try {
+      await persistCurrentDraft();
+      router.push(`/generate/${sessionId}`);
     } catch (requestError) {
       setError((requestError as Error).message);
     }
@@ -503,16 +568,7 @@ export function GenerationWorkspace({ initialSessionId }: { initialSessionId?: s
         <button
           className="action-btn new-session"
           type="button"
-          onClick={() => {
-            setDetail(null);
-            setDraft(defaultDraft);
-            setSearch("");
-            setSearchExpanded(false);
-            setTimeFilter("all");
-            setModelFilter("all");
-            setStatusFilter("all");
-            router.push("/generate");
-          }}
+          onClick={() => void openNewSession()}
         >
           <SquarePen aria-hidden="true" />
           {text.newSession}
@@ -543,9 +599,7 @@ export function GenerationWorkspace({ initialSessionId }: { initialSessionId?: s
                 <button
                   className="session-item"
                   type="button"
-                  onClick={() => {
-                    router.push(`/generate/${item.id}`);
-                  }}
+                  onClick={() => void openSession(item.id)}
                   onDoubleClick={() => {
                     setRenameId(item.id);
                     setRenameTitle(item.title);
@@ -787,9 +841,7 @@ export function GenerationWorkspace({ initialSessionId }: { initialSessionId?: s
                         className="result-grid"
                         style={
                           {
-                            "--result-ratio":
-                              task.ratio === "smart" ? "1 / 1" : task.ratio.replace(":", " / "),
-                            "--result-columns": Math.min(task.results.length, 4),
+                            "--mobile-result-columns": Math.min(task.results.length, 2),
                           } as React.CSSProperties
                         }
                       >
@@ -864,6 +916,7 @@ export function GenerationWorkspace({ initialSessionId }: { initialSessionId?: s
         </div>
 
         <section
+          ref={composerRef}
           className={`composer composer-shell${expanded ? " is-expanded" : ""}`}
           aria-label={text.imageGeneration}
         >

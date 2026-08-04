@@ -53,6 +53,8 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Install Playwright browser
+        run: pnpm exec playwright install --with-deps chromium
       - name: Validate Docker Compose
         run: docker compose -f infrastructure/docker/compose.yml config --quiet
       - name: Check formatting
@@ -61,21 +63,33 @@ jobs:
         run: pnpm check
       - name: Apply database migrations
         run: pnpm --filter @dream-space/db exec prisma migrate deploy
+      - name: Seed demo data
+        run: pnpm db:seed
       - name: Run authentication and generation integration smoke
         run: |
           pnpm --filter @dream-space/api start > /tmp/dreamspace-api.log 2>&1 &
           api_pid=$!
           pnpm --filter @dream-space/worker start > /tmp/dreamspace-worker.log 2>&1 &
           worker_pid=$!
-          trap 'kill "$api_pid" "$worker_pid" 2>/dev/null || true' EXIT
+          pnpm --filter @dream-space/web start > /tmp/dreamspace-web.log 2>&1 &
+          web_pid=$!
+          pnpm --filter @dream-space/admin start > /tmp/dreamspace-admin.log 2>&1 &
+          admin_pid=$!
+          trap 'kill "$api_pid" "$worker_pid" "$web_pid" "$admin_pid" 2>/dev/null || true' EXIT
           for attempt in $(seq 1 30); do
-            if curl --fail --silent http://localhost:4000/health > /dev/null; then
+            if curl --fail --silent http://localhost:4000/health > /dev/null \
+              && curl --fail --silent http://localhost:3000/generate > /dev/null \
+              && curl --fail --silent http://localhost:3001/login > /dev/null; then
               pnpm auth:smoke
               pnpm generation:smoke
+              pnpm admin:smoke
+              pnpm e2e
               exit 0
             fi
             sleep 1
           done
           cat /tmp/dreamspace-api.log
           cat /tmp/dreamspace-worker.log
+          cat /tmp/dreamspace-web.log
+          cat /tmp/dreamspace-admin.log
           exit 1

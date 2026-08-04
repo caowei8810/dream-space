@@ -6,6 +6,7 @@ API_URL="${API_URL:-http://localhost:4000}"
 TEST_PHONE="${DREAMSPACE_GENERATION_PHONE:-13800138000}"
 OTHER_PHONE="${DREAMSPACE_GENERATION_OTHER_PHONE:-13900139000}"
 IDEMPOTENCY_KEY="${DREAMSPACE_GENERATION_IDEMPOTENCY_KEY:-generation-smoke-v1}"
+REFERENCE_FILE="${DREAMSPACE_GENERATION_REFERENCE_FILE:-apps/web/public/inspiration/design-01.webp}"
 TEMP_DIR=$(mktemp -d)
 COOKIE_JAR="$TEMP_DIR/cookies.txt"
 OTHER_COOKIE_JAR="$TEMP_DIR/other-cookies.txt"
@@ -36,6 +37,7 @@ login() {
 
 require_command curl
 require_command jq
+[ -f "$REFERENCE_FILE" ]
 
 anonymous_status=$(curl -sS -o "$TEMP_DIR/anonymous.json" -w '%{http_code}' \
   "$API_URL/generation/quota")
@@ -49,13 +51,17 @@ used_before=$(printf '%s' "$quota_before" | jq -er '.used')
 options=$(curl -fsS -b "$COOKIE_JAR" "$API_URL/generation/options")
 [ "$(printf '%s' "$options" | jq -er '.externalServicesMode')" = "mock" ]
 [ "$(printf '%s' "$options" | jq -er '.models | length')" -ge 3 ]
-reference=$(curl -fsS -b "$COOKIE_JAR" -X POST "$API_URL/generation/references/mock" \
-  -H 'Content-Type: application/json' \
-  --data '{"filename":"smoke-reference.webp","mimeType":"image/webp","byteSize":1024}')
-[ "$(printf '%s' "$reference" | jq -er '.url')" = "/inspiration/design-01.webp" ]
-printf '%s\n' "[generation-smoke] login, quota, options and mock reference passed"
+reference=$(curl -fsS -b "$COOKIE_JAR" -X POST "$API_URL/uploads/references" \
+  -F "file=@$REFERENCE_FILE;type=image/webp")
+reference_url=$(printf '%s' "$reference" | jq -er '.url')
+[ "$(printf '%s' "$reference" | jq -er '.mimeType')" = "image/webp" ]
+[ "$(printf '%s' "$reference" | jq -er '.width')" -gt 0 ]
+[ "$(printf '%s' "$reference" | jq -er '.height')" -gt 0 ]
+curl -fsS -b "$COOKIE_JAR" -o "$TEMP_DIR/reference.webp" "$reference_url"
+[ -s "$TEMP_DIR/reference.webp" ]
+printf '%s\n' "[generation-smoke] login, quota, options and multipart reference upload passed"
 
-payload=$(jq -cn --arg key "$IDEMPOTENCY_KEY" '{
+payload=$(jq -cn --arg key "$IDEMPOTENCY_KEY" --arg reference "$reference_url" '{
   idempotencyKey:$key,
   sessionId:null,
   prompt:"雨后的玻璃花房，柔和自然光，电影感构图",
@@ -63,7 +69,7 @@ payload=$(jq -cn --arg key "$IDEMPOTENCY_KEY" '{
   ratio:"1:1",
   resolution:"2K",
   imageCount:1,
-  referenceImageUrls:[]
+  referenceImageUrls:[$reference]
 }')
 first_status=$(curl -sS -b "$COOKIE_JAR" -o "$TEMP_DIR/first.json" -w '%{http_code}' \
   -X POST "$API_URL/generation/tasks" \
@@ -174,6 +180,14 @@ login "$OTHER_PHONE" "$OTHER_COOKIE_JAR"
 ownership_status=$(curl -sS -b "$OTHER_COOKIE_JAR" -o "$TEMP_DIR/ownership.json" \
   -w '%{http_code}' "$API_URL/generation/tasks/$task_id")
 [ "$ownership_status" = "404" ]
+foreign_reference_payload=$(printf '%s' "$payload" | jq -c \
+  --arg key "$IDEMPOTENCY_KEY-foreign-reference" '.idempotencyKey = $key')
+foreign_reference_status=$(curl -sS -b "$OTHER_COOKIE_JAR" \
+  -o "$TEMP_DIR/foreign-reference.json" -w '%{http_code}' \
+  -X POST "$API_URL/generation/tasks" \
+  -H 'Content-Type: application/json' \
+  --data "$foreign_reference_payload")
+[ "$foreign_reference_status" = "400" ]
 
 printf '%s\n' \
-  "Generation smoke passed: anonymous=401 mock=service-response task=$status cancel=cancelled idempotent=true mismatch=409 results=1 quota=$available_after/100 sse=replayed ownership=404"
+  "Generation smoke passed: anonymous=401 upload=multipart task=$status cancel=cancelled idempotent=true mismatch=409 results=1 quota=$available_after/100 sse=replayed ownership=404 foreign-reference=400"

@@ -1,21 +1,25 @@
 import type {
   CreateGenerationTaskRequest,
   CreateGenerationTaskResponse,
-  CreateMockReferenceRequest,
-  CreateMockReferenceResponse,
   GenerationOptionsResponse,
+  GenerationSessionDraft,
   GenerationSessionDetail,
   GenerationSessionListResponse,
   GenerationTaskResponse,
+  ReferenceUploadResponse,
 } from "@dream-space/contracts";
 
 export const generationApiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const isFormData = typeof FormData !== "undefined" && init?.body instanceof FormData;
   const response = await fetch(`${generationApiUrl}${path}`, {
     credentials: "include",
     ...init,
-    headers: init?.body ? { "Content-Type": "application/json", ...init.headers } : init?.headers,
+    headers:
+      init?.body && !isFormData
+        ? { "Content-Type": "application/json", ...init.headers }
+        : init?.headers,
   });
   if (response.status === 204) return undefined as T;
   const body = (await response.json()) as T & { message?: string | string[] };
@@ -36,6 +40,11 @@ export const generationApi = {
       method: "PATCH",
       body: JSON.stringify({ title }),
     }),
+  updateSessionDraft: (sessionId: string, draft: GenerationSessionDraft) =>
+    request<GenerationSessionDetail>(`/generation/sessions/${sessionId}/draft`, {
+      method: "PATCH",
+      body: JSON.stringify(draft),
+    }),
   deleteSession: (sessionId: string) =>
     request<void>(`/generation/sessions/${sessionId}`, { method: "DELETE" }),
   createTask: (input: CreateGenerationTaskRequest) =>
@@ -46,9 +55,12 @@ export const generationApi = {
   task: (taskId: string) => request<GenerationTaskResponse>(`/generation/tasks/${taskId}`),
   cancelTask: (taskId: string) =>
     request<GenerationTaskResponse>(`/generation/tasks/${taskId}/cancel`, { method: "POST" }),
-  mockReference: (input: CreateMockReferenceRequest) =>
-    request<CreateMockReferenceResponse>("/generation/references/mock", {
+  uploadReference: (file: File) => {
+    const body = new FormData();
+    body.append("file", file);
+    return request<ReferenceUploadResponse>("/uploads/references", {
       method: "POST",
-      body: JSON.stringify(input),
-    }),
+      body,
+    });
+  },
 };

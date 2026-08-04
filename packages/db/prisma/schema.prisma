@@ -107,6 +107,7 @@ model User {
   generationTasks      GenerationTask[]
   quotaAccount         QuotaAccount?
   quotaLedgerEntries   QuotaLedgerEntry[]
+  referenceUploads     ReferenceUpload[]
 }
 
 model AdminUser {
@@ -206,6 +207,23 @@ model GenerationResult {
 
   @@unique([taskId, index])
   @@index([taskId])
+}
+
+model ReferenceUpload {
+  id               String   @id @default(cuid())
+  userId           String
+  objectKey        String   @unique
+  originalFilename String
+  mimeType         String
+  byteSize         Int
+  width            Int
+  height           Int
+  checksumSha256   String
+  createdAt        DateTime @default(now())
+  deletedAt        DateTime?
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }
 
 model GenerationTaskEvent {

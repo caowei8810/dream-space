@@ -1,12 +1,13 @@
 import { Module } from "@nestjs/common";
 import { AuthModule } from "../auth/auth.module";
+import { UploadsModule } from "../uploads/uploads.module";
 import { GenerationController } from "./generation.controller";
 import { GenerationQueue } from "./generation.queue";
 import { GenerationRepository } from "./generation.repository";
 import { GenerationService } from "./generation.service";
 
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, UploadsModule],
   controllers: [GenerationController],
   providers: [GenerationQueue, GenerationRepository, GenerationService],
 })

@@ -178,17 +178,15 @@ export interface GenerationOptionsResponse {
   externalServicesMode: "mock" | "live";
 }
 
-export interface CreateMockReferenceRequest {
-  filename: string;
-  mimeType: string;
-  byteSize: number;
-}
-
-export interface CreateMockReferenceResponse {
+export interface ReferenceUploadResponse {
+  id: string;
   url: string;
   filename: string;
   mimeType: string;
+  width: number;
+  height: number;
   byteSize: number;
+  checksumSha256: string;
 }
 
 export interface GenerationResultResponse {
@@ -230,7 +228,17 @@ export interface GenerationSessionSummary {
   updatedAt: string;
 }
 
+export interface GenerationSessionDraft {
+  prompt: string;
+  model: string;
+  ratio: GenerationRatio;
+  resolution: GenerationResolution;
+  imageCount: number;
+  referenceImageUrls: string[];
+}
+
 export interface GenerationSessionDetail extends GenerationSessionSummary {
+  draft: GenerationSessionDraft | null;
   tasks: GenerationTaskResponse[];
 }
 
@@ -256,6 +264,8 @@ export interface CreateGenerationTaskResponse {
 export interface RenameGenerationSessionRequest {
   title: string;
 }
+
+export type UpdateGenerationSessionDraftRequest = GenerationSessionDraft;
 
 export const generationEventTypes = [
   "task.queued",
