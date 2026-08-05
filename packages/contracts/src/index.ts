@@ -151,6 +151,9 @@ export type GenerationRatio = (typeof generationRatios)[number];
 export const generationResolutions = ["2K", "4K"] as const;
 export type GenerationResolution = (typeof generationResolutions)[number];
 
+export const moderationStatuses = ["pending", "approved", "rejected"] as const;
+export type ModerationStatus = (typeof moderationStatuses)[number];
+
 export interface CreateGenerationTaskRequest {
   idempotencyKey: string;
   sessionId?: string | null;
@@ -199,6 +202,7 @@ export interface GenerationResultResponse {
   mimeType: string;
   byteSize: number;
   isAiGenerated: true;
+  moderationStatus: ModerationStatus;
 }
 
 export interface GenerationTaskResponse {
@@ -215,6 +219,8 @@ export interface GenerationTaskResponse {
   totalCost: number;
   errorCode: string | null;
   errorMessage: string | null;
+  inputModerationStatus: ModerationStatus;
+  outputModerationStatus: ModerationStatus;
   createdAt: string;
   startedAt: string | null;
   completedAt: string | null;
@@ -271,6 +277,8 @@ export type UpdateGenerationSessionDraftRequest = GenerationSessionDraft;
 export const generationEventTypes = [
   "task.queued",
   "task.generating",
+  "task.input.moderated",
+  "task.output.moderated",
   "task.succeeded",
   "task.partially_succeeded",
   "task.failed",
@@ -303,6 +311,8 @@ export interface AdminGenerationTaskSummary {
   imageCount: number;
   resultCount: number;
   totalCost: number;
+  inputModerationStatus: ModerationStatus;
+  outputModerationStatus: ModerationStatus;
   createdAt: string;
   startedAt: string | null;
   completedAt: string | null;

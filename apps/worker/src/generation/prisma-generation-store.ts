@@ -9,6 +9,7 @@ import type {
   GenerationTaskSnapshot,
   StoredGenerationResult,
 } from "./generation-processor";
+import type { ModerationDecision, ModerationStage } from "../moderation/content-moderator";
 
 export class PrismaGenerationStore implements GenerationStore {
   constructor(private readonly database: DatabaseClient) {}
@@ -47,6 +48,33 @@ export class PrismaGenerationStore implements GenerationStore {
     });
   }
 
+  async recordModeration(
+    taskId: string,
+    stage: ModerationStage,
+    decision: ModerationDecision,
+  ): Promise<"recorded" | "ignored"> {
+    return this.database.$transaction(async (transaction) => {
+      const status = decision.status.toUpperCase() as "APPROVED" | "REJECTED";
+      const changed = await transaction.generationTask.updateMany({
+        where: { id: taskId, status: "GENERATING" },
+        data:
+          stage === "input"
+            ? { inputModerationStatus: status }
+            : { outputModerationStatus: status },
+      });
+      if (changed.count !== 1) return "ignored";
+      await transaction.generationTaskEvent.create({
+        data: {
+          taskId,
+          type: `task.${stage}.moderated`,
+          status: "GENERATING",
+          payload: { decision: decision.status, codes: decision.codes },
+        },
+      });
+      return "recorded";
+    });
+  }
+
   async succeed(
     taskId: string,
     results: StoredGenerationResult[],
@@ -78,6 +106,7 @@ export class PrismaGenerationStore implements GenerationStore {
           thumbnailWidth: result.thumbnailWidth,
           thumbnailHeight: result.thumbnailHeight,
           thumbnailByteSize: result.thumbnailByteSize,
+          moderationStatus: "APPROVED",
           isAiGenerated: true,
         })),
         skipDuplicates: true,

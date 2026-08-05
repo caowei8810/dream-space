@@ -2,6 +2,7 @@ import {
   generationEventTypes,
   generationRatios,
   generationResolutions,
+  moderationStatuses,
   type CreateGenerationTaskRequest,
   type CreateGenerationTaskResponse,
   type GenerationEventType,
@@ -12,6 +13,7 @@ import {
   type GenerationTaskEventData,
   type GenerationTaskResponse,
   type GenerationTaskStatus,
+  type ModerationStatus,
   type QuotaResponse,
   type UpdateGenerationSessionDraftRequest,
 } from "@dream-space/contracts";
@@ -374,6 +376,8 @@ export class GenerationService {
     totalCost: number;
     errorCode: string | null;
     errorMessage: string | null;
+    inputModerationStatus: string;
+    outputModerationStatus: string;
     createdAt: Date;
     startedAt: Date | null;
     completedAt: Date | null;
@@ -388,6 +392,7 @@ export class GenerationService {
       mimeType: string;
       byteSize: number;
       isAiGenerated: boolean;
+      moderationStatus: string;
     }>;
   }): GenerationTaskResponse {
     return {
@@ -406,6 +411,8 @@ export class GenerationService {
       totalCost: task.totalCost,
       errorCode: task.errorCode,
       errorMessage: task.errorMessage,
+      inputModerationStatus: this.mapModerationStatus(task.inputModerationStatus),
+      outputModerationStatus: this.mapModerationStatus(task.outputModerationStatus),
       createdAt: task.createdAt.toISOString(),
       startedAt: task.startedAt?.toISOString() ?? null,
       completedAt: task.completedAt?.toISOString() ?? null,
@@ -419,6 +426,7 @@ export class GenerationService {
         mimeType: result.mimeType,
         byteSize: result.byteSize,
         isAiGenerated: true,
+        moderationStatus: this.mapModerationStatus(result.moderationStatus),
       })),
     };
   }
@@ -450,6 +458,14 @@ export class GenerationService {
 
   private mapStatus(status: string): GenerationTaskStatus {
     return status.toLowerCase() as GenerationTaskStatus;
+  }
+
+  private mapModerationStatus(status: string): ModerationStatus {
+    const normalized = status.toLowerCase();
+    if (!moderationStatuses.includes(normalized as ModerationStatus)) {
+      throw new Error(`未知审核状态: ${status}`);
+    }
+    return normalized as ModerationStatus;
   }
 
   private mapEventType(value: string): GenerationEventType {

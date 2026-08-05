@@ -50,6 +50,7 @@ interface ResultRecord {
   thumbnailWidth: number | null;
   thumbnailHeight: number | null;
   thumbnailByteSize: number | null;
+  moderationStatus: string;
   isAiGenerated: boolean;
   createdAt: Date;
 }
@@ -71,6 +72,8 @@ interface TaskRecord {
   queueJobId: string | null;
   errorCode: string | null;
   errorMessage: string | null;
+  inputModerationStatus: string;
+  outputModerationStatus: string;
   startedAt: Date | null;
   completedAt: Date | null;
   createdAt: Date;

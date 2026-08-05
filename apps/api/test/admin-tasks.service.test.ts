@@ -14,6 +14,8 @@ const task = {
   referenceImageUrls: [],
   errorCode: null,
   errorMessage: null,
+  inputModerationStatus: "APPROVED",
+  outputModerationStatus: "APPROVED",
   createdAt: new Date("2026-08-03T01:00:00Z"),
   startedAt: new Date("2026-08-03T01:00:01Z"),
   completedAt: new Date("2026-08-03T01:00:05Z"),
@@ -99,6 +101,7 @@ describe("admin tasks service", () => {
             height: 2048,
             mimeType: "image/webp",
             byteSize: 1024,
+            moderationStatus: "APPROVED",
           },
         ],
       }),
@@ -110,6 +113,7 @@ describe("admin tasks service", () => {
         {
           imageUrl: "http://localhost:4000/admin/tasks/results/result-1/content",
           thumbnailUrl: "http://localhost:4000/admin/tasks/results/result-1/thumbnail",
+          moderationStatus: "approved",
         },
       ],
     });
