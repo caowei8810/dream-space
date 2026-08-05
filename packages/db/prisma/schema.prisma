@@ -66,6 +66,12 @@ enum GenerationResolution {
   K4 @map("4K")
 }
 
+enum ModerationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 model Inspiration {
   id                String                @id @default(cuid())
   slug              String                @unique
@@ -161,31 +167,33 @@ model GenerationSession {
 }
 
 model GenerationTask {
-  id                 String                @id @default(cuid())
-  sessionId          String
-  userId             String
-  status             GenerationTaskStatus  @default(QUEUED)
-  prompt             String                @db.Text
-  model              String
-  ratio              GenerationRatio
-  resolution         GenerationResolution
-  imageCount         Int
-  referenceImageUrls Json
-  unitCost           Int
-  totalCost          Int
-  idempotencyKey     String
-  queueJobId         String?
-  errorCode          String?
-  errorMessage       String?
-  startedAt          DateTime?
-  completedAt        DateTime?
-  createdAt          DateTime              @default(now())
-  updatedAt          DateTime              @updatedAt
-  session            GenerationSession     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  user               User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  results            GenerationResult[]
-  events             GenerationTaskEvent[]
-  quotaLedgerEntries QuotaLedgerEntry[]
+  id                     String                @id @default(cuid())
+  sessionId              String
+  userId                 String
+  status                 GenerationTaskStatus  @default(QUEUED)
+  prompt                 String                @db.Text
+  model                  String
+  ratio                  GenerationRatio
+  resolution             GenerationResolution
+  imageCount             Int
+  referenceImageUrls     Json
+  unitCost               Int
+  totalCost              Int
+  idempotencyKey         String
+  queueJobId             String?
+  errorCode              String?
+  errorMessage           String?
+  inputModerationStatus  ModerationStatus      @default(PENDING)
+  outputModerationStatus ModerationStatus      @default(PENDING)
+  startedAt              DateTime?
+  completedAt            DateTime?
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+  session                GenerationSession     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user                   User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  results                GenerationResult[]
+  events                 GenerationTaskEvent[]
+  quotaLedgerEntries     QuotaLedgerEntry[]
 
   @@unique([userId, idempotencyKey])
   @@index([sessionId, createdAt])
@@ -193,12 +201,12 @@ model GenerationTask {
 }
 
 model GenerationResult {
-  id                 String         @id @default(cuid())
+  id                 String           @id @default(cuid())
   taskId             String
   index              Int
   imagePath          String
-  objectKey          String?        @unique
-  thumbnailObjectKey String?        @unique
+  objectKey          String?          @unique
+  thumbnailObjectKey String?          @unique
   checksumSha256     String?
   width              Int
   height             Int
@@ -207,27 +215,28 @@ model GenerationResult {
   thumbnailWidth     Int?
   thumbnailHeight    Int?
   thumbnailByteSize  Int?
-  isAiGenerated      Boolean        @default(true)
-  createdAt          DateTime       @default(now())
-  task               GenerationTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  moderationStatus   ModerationStatus @default(PENDING)
+  isAiGenerated      Boolean          @default(true)
+  createdAt          DateTime         @default(now())
+  task               GenerationTask   @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
   @@unique([taskId, index])
   @@index([taskId])
 }
 
 model ReferenceUpload {
-  id               String   @id @default(cuid())
+  id               String    @id @default(cuid())
   userId           String
-  objectKey        String   @unique
+  objectKey        String    @unique
   originalFilename String
   mimeType         String
   byteSize         Int
   width            Int
   height           Int
   checksumSha256   String
-  createdAt        DateTime @default(now())
+  createdAt        DateTime  @default(now())
   deletedAt        DateTime?
-  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
 }

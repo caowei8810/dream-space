@@ -44,6 +44,8 @@ const task = {
   queueJobId: null,
   errorCode: null,
   errorMessage: null,
+  inputModerationStatus: "PENDING" as const,
+  outputModerationStatus: "PENDING" as const,
   startedAt: null,
   completedAt: null,
   createdAt: new Date("2026-08-03T00:00:00.000Z"),
@@ -245,6 +247,43 @@ describe("GenerationService", () => {
         type: "task.succeeded",
         data: expect.objectContaining({ status: "succeeded" }),
       }),
+    ]);
+  });
+
+  it("replays moderation events without converting the SSE stream to an error", async () => {
+    const { repository, service } = createService();
+    vi.mocked(repository.findTask).mockResolvedValue({
+      ...task,
+      status: "SUCCEEDED",
+      completedAt: new Date("2026-08-03T00:00:01.000Z"),
+    });
+    vi.mocked(repository.listEvents)
+      .mockResolvedValueOnce([
+        {
+          id: 6n,
+          taskId: task.id,
+          type: "task.input.moderated",
+          status: "GENERATING",
+          payload: { decision: "approved", codes: [] },
+          createdAt: new Date("2026-08-03T00:00:00.500Z"),
+        },
+        {
+          id: 7n,
+          taskId: task.id,
+          type: "task.output.moderated",
+          status: "GENERATING",
+          payload: { decision: "approved", codes: [] },
+          createdAt: new Date("2026-08-03T00:00:00.700Z"),
+        },
+      ])
+      .mockResolvedValueOnce([]);
+
+    const stream = await service.streamTaskEvents("user-1", task.id, "5");
+    const events = await lastValueFrom(stream.pipe(toArray()));
+
+    expect(events).toEqual([
+      expect.objectContaining({ id: "6", type: "task.input.moderated" }),
+      expect.objectContaining({ id: "7", type: "task.output.moderated" }),
     ]);
   });
 });

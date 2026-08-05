@@ -16,6 +16,7 @@ export {
   InspirationCategory as DatabaseInspirationCategory,
   InspirationSourceType,
   InspirationStatus,
+  ModerationStatus as DatabaseModerationStatus,
   QuotaLedgerType,
 } from "./generated/client/enums";
 export type { InspirationModel } from "./generated/client/models/Inspiration";

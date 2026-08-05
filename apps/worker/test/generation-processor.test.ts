@@ -10,6 +10,7 @@ import {
   type GenerationStore,
   type GenerationTaskSnapshot,
 } from "../src/generation/generation-processor";
+import { DeterministicMockContentModerator } from "../src/moderation/content-moderator";
 
 const task: GenerationTaskSnapshot = {
   id: "task-1",
@@ -48,6 +49,7 @@ function createMemoryStorage() {
 function createProcessor() {
   const store = {
     start: vi.fn().mockResolvedValue(task),
+    recordModeration: vi.fn().mockResolvedValue("recorded"),
     succeed: vi.fn().mockResolvedValue("succeeded"),
     fail: vi.fn().mockResolvedValue("failed"),
   } as unknown as GenerationStore;
@@ -59,7 +61,12 @@ function createProcessor() {
   const { objects, storage } = createMemoryStorage();
   return {
     objects,
-    processor: new GenerationProcessor(store, provider, new GenerationOutputPipeline(storage)),
+    processor: new GenerationProcessor(
+      store,
+      provider,
+      new GenerationOutputPipeline(storage),
+      new DeterministicMockContentModerator(),
+    ),
     provider,
     storage,
     store,
@@ -84,10 +91,19 @@ describe("GenerationProcessor", () => {
       thumbnailWidth: 480,
       thumbnailHeight: 480,
       mimeType: "image/webp",
+      moderationStatus: "approved",
     });
     expect(results?.[0]?.checksumSha256).toMatch(/^[a-f0-9]{64}$/);
     expect(objects.size).toBe(2);
     expect(store.fail).not.toHaveBeenCalled();
+    expect(store.recordModeration).toHaveBeenNthCalledWith(1, task.id, "input", {
+      status: "approved",
+      codes: [],
+    });
+    expect(store.recordModeration).toHaveBeenNthCalledWith(2, task.id, "output", {
+      status: "approved",
+      codes: [],
+    });
   });
 
   it("removes stored objects when the database no longer accepts the task", async () => {
@@ -111,6 +127,56 @@ describe("GenerationProcessor", () => {
       status: "failed",
     });
     expect(store.fail).toHaveBeenCalledWith(task.id, "GENERATION_FAILED", expect.any(String));
+  });
+
+  it("rejects marked input before calling the provider and releases quota", async () => {
+    const { processor, provider, store } = createProcessor();
+    vi.mocked(store.start).mockResolvedValue({
+      ...task,
+      prompt: "测试提示词 [mock-reject-input]",
+    });
+
+    await expect(processor.process({ taskId: task.id })).resolves.toEqual({
+      taskId: task.id,
+      status: "failed",
+    });
+    expect(provider.generate).not.toHaveBeenCalled();
+    expect(store.recordModeration).toHaveBeenCalledWith(task.id, "input", {
+      status: "rejected",
+      codes: ["MOCK_INPUT_REJECTED"],
+    });
+    expect(store.fail).toHaveBeenCalledWith(
+      task.id,
+      "INPUT_MODERATION_REJECTED",
+      expect.any(String),
+    );
+  });
+
+  it("rejects marked output before writing any object", async () => {
+    const { processor, provider, store, storage, objects } = createProcessor();
+    vi.mocked(provider.generate).mockResolvedValue([
+      {
+        index: 0,
+        data: Buffer.from("MOCK_MODERATION_REJECT_OUTPUT"),
+        mimeType: "image/webp",
+      },
+    ]);
+
+    await expect(processor.process({ taskId: task.id })).resolves.toEqual({
+      taskId: task.id,
+      status: "failed",
+    });
+    expect(store.recordModeration).toHaveBeenCalledWith(task.id, "output", {
+      status: "rejected",
+      codes: ["MOCK_OUTPUT_REJECTED"],
+    });
+    expect(store.fail).toHaveBeenCalledWith(
+      task.id,
+      "OUTPUT_MODERATION_REJECTED",
+      expect.any(String),
+    );
+    expect(storage.put).not.toHaveBeenCalled();
+    expect(objects.size).toBe(0);
   });
 
   it("ignores a duplicate job that cannot claim the task", async () => {

@@ -4,6 +4,8 @@ import {
   type AdminGenerationTaskSummary,
   generationTaskStatuses,
   type GenerationTaskStatus,
+  moderationStatuses,
+  type ModerationStatus,
 } from "@dream-space/contracts";
 import {
   decodeGenerationRatio,
@@ -39,6 +41,8 @@ interface TaskBaseRecord {
   referenceImageUrls: unknown;
   errorCode: string | null;
   errorMessage: string | null;
+  inputModerationStatus: string;
+  outputModerationStatus: string;
   createdAt: Date;
   startedAt: Date | null;
   completedAt: Date | null;
@@ -88,6 +92,7 @@ export class AdminTasksService {
         mimeType: result.mimeType,
         byteSize: result.byteSize,
         isAiGenerated: true,
+        moderationStatus: this.mapModerationStatus(result.moderationStatus),
       })),
     };
   }
@@ -172,9 +177,19 @@ export class AdminTasksService {
       imageCount: task.imageCount,
       resultCount: task._count.results,
       totalCost: task.totalCost,
+      inputModerationStatus: this.mapModerationStatus(task.inputModerationStatus),
+      outputModerationStatus: this.mapModerationStatus(task.outputModerationStatus),
       createdAt: task.createdAt.toISOString(),
       startedAt: task.startedAt?.toISOString() ?? null,
       completedAt: task.completedAt?.toISOString() ?? null,
     };
+  }
+
+  private mapModerationStatus(value: string): ModerationStatus {
+    const normalized = value.toLowerCase();
+    if (!moderationStatuses.includes(normalized as ModerationStatus)) {
+      throw new Error(`未知审核状态: ${value}`);
+    }
+    return normalized as ModerationStatus;
   }
 }

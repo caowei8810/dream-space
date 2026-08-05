@@ -4,6 +4,7 @@ import type {
   AdminGenerationTaskDetail,
   AdminGenerationTaskListResponse,
   GenerationTaskStatus,
+  ModerationStatus,
 } from "@dream-space/contracts";
 import {
   ChevronLeft,
@@ -34,6 +35,12 @@ const statusLabels: Record<GenerationTaskStatus, string> = {
   partially_succeeded: "部分完成",
   failed: "失败",
   cancelled: "已取消",
+};
+
+const moderationLabels: Record<ModerationStatus, string> = {
+  pending: "待审核",
+  approved: "已通过",
+  rejected: "已拒绝",
 };
 
 function formatDate(value: string | null) {
@@ -372,6 +379,14 @@ export function AdminTasks() {
                 <div>
                   <dt>完成时间</dt>
                   <dd>{formatDate(detail.completedAt)}</dd>
+                </div>
+                <div>
+                  <dt>输入审核</dt>
+                  <dd>{moderationLabels[detail.inputModerationStatus]}</dd>
+                </div>
+                <div>
+                  <dt>输出审核</dt>
+                  <dd>{moderationLabels[detail.outputModerationStatus]}</dd>
                 </div>
               </dl>
               {detail.errorMessage ? (

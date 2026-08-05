@@ -10,6 +10,7 @@ import {
   GenerationProcessor,
 } from "./generation/generation-processor";
 import { PrismaGenerationStore } from "./generation/prisma-generation-store";
+import { DeterministicMockContentModerator } from "./moderation/content-moderator";
 import { GENERATION_QUEUE } from "./queues/names";
 
 interface GenerationWorkerRuntime {
@@ -60,6 +61,7 @@ export function createGenerationWorker(
     new PrismaGenerationStore(database),
     new DeterministicMockProvider(generationDelayMs, storageOptions.mockAssetRoot),
     new GenerationOutputPipeline(storage),
+    new DeterministicMockContentModerator(),
   );
   const worker = new Worker<GenerationQueueJob>(
     GENERATION_QUEUE,

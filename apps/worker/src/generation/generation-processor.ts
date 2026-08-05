@@ -9,6 +9,11 @@ import type {
 import { canTransitionTask, resolveOutputDimensions } from "@dream-space/core";
 import type { ObjectStorage } from "@dream-space/storage";
 import sharp from "sharp";
+import type {
+  ContentModerator,
+  ModerationDecision,
+  ModerationStage,
+} from "../moderation/content-moderator";
 
 export interface GenerationTaskSnapshot {
   id: string;
@@ -44,10 +49,16 @@ export interface StoredGenerationResult {
   thumbnailWidth: number;
   thumbnailHeight: number;
   thumbnailByteSize: number;
+  moderationStatus: "approved";
 }
 
 export interface GenerationStore {
   start(taskId: string): Promise<GenerationTaskSnapshot | null>;
+  recordModeration(
+    taskId: string,
+    stage: ModerationStage,
+    decision: ModerationDecision,
+  ): Promise<"recorded" | "ignored">;
   succeed(taskId: string, results: StoredGenerationResult[]): Promise<"succeeded" | "ignored">;
   fail(taskId: string, errorCode: string, errorMessage: string): Promise<"failed" | "ignored">;
 }
@@ -246,6 +257,7 @@ export class GenerationOutputPipeline {
       thumbnailWidth: thumbnail.info.width,
       thumbnailHeight: thumbnail.info.height,
       thumbnailByteSize: thumbnail.data.byteLength,
+      moderationStatus: "approved" as const,
     };
   }
 }
@@ -255,6 +267,7 @@ export class GenerationProcessor {
     private readonly store: GenerationStore,
     private readonly provider: GenerationProvider,
     private readonly output: GenerationOutputPipeline,
+    private readonly moderator: ContentModerator,
   ) {}
 
   async process(job: GenerationQueueJob) {
@@ -266,7 +279,41 @@ export class GenerationProcessor {
 
     let stored: StoredGenerationResult[] = [];
     try {
-      stored = await this.output.persist(task, await this.provider.generate(task));
+      const inputDecision = await this.moderator.moderateInput(task);
+      await this.store.recordModeration(task.id, "input", inputDecision);
+      if (inputDecision.status === "rejected") {
+        return {
+          taskId: task.id,
+          status: await this.store.fail(
+            task.id,
+            "INPUT_MODERATION_REJECTED",
+            "提示词或参考内容未通过审核，请修改后重试",
+          ),
+        };
+      }
+
+      const images = await this.provider.generate(task);
+      const outputDecisions = await Promise.all(
+        images.map((image) => this.moderator.moderateOutput(task, image)),
+      );
+      const rejectedOutput = outputDecisions.find((decision) => decision.status === "rejected");
+      const outputDecision: ModerationDecision = rejectedOutput ?? {
+        status: "approved",
+        codes: [],
+      };
+      await this.store.recordModeration(task.id, "output", outputDecision);
+      if (rejectedOutput) {
+        return {
+          taskId: task.id,
+          status: await this.store.fail(
+            task.id,
+            "OUTPUT_MODERATION_REJECTED",
+            "生成结果未通过审核，额度已返还，请调整提示词后重试",
+          ),
+        };
+      }
+
+      stored = await this.output.persist(task, images);
       const status = await this.store.succeed(task.id, stored);
       if (status === "ignored") await this.output.cleanup(stored);
       return { taskId: task.id, status };

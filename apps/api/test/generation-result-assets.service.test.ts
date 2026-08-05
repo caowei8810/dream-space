@@ -17,6 +17,7 @@ const storedResult = {
   thumbnailWidth: 480,
   thumbnailHeight: 480,
   thumbnailByteSize: 256,
+  moderationStatus: "APPROVED",
   isAiGenerated: true,
   createdAt: new Date(),
 };
