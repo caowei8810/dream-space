@@ -11,6 +11,7 @@ const task = {
   resolution: "2K",
   imageCount: 2,
   totalCost: 2,
+  attempts: 1,
   referenceImageUrls: [],
   errorCode: null,
   errorMessage: null,
@@ -22,6 +23,7 @@ const task = {
   user: { phone: "13800138000" },
   session: { title: "雨后的玻璃花房" },
   _count: { results: 2 },
+  deadLetter: null,
 };
 
 describe("admin tasks service", () => {
@@ -54,6 +56,7 @@ describe("admin tasks service", () => {
       userPhoneMasked: "138****8000",
       status: "succeeded",
       resultCount: 2,
+      attempts: 1,
     });
   });
 
@@ -116,6 +119,36 @@ describe("admin tasks service", () => {
           moderationStatus: "approved",
         },
       ],
+    });
+  });
+
+  it("exposes a persistent dead letter in task details", async () => {
+    const repository = {
+      list: vi.fn(),
+      findById: vi.fn().mockResolvedValue({
+        ...task,
+        status: "FAILED",
+        attempts: 3,
+        results: [],
+        deadLetter: {
+          errorCode: "PROVIDER_TEMPORARILY_UNAVAILABLE",
+          errorMessage: "provider unavailable",
+          attempts: 3,
+          createdAt: new Date("2026-08-06T01:00:00Z"),
+          resolvedAt: null,
+        },
+      }),
+    };
+    const service = new AdminTasksService(repository as never);
+
+    await expect(service.get("task-1")).resolves.toMatchObject({
+      status: "failed",
+      attempts: 3,
+      deadLetter: {
+        errorCode: "PROVIDER_TEMPORARILY_UNAVAILABLE",
+        attempts: 3,
+        resolvedAt: null,
+      },
     });
   });
 });

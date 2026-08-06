@@ -26,6 +26,13 @@ export interface GenerationTaskSnapshot {
   resolution: GenerationResolution;
   imageCount: number;
   totalCost: number;
+  attempts: number;
+}
+
+export interface GenerationAttempt {
+  key: string;
+  number: number;
+  maxAttempts: number;
 }
 
 export interface ProviderImage {
@@ -53,18 +60,48 @@ export interface StoredGenerationResult {
 }
 
 export interface GenerationStore {
-  start(taskId: string): Promise<GenerationTaskSnapshot | null>;
+  start(taskId: string, attempt: GenerationAttempt): Promise<GenerationTaskSnapshot | null>;
   recordModeration(
     taskId: string,
     stage: ModerationStage,
     decision: ModerationDecision,
   ): Promise<"recorded" | "ignored">;
   succeed(taskId: string, results: StoredGenerationResult[]): Promise<"succeeded" | "ignored">;
-  fail(taskId: string, errorCode: string, errorMessage: string): Promise<"failed" | "ignored">;
+  fail(
+    taskId: string,
+    errorCode: string,
+    errorMessage: string,
+    options?: {
+      deadLetter: {
+        attempts: number;
+        payload: Record<string, string | number | boolean | null>;
+      };
+    },
+  ): Promise<"failed" | "ignored">;
 }
 
 export interface GenerationProvider {
   generate(task: GenerationTaskSnapshot): Promise<ProviderImage[]>;
+}
+
+export class GenerationProviderError extends Error {
+  constructor(
+    message: string,
+    readonly code: string,
+    readonly retryable: boolean,
+    options?: ErrorOptions,
+  ) {
+    super(message, options);
+    this.name = "GenerationProviderError";
+  }
+}
+
+export function isRetryableProviderError(error: unknown): error is GenerationProviderError {
+  return error instanceof GenerationProviderError && error.retryable;
+}
+
+export function isGenerationProviderError(error: unknown): error is GenerationProviderError {
+  return error instanceof GenerationProviderError;
 }
 
 const mockImagePools = {
@@ -178,6 +215,20 @@ export class DeterministicMockProvider implements GenerationProvider {
 
   async generate(task: GenerationTaskSnapshot) {
     if (this.delayMs > 0) await new Promise((resolve) => setTimeout(resolve, this.delayMs));
+    if (task.prompt.includes("[mock-retry-once]") && task.attempts === 1) {
+      throw new GenerationProviderError(
+        "mock provider transient failure",
+        "PROVIDER_TEMPORARILY_UNAVAILABLE",
+        true,
+      );
+    }
+    if (task.prompt.includes("[mock-always-retryable-error]")) {
+      throw new GenerationProviderError(
+        "mock provider persistent failure",
+        "PROVIDER_TEMPORARILY_UNAVAILABLE",
+        true,
+      );
+    }
     const resultImages = mockImagePools[resolveMockImageTheme(task.prompt)];
     const offset = stableOffset(`${task.prompt}:${task.model}`, resultImages.length);
     return Promise.all(
@@ -270,8 +321,15 @@ export class GenerationProcessor {
     private readonly moderator: ContentModerator,
   ) {}
 
-  async process(job: GenerationQueueJob) {
-    const task = await this.store.start(job.taskId);
+  async process(
+    job: GenerationQueueJob,
+    attempt: GenerationAttempt = {
+      key: `${job.taskId}:1`,
+      number: 1,
+      maxAttempts: 1,
+    },
+  ) {
+    const task = await this.store.start(job.taskId, attempt);
     if (!task) return { taskId: job.taskId, status: "ignored" as const };
     if (!canTransitionTask("generating", "succeeded")) {
       throw new Error("任务状态机未允许生成完成");
@@ -317,13 +375,39 @@ export class GenerationProcessor {
       const status = await this.store.succeed(task.id, stored);
       if (status === "ignored") await this.output.cleanup(stored);
       return { taskId: task.id, status };
-    } catch {
+    } catch (error) {
       await this.output.cleanup(stored);
-      const status = await this.store.fail(
-        task.id,
-        "GENERATION_FAILED",
-        "图片生成失败，额度已返还，请重新提交",
-      );
+      if (isRetryableProviderError(error) && attempt.number < attempt.maxAttempts) {
+        throw error;
+      }
+      const providerError = isGenerationProviderError(error) ? error : null;
+      const status = providerError?.retryable
+        ? await this.store.fail(
+            task.id,
+            providerError.code,
+            "图片生成多次失败，额度已返还，请稍后重试",
+            {
+              deadLetter: {
+                attempts: attempt.number,
+                payload: {
+                  provider: "mock",
+                  retryable: true,
+                  providerMessage: providerError.message,
+                },
+              },
+            },
+          )
+        : providerError
+          ? await this.store.fail(
+              task.id,
+              providerError.code,
+              "模型服务无法处理当前请求，额度已返还，请调整参数后重试",
+            )
+          : await this.store.fail(
+              task.id,
+              "GENERATION_FAILED",
+              "图片生成失败，额度已返还，请重新提交",
+            );
       return { taskId: task.id, status };
     }
   }

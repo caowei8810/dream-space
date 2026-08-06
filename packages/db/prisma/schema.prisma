@@ -181,6 +181,8 @@ model GenerationTask {
   totalCost              Int
   idempotencyKey         String
   queueJobId             String?
+  attempts               Int                   @default(0)
+  lastAttemptKey         String?
   errorCode              String?
   errorMessage           String?
   inputModerationStatus  ModerationStatus      @default(PENDING)
@@ -194,10 +196,25 @@ model GenerationTask {
   results                GenerationResult[]
   events                 GenerationTaskEvent[]
   quotaLedgerEntries     QuotaLedgerEntry[]
+  deadLetter             GenerationDeadLetter?
 
   @@unique([userId, idempotencyKey])
   @@index([sessionId, createdAt])
   @@index([userId, status, createdAt])
+}
+
+model GenerationDeadLetter {
+  id           String         @id @default(cuid())
+  taskId       String         @unique
+  errorCode    String
+  errorMessage String
+  attempts     Int
+  payload      Json
+  createdAt    DateTime       @default(now())
+  resolvedAt   DateTime?
+  task         GenerationTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([resolvedAt, createdAt])
 }
 
 model GenerationResult {

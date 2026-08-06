@@ -65,7 +65,12 @@ export function createGenerationWorker(
   );
   const worker = new Worker<GenerationQueueJob>(
     GENERATION_QUEUE,
-    async (job) => processor.process(job.data),
+    async (job) =>
+      processor.process(job.data, {
+        key: `${job.id}:${job.attemptsMade + 1}`,
+        number: job.attemptsMade + 1,
+        maxAttempts: job.opts.attempts ?? 1,
+      }),
     { connection },
   );
 

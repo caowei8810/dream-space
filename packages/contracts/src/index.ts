@@ -217,6 +217,7 @@ export interface GenerationTaskResponse {
   referenceImageUrls: string[];
   unitCost: number;
   totalCost: number;
+  attempts: number;
   errorCode: string | null;
   errorMessage: string | null;
   inputModerationStatus: ModerationStatus;
@@ -277,12 +278,14 @@ export type UpdateGenerationSessionDraftRequest = GenerationSessionDraft;
 export const generationEventTypes = [
   "task.queued",
   "task.generating",
+  "task.retrying",
   "task.input.moderated",
   "task.output.moderated",
   "task.succeeded",
   "task.partially_succeeded",
   "task.failed",
   "task.cancelled",
+  "task.dead_lettered",
 ] as const;
 export type GenerationEventType = (typeof generationEventTypes)[number];
 
@@ -311,6 +314,7 @@ export interface AdminGenerationTaskSummary {
   imageCount: number;
   resultCount: number;
   totalCost: number;
+  attempts: number;
   inputModerationStatus: ModerationStatus;
   outputModerationStatus: ModerationStatus;
   createdAt: string;
@@ -322,6 +326,13 @@ export interface AdminGenerationTaskDetail extends AdminGenerationTaskSummary {
   referenceImageUrls: string[];
   errorCode: string | null;
   errorMessage: string | null;
+  deadLetter: {
+    errorCode: string;
+    errorMessage: string;
+    attempts: number;
+    createdAt: string;
+    resolvedAt: string | null;
+  } | null;
   results: GenerationResultResponse[];
 }
 

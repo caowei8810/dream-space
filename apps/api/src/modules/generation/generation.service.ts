@@ -374,6 +374,7 @@ export class GenerationService {
     referenceImageUrls: unknown;
     unitCost: number;
     totalCost: number;
+    attempts: number;
     errorCode: string | null;
     errorMessage: string | null;
     inputModerationStatus: string;
@@ -409,6 +410,7 @@ export class GenerationService {
         : [],
       unitCost: task.unitCost,
       totalCost: task.totalCost,
+      attempts: task.attempts,
       errorCode: task.errorCode,
       errorMessage: task.errorMessage,
       inputModerationStatus: this.mapModerationStatus(task.inputModerationStatus),

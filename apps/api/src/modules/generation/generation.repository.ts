@@ -68,6 +68,7 @@ interface TaskRecord {
   referenceImageUrls: unknown;
   unitCost: number;
   totalCost: number;
+  attempts: number;
   idempotencyKey: string;
   queueJobId: string | null;
   errorCode: string | null;

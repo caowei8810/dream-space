@@ -10,7 +10,7 @@
     "dev": "turbo run dev --parallel",
     "build": "turbo run build",
     "lint": "turbo run lint",
-    "lint:scripts": "sh -n scripts/docker-compose.sh scripts/local-services.sh scripts/auth-smoke.sh scripts/admin-smoke.sh scripts/generation-smoke.sh && node --check scripts/extract-inspiration-seed.mjs",
+    "lint:scripts": "sh -n scripts/docker-compose.sh scripts/local-services.sh scripts/local-stack.sh scripts/auth-smoke.sh scripts/admin-smoke.sh scripts/generation-smoke.sh && node --check scripts/extract-inspiration-seed.mjs",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "e2e": "playwright test",
@@ -30,7 +30,13 @@
     "infra:down": "sh scripts/docker-compose.sh down",
     "local:infra:up": "sh scripts/local-services.sh up",
     "local:infra:down": "sh scripts/local-services.sh down",
-    "local:infra:status": "sh scripts/local-services.sh status"
+    "local:infra:restart": "sh scripts/local-services.sh restart",
+    "local:infra:status": "sh scripts/local-services.sh status",
+    "local:up": "sh scripts/local-stack.sh up",
+    "local:down": "sh scripts/local-stack.sh down",
+    "local:restart": "sh scripts/local-stack.sh restart",
+    "local:status": "sh scripts/local-stack.sh status",
+    "local:logs": "sh scripts/local-stack.sh logs"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",

@@ -65,24 +65,22 @@ brew install postgresql@17 redis minio minio-mc
 安装完成后，在项目根目录执行：
 
 ```bash
-cp .env.example .env
-# 在 .env 中替换 S3_ACCESS_KEY 和 S3_SECRET_KEY 占位值
 pnpm install --frozen-lockfile
-pnpm local:infra:up
-pnpm db:generate
-pnpm --filter @dream-space/db exec prisma migrate deploy
-pnpm db:seed
-pnpm dev
+pnpm local:up
 ```
 
-`local:infra:up` 会启动 PostgreSQL 和项目专用 Redis，自动创建本地开发角色与数据库。服务状态和停止命令：
+`local:up` 会启动 Homebrew PostgreSQL 17，并在仓库 `.local` 目录中管理 Redis、MinIO、应用 PID 和日志；随后自动执行数据库迁移与种子，再启动 API、Worker、用户端和管理端。它不依赖 Docker。MinIO 本地凭据首次启动时随机生成并仅保存于被 Git 忽略的 `.local/minio/runtime.env`。
 
-本机 PostgreSQL 默认通过 macOS 本地认证连接；如需设置密码，可在命令前临时传入 `DREAMSPACE_DB_PASSWORD`，不要将真实密码写入仓库。
+完整栈状态、日志、重启和停止命令：
 
 ```bash
-pnpm local:infra:status
-pnpm local:infra:down
+pnpm local:status
+pnpm local:logs
+pnpm local:restart
+pnpm local:down
 ```
+
+只管理 PostgreSQL、Redis 和 MinIO 时，使用 `local:infra:up|status|restart|down`。
 
 ### 使用 Docker 启动（可选）
 

@@ -373,6 +373,10 @@ export function AdminTasks() {
                   <dd>{detail.totalCost} 点</dd>
                 </div>
                 <div>
+                  <dt>执行次数</dt>
+                  <dd>{detail.attempts} 次</dd>
+                </div>
+                <div>
                   <dt>开始时间</dt>
                   <dd>{formatDate(detail.startedAt)}</dd>
                 </div>
@@ -393,6 +397,14 @@ export function AdminTasks() {
                 <section className="admin-detail-error">
                   <h3>失败信息</h3>
                   <p>{detail.errorMessage}</p>
+                </section>
+              ) : null}
+              {detail.deadLetter ? (
+                <section className="admin-detail-error">
+                  <h3>死信记录</h3>
+                  <p>
+                    {detail.deadLetter.errorCode} · {detail.deadLetter.attempts} 次尝试
+                  </p>
                 </section>
               ) : null}
               <section>

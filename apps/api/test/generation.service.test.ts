@@ -40,6 +40,7 @@ const task = {
   referenceImageUrls: [],
   unitCost: 1,
   totalCost: 2,
+  attempts: 0,
   idempotencyKey: input.idempotencyKey,
   queueJobId: null,
   errorCode: null,

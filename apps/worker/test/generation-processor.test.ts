@@ -6,6 +6,7 @@ import {
   DeterministicMockProvider,
   GenerationOutputPipeline,
   GenerationProcessor,
+  GenerationProviderError,
   type GenerationProvider,
   type GenerationStore,
   type GenerationTaskSnapshot,
@@ -23,6 +24,7 @@ const task: GenerationTaskSnapshot = {
   resolution: "2K",
   imageCount: 1,
   totalCost: 1,
+  attempts: 1,
 };
 
 let sourceImage: Buffer;
@@ -127,6 +129,71 @@ describe("GenerationProcessor", () => {
       status: "failed",
     });
     expect(store.fail).toHaveBeenCalledWith(task.id, "GENERATION_FAILED", expect.any(String));
+  });
+
+  it("returns retryable provider failures to BullMQ without settling quota early", async () => {
+    const { processor, provider, store } = createProcessor();
+    const error = new GenerationProviderError(
+      "provider unavailable",
+      "PROVIDER_TEMPORARILY_UNAVAILABLE",
+      true,
+    );
+    vi.mocked(provider.generate).mockRejectedValue(error);
+
+    await expect(
+      processor.process({ taskId: task.id }, { key: `${task.id}:1`, number: 1, maxAttempts: 3 }),
+    ).rejects.toBe(error);
+    expect(store.fail).not.toHaveBeenCalled();
+  });
+
+  it("dead-letters an exhausted retryable provider failure before settling once", async () => {
+    const { processor, provider, store } = createProcessor();
+    const error = new GenerationProviderError(
+      "provider unavailable",
+      "PROVIDER_TEMPORARILY_UNAVAILABLE",
+      true,
+    );
+    vi.mocked(provider.generate).mockRejectedValue(error);
+
+    await expect(
+      processor.process({ taskId: task.id }, { key: `${task.id}:3`, number: 3, maxAttempts: 3 }),
+    ).resolves.toEqual({ taskId: task.id, status: "failed" });
+    expect(store.fail).toHaveBeenCalledTimes(1);
+    expect(store.fail).toHaveBeenCalledWith(
+      task.id,
+      "PROVIDER_TEMPORARILY_UNAVAILABLE",
+      expect.any(String),
+      {
+        deadLetter: {
+          attempts: 3,
+          payload: {
+            provider: "mock",
+            providerMessage: "provider unavailable",
+            retryable: true,
+          },
+        },
+      },
+    );
+  });
+
+  it("settles a non-retryable provider error immediately without a dead letter", async () => {
+    const { processor, provider, store } = createProcessor();
+    const error = new GenerationProviderError(
+      "provider rejected request",
+      "PROVIDER_REQUEST_REJECTED",
+      false,
+    );
+    vi.mocked(provider.generate).mockRejectedValue(error);
+
+    await expect(
+      processor.process({ taskId: task.id }, { key: `${task.id}:1`, number: 1, maxAttempts: 3 }),
+    ).resolves.toEqual({ taskId: task.id, status: "failed" });
+    expect(store.fail).toHaveBeenCalledTimes(1);
+    expect(store.fail).toHaveBeenCalledWith(
+      task.id,
+      "PROVIDER_REQUEST_REJECTED",
+      expect.any(String),
+    );
   });
 
   it("rejects marked input before calling the provider and releases quota", async () => {

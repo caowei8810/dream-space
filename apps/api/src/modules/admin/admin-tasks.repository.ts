@@ -22,6 +22,7 @@ const detailInclude = {
   user: { select: { phone: true } },
   session: { select: { title: true } },
   results: { orderBy: { index: "asc" as const } },
+  deadLetter: true,
 } as const;
 
 export type AdminTaskListRecord = Prisma.GenerationTaskGetPayload<{ include: typeof listInclude }>;

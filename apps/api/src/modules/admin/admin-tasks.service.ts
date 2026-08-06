@@ -38,6 +38,7 @@ interface TaskBaseRecord {
   resolution: string;
   imageCount: number;
   totalCost: number;
+  attempts: number;
   referenceImageUrls: unknown;
   errorCode: string | null;
   errorMessage: string | null;
@@ -82,6 +83,15 @@ export class AdminTasksService {
         : [],
       errorCode: task.errorCode,
       errorMessage: task.errorMessage,
+      deadLetter: task.deadLetter
+        ? {
+            errorCode: task.deadLetter.errorCode,
+            errorMessage: task.deadLetter.errorMessage,
+            attempts: task.deadLetter.attempts,
+            createdAt: task.deadLetter.createdAt.toISOString(),
+            resolvedAt: task.deadLetter.resolvedAt?.toISOString() ?? null,
+          }
+        : null,
       results: task.results.map((result) => ({
         id: result.id,
         index: result.index,
@@ -177,6 +187,7 @@ export class AdminTasksService {
       imageCount: task.imageCount,
       resultCount: task._count.results,
       totalCost: task.totalCost,
+      attempts: task.attempts,
       inputModerationStatus: this.mapModerationStatus(task.inputModerationStatus),
       outputModerationStatus: this.mapModerationStatus(task.outputModerationStatus),
       createdAt: task.createdAt.toISOString(),
