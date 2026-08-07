@@ -76,7 +76,7 @@ export interface SendCodeResponse {
   challengeId: string;
   expiresAt: string;
   retryAfterSeconds: number;
-  demoCode: "123456";
+  demoCode?: "123456";
 }
 
 export interface SendCodeRequest {
@@ -91,6 +91,32 @@ export interface AgreementConsents {
 }
 
 export interface LoginRequest extends AgreementConsents {
+  phone: string;
+  challengeId: string;
+  code: string;
+}
+
+export const adminDemoPhone = "18800000000" as const;
+export const adminViewerDemoPhone = "18800000001" as const;
+
+export const adminRoles = ["viewer", "operator", "admin"] as const;
+export type AdminRole = (typeof adminRoles)[number];
+
+export const adminPermissions = ["tasks:read", "inspirations:read", "inspirations:write"] as const;
+export type AdminPermission = (typeof adminPermissions)[number];
+
+export interface AdminUser {
+  id: string;
+  displayName: string;
+  phoneMasked: string;
+  role: AdminRole;
+  permissions: AdminPermission[];
+}
+
+export type AdminSessionResponse =
+  { authenticated: false } | { authenticated: true; user: AdminUser };
+
+export interface AdminLoginRequest {
   phone: string;
   challengeId: string;
   code: string;
@@ -125,6 +151,9 @@ export type GenerationRatio = (typeof generationRatios)[number];
 export const generationResolutions = ["2K", "4K"] as const;
 export type GenerationResolution = (typeof generationResolutions)[number];
 
+export const moderationStatuses = ["pending", "approved", "rejected"] as const;
+export type ModerationStatus = (typeof moderationStatuses)[number];
+
 export interface CreateGenerationTaskRequest {
   idempotencyKey: string;
   sessionId?: string | null;
@@ -136,15 +165,44 @@ export interface CreateGenerationTaskRequest {
   referenceImageUrls: string[];
 }
 
+export interface GenerationModelOption {
+  id: string;
+  labelZh: string;
+  labelEn: string;
+}
+
+export interface GenerationOptionsResponse {
+  models: GenerationModelOption[];
+  ratios: readonly GenerationRatio[];
+  resolutions: readonly GenerationResolution[];
+  imageCount: { min: number; max: number };
+  referenceImages: { max: number; maxBytes: number; mimeTypes: string[] };
+  costPerImage: Record<GenerationResolution, number>;
+  externalServicesMode: "mock" | "live";
+}
+
+export interface ReferenceUploadResponse {
+  id: string;
+  url: string;
+  filename: string;
+  mimeType: string;
+  width: number;
+  height: number;
+  byteSize: number;
+  checksumSha256: string;
+}
+
 export interface GenerationResultResponse {
   id: string;
   index: number;
   imageUrl: string;
+  thumbnailUrl: string;
   width: number;
   height: number;
   mimeType: string;
   byteSize: number;
   isAiGenerated: true;
+  moderationStatus: ModerationStatus;
 }
 
 export interface GenerationTaskResponse {
@@ -159,8 +217,11 @@ export interface GenerationTaskResponse {
   referenceImageUrls: string[];
   unitCost: number;
   totalCost: number;
+  attempts: number;
   errorCode: string | null;
   errorMessage: string | null;
+  inputModerationStatus: ModerationStatus;
+  outputModerationStatus: ModerationStatus;
   createdAt: string;
   startedAt: string | null;
   completedAt: string | null;
@@ -175,7 +236,17 @@ export interface GenerationSessionSummary {
   updatedAt: string;
 }
 
+export interface GenerationSessionDraft {
+  prompt: string;
+  model: string;
+  ratio: GenerationRatio;
+  resolution: GenerationResolution;
+  imageCount: number;
+  referenceImageUrls: string[];
+}
+
 export interface GenerationSessionDetail extends GenerationSessionSummary {
+  draft: GenerationSessionDraft | null;
   tasks: GenerationTaskResponse[];
 }
 
@@ -202,13 +273,19 @@ export interface RenameGenerationSessionRequest {
   title: string;
 }
 
+export type UpdateGenerationSessionDraftRequest = GenerationSessionDraft;
+
 export const generationEventTypes = [
   "task.queued",
   "task.generating",
+  "task.retrying",
+  "task.input.moderated",
+  "task.output.moderated",
   "task.succeeded",
   "task.partially_succeeded",
   "task.failed",
   "task.cancelled",
+  "task.dead_lettered",
 ] as const;
 export type GenerationEventType = (typeof generationEventTypes)[number];
 
@@ -222,4 +299,110 @@ export interface GenerationTaskEventData {
 
 export interface GenerationQueueJob {
   taskId: string;
+}
+
+export interface AdminGenerationTaskSummary {
+  id: string;
+  sessionId: string;
+  sessionTitle: string;
+  userPhoneMasked: string;
+  status: GenerationTaskStatus;
+  prompt: string;
+  model: string;
+  ratio: GenerationRatio;
+  resolution: GenerationResolution;
+  imageCount: number;
+  resultCount: number;
+  totalCost: number;
+  attempts: number;
+  inputModerationStatus: ModerationStatus;
+  outputModerationStatus: ModerationStatus;
+  createdAt: string;
+  startedAt: string | null;
+  completedAt: string | null;
+}
+
+export interface AdminGenerationTaskDetail extends AdminGenerationTaskSummary {
+  referenceImageUrls: string[];
+  errorCode: string | null;
+  errorMessage: string | null;
+  deadLetter: {
+    errorCode: string;
+    errorMessage: string;
+    attempts: number;
+    createdAt: string;
+    resolvedAt: string | null;
+  } | null;
+  results: GenerationResultResponse[];
+}
+
+export interface AdminGenerationTaskListResponse {
+  items: AdminGenerationTaskSummary[];
+  total: number;
+  page: number;
+  pageSize: number;
+  pageCount: number;
+}
+
+export const adminInspirationStatuses = ["draft", "published", "archived"] as const;
+export type AdminInspirationStatus = (typeof adminInspirationStatuses)[number];
+
+export const adminInspirationSourceTypes = ["ai_public_gallery", "licensed", "internal"] as const;
+export type AdminInspirationSourceType = (typeof adminInspirationSourceTypes)[number];
+
+export interface AdminInspirationRecord {
+  id: string;
+  slug: string;
+  title: string;
+  prompt: string;
+  category: InspirationCategory;
+  imageUrl: string;
+  thumbnailUrl: string;
+  width: number;
+  height: number;
+  modelName: string;
+  ratio: string;
+  resolutionLabel: string;
+  authorDisplayName: string;
+  sourceType: AdminInspirationSourceType;
+  sourceName: string;
+  sourceUrl: string | null;
+  licenseBasis: string;
+  isAiGenerated: boolean;
+  likeCount: number;
+  sortOrder: number;
+  status: AdminInspirationStatus;
+  publishedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminInspirationInput {
+  slug: string;
+  title: string;
+  prompt: string;
+  category: InspirationCategory;
+  imageUrl: string;
+  thumbnailUrl: string;
+  width: number;
+  height: number;
+  modelName: string;
+  ratio: string;
+  resolutionLabel: string;
+  authorDisplayName: string;
+  sourceType: AdminInspirationSourceType;
+  sourceName: string;
+  sourceUrl?: string | null;
+  licenseBasis: string;
+  isAiGenerated: boolean;
+  likeCount: number;
+  sortOrder: number;
+}
+
+export interface AdminInspirationListResponse {
+  items: AdminInspirationRecord[];
+  total: number;
+  page: number;
+  pageSize: number;
+  pageCount: number;
 }

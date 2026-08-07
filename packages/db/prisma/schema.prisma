@@ -43,6 +43,12 @@ enum QuotaLedgerType {
   RELEASE
 }
 
+enum AdminRole {
+  VIEWER
+  OPERATOR
+  ADMIN
+}
+
 enum GenerationRatio {
   SMART      @map("smart")
   RATIO_21_9 @map("21:9")
@@ -58,6 +64,12 @@ enum GenerationRatio {
 enum GenerationResolution {
   K2 @map("2K")
   K4 @map("4K")
+}
+
+enum ModerationStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 model Inspiration {
@@ -101,6 +113,44 @@ model User {
   generationTasks      GenerationTask[]
   quotaAccount         QuotaAccount?
   quotaLedgerEntries   QuotaLedgerEntry[]
+  referenceUploads     ReferenceUpload[]
+}
+
+model AdminUser {
+  id          String         @id @default(cuid())
+  phone       String         @unique
+  displayName String
+  role        AdminRole      @default(VIEWER)
+  active      Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  sessions    AdminSession[]
+
+  @@index([active, role])
+}
+
+model AdminVerificationCode {
+  id         String    @id
+  phone      String
+  codeHash   String
+  expiresAt  DateTime
+  consumedAt DateTime?
+  attempts   Int       @default(0)
+  createdAt  DateTime  @default(now())
+
+  @@index([phone, createdAt])
+}
+
+model AdminSession {
+  id          String    @id @default(cuid())
+  tokenHash   String    @unique
+  adminUserId String
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+  lastSeenAt  DateTime  @default(now())
+  adminUser   AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  @@index([adminUserId, expiresAt])
 }
 
 model GenerationSession {
@@ -117,52 +167,95 @@ model GenerationSession {
 }
 
 model GenerationTask {
-  id                 String                @id @default(cuid())
-  sessionId          String
-  userId             String
-  status             GenerationTaskStatus  @default(QUEUED)
-  prompt             String                @db.Text
-  model              String
-  ratio              GenerationRatio
-  resolution         GenerationResolution
-  imageCount         Int
-  referenceImageUrls Json
-  unitCost           Int
-  totalCost          Int
-  idempotencyKey     String
-  queueJobId         String?
-  errorCode          String?
-  errorMessage       String?
-  startedAt          DateTime?
-  completedAt        DateTime?
-  createdAt          DateTime              @default(now())
-  updatedAt          DateTime              @updatedAt
-  session            GenerationSession     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  user               User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  results            GenerationResult[]
-  events             GenerationTaskEvent[]
-  quotaLedgerEntries QuotaLedgerEntry[]
+  id                     String                @id @default(cuid())
+  sessionId              String
+  userId                 String
+  status                 GenerationTaskStatus  @default(QUEUED)
+  prompt                 String                @db.Text
+  model                  String
+  ratio                  GenerationRatio
+  resolution             GenerationResolution
+  imageCount             Int
+  referenceImageUrls     Json
+  unitCost               Int
+  totalCost              Int
+  idempotencyKey         String
+  queueJobId             String?
+  attempts               Int                   @default(0)
+  lastAttemptKey         String?
+  errorCode              String?
+  errorMessage           String?
+  inputModerationStatus  ModerationStatus      @default(PENDING)
+  outputModerationStatus ModerationStatus      @default(PENDING)
+  startedAt              DateTime?
+  completedAt            DateTime?
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+  session                GenerationSession     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user                   User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  results                GenerationResult[]
+  events                 GenerationTaskEvent[]
+  quotaLedgerEntries     QuotaLedgerEntry[]
+  deadLetter             GenerationDeadLetter?
 
   @@unique([userId, idempotencyKey])
   @@index([sessionId, createdAt])
   @@index([userId, status, createdAt])
 }
 
+model GenerationDeadLetter {
+  id           String         @id @default(cuid())
+  taskId       String         @unique
+  errorCode    String
+  errorMessage String
+  attempts     Int
+  payload      Json
+  createdAt    DateTime       @default(now())
+  resolvedAt   DateTime?
+  task         GenerationTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([resolvedAt, createdAt])
+}
+
 model GenerationResult {
-  id            String         @id @default(cuid())
-  taskId        String
-  index         Int
-  imagePath     String
-  width         Int
-  height        Int
-  mimeType      String
-  byteSize      Int
-  isAiGenerated Boolean        @default(true)
-  createdAt     DateTime       @default(now())
-  task          GenerationTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  id                 String           @id @default(cuid())
+  taskId             String
+  index              Int
+  imagePath          String
+  objectKey          String?          @unique
+  thumbnailObjectKey String?          @unique
+  checksumSha256     String?
+  width              Int
+  height             Int
+  mimeType           String
+  byteSize           Int
+  thumbnailWidth     Int?
+  thumbnailHeight    Int?
+  thumbnailByteSize  Int?
+  moderationStatus   ModerationStatus @default(PENDING)
+  isAiGenerated      Boolean          @default(true)
+  createdAt          DateTime         @default(now())
+  task               GenerationTask   @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
   @@unique([taskId, index])
   @@index([taskId])
+}
+
+model ReferenceUpload {
+  id               String    @id @default(cuid())
+  userId           String
+  objectKey        String    @unique
+  originalFilename String
+  mimeType         String
+  byteSize         Int
+  width            Int
+  height           Int
+  checksumSha256   String
+  createdAt        DateTime  @default(now())
+  deletedAt        DateTime?
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }
 
 model GenerationTaskEvent {

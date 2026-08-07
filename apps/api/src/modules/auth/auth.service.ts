@@ -7,7 +7,13 @@ import {
   type SendCodeResponse,
 } from "@dream-space/contracts";
 import { parseApiEnv } from "@dream-space/config";
-import { BadRequestException, Inject, Injectable, UnauthorizedException } from "@nestjs/common";
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  ServiceUnavailableException,
+  UnauthorizedException,
+} from "@nestjs/common";
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import { AuthRepository } from "./auth.repository";
 
@@ -29,6 +35,9 @@ export class AuthService {
   constructor(@Inject(AuthRepository) private readonly repository: AuthRepository) {}
 
   async sendCode(input: SendCodeRequest): Promise<SendCodeResponse> {
+    if (this.env.EXTERNAL_SERVICES_MODE !== "mock") {
+      throw new ServiceUnavailableException("短信验证码服务尚未配置");
+    }
     const phone = this.normalizePhone(input.phone);
     const reusable = await this.repository.findReusableChallenge(phone);
     if (reusable) {

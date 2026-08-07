@@ -4,14 +4,14 @@
 
 ## 当前状态
 
-| 阶段                    | 状态   | 交付内容                                     |
-| ----------------------- | ------ | -------------------------------------------- |
-| 阶段 0：产品与原型      | 已完成 | 产品需求、交互规范、高保真用户端原型         |
-| 阶段 A1：目录与文档基线 | 已完成 | 正式工程目录、模块 README、开发计划          |
-| 阶段 A2：可运行工程骨架 | 已完成 | 四个应用、本机依赖、完整检查和 PR CI 均通过  |
-| 阶段 B：用户端 MVP      | 进行中 | B1/B2 已完成，B3 生成后端闭环进入验收        |
-| 阶段 C：真实生成能力    | 未开始 | 模型供应商、对象存储、审核、额度和任务可靠性 |
-| 阶段 D：运营与上线      | 未开始 | 完整管理后台、审计、监控、备份和部署         |
+| 阶段                    | 状态   | 交付内容                                       |
+| ----------------------- | ------ | ---------------------------------------------- |
+| 阶段 0：产品与原型      | 已完成 | 产品需求、交互规范、高保真用户端原型           |
+| 阶段 A1：目录与文档基线 | 已完成 | 正式工程目录、模块 README、开发计划            |
+| 阶段 A2：可运行工程骨架 | 已完成 | 四个应用、本机依赖、完整检查和 PR CI 均通过    |
+| 阶段 B：用户端 MVP      | 已完成 | B1-B5、完整栈 smoke、浏览器 E2E 和远端 CI 通过 |
+| 阶段 C：真实生成能力    | 进行中 | C1 安全参考图上传与存储边界已完成              |
+| 阶段 D：运营与上线      | 未开始 | 完整管理后台、审计、监控、备份和部署           |
 
 每个阶段的目标、验收条件和完成评估见 [开发阶段计划](docs/development-plan.md)。
 
@@ -56,32 +56,31 @@
 
 ### 使用 macOS 本机服务启动（推荐）
 
-首次安装 PostgreSQL 和 Redis：
+首次安装 PostgreSQL、Redis 和 MinIO：
 
 ```bash
-brew install postgresql@17 redis
+brew install postgresql@17 redis minio minio-mc
 ```
 
 安装完成后，在项目根目录执行：
 
 ```bash
-cp .env.example .env
 pnpm install --frozen-lockfile
-pnpm local:infra:up
-pnpm db:generate
-pnpm --filter @dream-space/db exec prisma migrate deploy
-pnpm db:seed
-pnpm dev
+pnpm local:up
 ```
 
-`local:infra:up` 会启动 PostgreSQL 和项目专用 Redis，自动创建本地开发角色与数据库。服务状态和停止命令：
+`local:up` 会启动 Homebrew PostgreSQL 17，并在仓库 `.local` 目录中管理 Redis、MinIO、应用 PID 和日志；随后自动执行数据库迁移与种子，再启动 API、Worker、用户端和管理端。它不依赖 Docker。MinIO 本地凭据首次启动时随机生成并仅保存于被 Git 忽略的 `.local/minio/runtime.env`。
 
-本机 PostgreSQL 默认通过 macOS 本地认证连接；如需设置密码，可在命令前临时传入 `DREAMSPACE_DB_PASSWORD`，不要将真实密码写入仓库。
+完整栈状态、日志、重启和停止命令：
 
 ```bash
-pnpm local:infra:status
-pnpm local:infra:down
+pnpm local:status
+pnpm local:logs
+pnpm local:restart
+pnpm local:down
 ```
+
+只管理 PostgreSQL、Redis 和 MinIO 时，使用 `local:infra:up|status|restart|down`。
 
 ### 使用 Docker 启动（可选）
 
@@ -118,6 +117,12 @@ pnpm check
 
 ```bash
 pnpm auth:smoke
+```
+
+管理端、API 和 PostgreSQL 启动后，可验证管理员独立会话、普通用户隔离、任务查询、灵感 CRUD/发布可见性、只读角色 403 和退出：
+
+```bash
+pnpm admin:smoke
 ```
 
 API、Worker、PostgreSQL 和 Redis 启动后，可验证生成成功、取消、幂等重放与参数冲突、额度结算、SSE 重放和用户数据隔离：

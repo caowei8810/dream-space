@@ -9,15 +9,18 @@ import {
 export { Prisma } from "./generated/client/client";
 
 export {
+  AdminRole as DatabaseAdminRole,
   GenerationTaskStatus as DatabaseGenerationTaskStatus,
   GenerationRatio as DatabaseGenerationRatio,
   GenerationResolution as DatabaseGenerationResolution,
   InspirationCategory as DatabaseInspirationCategory,
   InspirationSourceType,
   InspirationStatus,
+  ModerationStatus as DatabaseModerationStatus,
   QuotaLedgerType,
 } from "./generated/client/enums";
 export type { InspirationModel } from "./generated/client/models/Inspiration";
+export type { ReferenceUploadModel } from "./generated/client/models/ReferenceUpload";
 
 const defaultDatabaseUrl = "postgresql://dreamspace:dreamspace_dev@localhost:5432/dreamspace";
 

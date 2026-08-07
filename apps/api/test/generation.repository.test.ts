@@ -3,6 +3,34 @@ import { describe, expect, it, vi } from "vitest";
 import { GenerationRepository } from "../src/modules/generation/generation.repository";
 
 describe("GenerationRepository idempotency", () => {
+  it("retries quota initialization after a concurrent unique-key race", async () => {
+    const now = new Date("2026-08-03T00:00:00.000Z");
+    const quota = {
+      userId: "user-1",
+      total: 100,
+      available: 100,
+      reserved: 0,
+      createdAt: now,
+      updatedAt: now,
+    };
+    const transaction = {
+      quotaAccount: { upsert: vi.fn().mockResolvedValue(quota) },
+      quotaLedgerEntry: { upsert: vi.fn().mockResolvedValue({}) },
+    };
+    const database = {
+      $transaction: vi
+        .fn()
+        .mockRejectedValueOnce({ code: "P2002" })
+        .mockImplementationOnce(async (callback: (client: typeof transaction) => unknown) =>
+          callback(transaction),
+        ),
+    } as unknown as DatabaseClient;
+    const repository = new GenerationRepository(database);
+
+    await expect(repository.getQuota("user-1")).resolves.toEqual(quota);
+    expect(database.$transaction).toHaveBeenCalledTimes(2);
+  });
+
   it("returns the committed task when a concurrent insert loses the unique-key race", async () => {
     const now = new Date("2026-08-03T00:00:00.000Z");
     const quota = {
@@ -34,10 +62,13 @@ describe("GenerationRepository idempotency", () => {
       referenceImageUrls: [],
       unitCost: 1,
       totalCost: 1,
+      attempts: 0,
       idempotencyKey: "concurrent-key",
       queueJobId: null,
       errorCode: null,
       errorMessage: null,
+      inputModerationStatus: "PENDING",
+      outputModerationStatus: "PENDING",
       startedAt: null,
       completedAt: null,
       createdAt: now,
@@ -93,10 +124,13 @@ describe("GenerationRepository idempotency", () => {
       referenceImageUrls: [],
       unitCost: 1,
       totalCost: 1,
+      attempts: 0,
       idempotencyKey: "same-key-123",
       queueJobId: "task-1",
       errorCode: null,
       errorMessage: null,
+      inputModerationStatus: "PENDING",
+      outputModerationStatus: "PENDING",
       startedAt: null,
       completedAt: null,
       createdAt: now,

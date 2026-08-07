@@ -2,16 +2,22 @@ import {
   generationEventTypes,
   generationRatios,
   generationResolutions,
+  moderationStatuses,
   type CreateGenerationTaskRequest,
   type CreateGenerationTaskResponse,
   type GenerationEventType,
+  type GenerationOptionsResponse,
+  type GenerationSessionDraft,
   type GenerationSessionDetail,
   type GenerationSessionSummary,
   type GenerationTaskEventData,
   type GenerationTaskResponse,
   type GenerationTaskStatus,
+  type ModerationStatus,
   type QuotaResponse,
+  type UpdateGenerationSessionDraftRequest,
 } from "@dream-space/contracts";
+import { parseApiEnv } from "@dream-space/config";
 import {
   calculateGenerationCost,
   createGenerationSessionTitle,
@@ -37,16 +43,20 @@ import {
 import { Observable } from "rxjs";
 import { GenerationQueue } from "./generation.queue";
 import { GenerationRepository } from "./generation.repository";
+import { UploadsService } from "../uploads/uploads.service";
 
 const allowedReferenceUrl = /^(https?:\/\/|\/)/;
 
 @Injectable()
 export class GenerationService {
   private readonly logger = new Logger(GenerationService.name);
+  private readonly env = parseApiEnv(process.env);
+  private readonly publicOrigin = new URL(this.env.API_PUBLIC_URL);
 
   constructor(
     @Inject(GenerationRepository) private readonly repository: GenerationRepository,
     @Inject(GenerationQueue) private readonly queue: GenerationQueue,
+    @Inject(UploadsService) private readonly uploads: UploadsService,
   ) {}
 
   async createTask(
@@ -54,6 +64,7 @@ export class GenerationService {
     rawInput: CreateGenerationTaskRequest,
   ): Promise<CreateGenerationTaskResponse> {
     const input = this.validateCreateInput(rawInput);
+    await this.uploads.assertOwnedReferenceUrls(userId, input.referenceImageUrls);
     const unitCost = calculateGenerationCost(1, input.resolution);
     const totalCost = calculateGenerationCost(input.imageCount, input.resolution);
     const result = await this.repository.createTask({
@@ -111,6 +122,26 @@ export class GenerationService {
     return this.mapQuota(await this.repository.getQuota(userId));
   }
 
+  getOptions(): GenerationOptionsResponse {
+    return {
+      models: [
+        { id: "image-4.7", labelZh: "通用模型", labelEn: "General model" },
+        { id: "image-realistic", labelZh: "写实模型", labelEn: "Realistic model" },
+        { id: "image-anime", labelZh: "动漫模型", labelEn: "Anime model" },
+      ],
+      ratios: generationRatios,
+      resolutions: generationResolutions,
+      imageCount: { min: 1, max: 8 },
+      referenceImages: {
+        max: 4,
+        maxBytes: 10 * 1024 * 1024,
+        mimeTypes: ["image/jpeg", "image/png", "image/webp"],
+      },
+      costPerImage: { "2K": 1, "4K": 2 },
+      externalServicesMode: this.env.EXTERNAL_SERVICES_MODE,
+    };
+  }
+
   async listSessions(userId: string) {
     const sessions = await this.repository.listSessions(userId);
     return { items: sessions.map((session) => this.mapSessionSummary(session)) };
@@ -121,6 +152,7 @@ export class GenerationService {
     if (!session) throw new NotFoundException("生成会话不存在");
     return {
       ...this.mapSessionSummary(session),
+      draft: this.parseStoredDraft(session.draft),
       tasks: session.tasks.map((task) => this.mapTask(task)),
     };
   }
@@ -129,6 +161,18 @@ export class GenerationService {
     const title = typeof rawTitle === "string" ? rawTitle.replace(/\s+/g, " ").trim() : "";
     if (!title || title.length > 80) throw new BadRequestException("会话名称长度应为 1-80 个字符");
     const session = await this.repository.renameSession(userId, sessionId, title);
+    if (!session) throw new NotFoundException("生成会话不存在");
+    return this.getSession(userId, sessionId);
+  }
+
+  async updateSessionDraft(
+    userId: string,
+    sessionId: string,
+    rawDraft: UpdateGenerationSessionDraftRequest,
+  ) {
+    const draft = this.validateSessionDraft(rawDraft);
+    await this.uploads.assertOwnedReferenceUrls(userId, draft.referenceImageUrls);
+    const session = await this.repository.updateSessionDraft(userId, sessionId, draft);
     if (!session) throw new NotFoundException("生成会话不存在");
     return this.getSession(userId, sessionId);
   }
@@ -250,17 +294,69 @@ export class GenerationService {
     };
   }
 
+  private validateSessionDraft(input: UpdateGenerationSessionDraftRequest): GenerationSessionDraft {
+    if (!input || typeof input !== "object") throw new BadRequestException("会话草稿不完整");
+    const prompt = typeof input.prompt === "string" ? input.prompt : "";
+    const model = typeof input.model === "string" ? input.model.trim() : "";
+    if (prompt.length > 4000) throw new BadRequestException("提示词长度应为 0-4000 个字符");
+    if (!this.getOptions().models.some((item) => item.id === model)) {
+      throw new BadRequestException("模型参数不正确");
+    }
+    if (!generationRatios.includes(input.ratio)) throw new BadRequestException("画面比例不正确");
+    if (!generationResolutions.includes(input.resolution)) {
+      throw new BadRequestException("清晰度参数不正确");
+    }
+    if (!Number.isInteger(input.imageCount) || input.imageCount < 1 || input.imageCount > 8) {
+      throw new BadRequestException("生成张数应为 1-8");
+    }
+    if (
+      !Array.isArray(input.referenceImageUrls) ||
+      input.referenceImageUrls.length > 4 ||
+      input.referenceImageUrls.some(
+        (url) => typeof url !== "string" || url.length > 2048 || !allowedReferenceUrl.test(url),
+      )
+    ) {
+      throw new BadRequestException("参考图应为最多 4 个站内或 HTTPS 地址");
+    }
+    return {
+      prompt,
+      model,
+      ratio: input.ratio,
+      resolution: input.resolution,
+      imageCount: input.imageCount,
+      referenceImageUrls: [...input.referenceImageUrls],
+    };
+  }
+
+  private parseStoredDraft(value: unknown): GenerationSessionDraft | null {
+    try {
+      return this.validateSessionDraft(value as UpdateGenerationSessionDraftRequest);
+    } catch {
+      return null;
+    }
+  }
+
   private mapSessionSummary(session: {
     id: string;
     title: string;
     createdAt: Date;
     updatedAt: Date;
-    tasks?: Array<{ results: Array<{ imagePath: string }> }>;
+    tasks?: Array<{
+      results: Array<{
+        id: string;
+        imagePath: string;
+        objectKey: string | null;
+        thumbnailObjectKey: string | null;
+      }>;
+    }>;
   }): GenerationSessionSummary {
     return {
       id: session.id,
       title: session.title,
-      thumbnailUrl: session.tasks?.flatMap((task) => task.results)[0]?.imagePath ?? null,
+      thumbnailUrl: (() => {
+        const result = session.tasks?.flatMap((task) => task.results)[0];
+        return result ? this.resultAssetUrl(result, "thumbnail") : null;
+      })(),
       createdAt: session.createdAt.toISOString(),
       updatedAt: session.updatedAt.toISOString(),
     };
@@ -278,8 +374,11 @@ export class GenerationService {
     referenceImageUrls: unknown;
     unitCost: number;
     totalCost: number;
+    attempts: number;
     errorCode: string | null;
     errorMessage: string | null;
+    inputModerationStatus: string;
+    outputModerationStatus: string;
     createdAt: Date;
     startedAt: Date | null;
     completedAt: Date | null;
@@ -287,11 +386,14 @@ export class GenerationService {
       id: string;
       index: number;
       imagePath: string;
+      objectKey?: string | null;
+      thumbnailObjectKey?: string | null;
       width: number;
       height: number;
       mimeType: string;
       byteSize: number;
       isAiGenerated: boolean;
+      moderationStatus: string;
     }>;
   }): GenerationTaskResponse {
     return {
@@ -308,22 +410,41 @@ export class GenerationService {
         : [],
       unitCost: task.unitCost,
       totalCost: task.totalCost,
+      attempts: task.attempts,
       errorCode: task.errorCode,
       errorMessage: task.errorMessage,
+      inputModerationStatus: this.mapModerationStatus(task.inputModerationStatus),
+      outputModerationStatus: this.mapModerationStatus(task.outputModerationStatus),
       createdAt: task.createdAt.toISOString(),
       startedAt: task.startedAt?.toISOString() ?? null,
       completedAt: task.completedAt?.toISOString() ?? null,
       results: task.results.map((result) => ({
         id: result.id,
         index: result.index,
-        imageUrl: result.imagePath,
+        imageUrl: this.resultAssetUrl(result, "content"),
+        thumbnailUrl: this.resultAssetUrl(result, "thumbnail"),
         width: result.width,
         height: result.height,
         mimeType: result.mimeType,
         byteSize: result.byteSize,
         isAiGenerated: true,
+        moderationStatus: this.mapModerationStatus(result.moderationStatus),
       })),
     };
+  }
+
+  private resultAssetUrl(
+    result: {
+      id?: string;
+      imagePath: string;
+      objectKey?: string | null;
+      thumbnailObjectKey?: string | null;
+    },
+    variant: "content" | "thumbnail",
+  ) {
+    const hasStoredAsset = variant === "content" ? result.objectKey : result.thumbnailObjectKey;
+    if (!result.id || !hasStoredAsset) return result.imagePath;
+    return new URL(`/generation/results/${result.id}/${variant}`, this.publicOrigin).toString();
   }
 
   private mapQuota(quota: { total: number; available: number; reserved: number }): QuotaResponse {
@@ -339,6 +460,14 @@ export class GenerationService {
 
   private mapStatus(status: string): GenerationTaskStatus {
     return status.toLowerCase() as GenerationTaskStatus;
+  }
+
+  private mapModerationStatus(status: string): ModerationStatus {
+    const normalized = status.toLowerCase();
+    if (!moderationStatuses.includes(normalized as ModerationStatus)) {
+      throw new Error(`未知审核状态: ${status}`);
+    }
+    return normalized as ModerationStatus;
   }
 
   private mapEventType(value: string): GenerationEventType {

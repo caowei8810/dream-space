@@ -15,8 +15,10 @@
     "@dream-space/contracts": "workspace:*",
     "@dream-space/core": "workspace:*",
     "@dream-space/db": "workspace:*",
+    "@dream-space/storage": "workspace:*",
     "bullmq": "^6.0.5",
-    "ioredis": "^6.0.0"
+    "ioredis": "^6.0.0",
+    "sharp": "^0.34.5"
   },
   "devDependencies": {
     "@types/node": "^26.1.2",

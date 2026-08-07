@@ -1,6 +1,7 @@
 import type {
   CreateGenerationTaskRequest,
   RenameGenerationSessionRequest,
+  UpdateGenerationSessionDraftRequest,
 } from "@dream-space/contracts";
 import {
   Body,
@@ -14,22 +15,61 @@ import {
   Patch,
   Post,
   Sse,
+  Res,
+  StreamableFile,
   UnauthorizedException,
 } from "@nestjs/common";
 import { AuthService } from "../auth/auth.service";
 import { readSessionToken } from "../auth/session-cookie";
+import { GenerationResultAssetsService } from "./generation-result-assets.service";
 import { GenerationService } from "./generation.service";
+
+interface AssetResponse {
+  redirect(statusCode: number, url: string): void;
+  setHeader(name: string, value: string): void;
+}
 
 @Controller("generation")
 export class GenerationController {
   constructor(
     @Inject(GenerationService) private readonly service: GenerationService,
+    @Inject(GenerationResultAssetsService) private readonly assets: GenerationResultAssetsService,
     @Inject(AuthService) private readonly auth: AuthService,
   ) {}
+
+  @Get("results/:resultId/content")
+  async readResult(
+    @Headers("cookie") cookie: string | undefined,
+    @Param("resultId") resultId: string,
+    @Res({ passthrough: true }) response: AssetResponse,
+  ) {
+    return this.serveAsset(
+      await this.assets.readOwned(await this.requireUserId(cookie), resultId, "content"),
+      response,
+    );
+  }
+
+  @Get("results/:resultId/thumbnail")
+  async readResultThumbnail(
+    @Headers("cookie") cookie: string | undefined,
+    @Param("resultId") resultId: string,
+    @Res({ passthrough: true }) response: AssetResponse,
+  ) {
+    return this.serveAsset(
+      await this.assets.readOwned(await this.requireUserId(cookie), resultId, "thumbnail"),
+      response,
+    );
+  }
 
   @Get("quota")
   async getQuota(@Headers("cookie") cookie: string | undefined) {
     return this.service.getQuota(await this.requireUserId(cookie));
+  }
+
+  @Get("options")
+  async getOptions(@Headers("cookie") cookie: string | undefined) {
+    await this.requireUserId(cookie);
+    return this.service.getOptions();
   }
 
   @Get("sessions")
@@ -52,6 +92,15 @@ export class GenerationController {
     @Body() input: RenameGenerationSessionRequest,
   ) {
     return this.service.renameSession(await this.requireUserId(cookie), sessionId, input?.title);
+  }
+
+  @Patch("sessions/:sessionId/draft")
+  async updateSessionDraft(
+    @Headers("cookie") cookie: string | undefined,
+    @Param("sessionId") sessionId: string,
+    @Body() input: UpdateGenerationSessionDraftRequest,
+  ) {
+    return this.service.updateSessionDraft(await this.requireUserId(cookie), sessionId, input);
   }
 
   @Delete("sessions/:sessionId")
@@ -94,5 +143,22 @@ export class GenerationController {
     const session = await this.auth.getSession(readSessionToken(cookie));
     if (!session.authenticated) throw new UnauthorizedException("请先登录");
     return session.user.id;
+  }
+
+  private serveAsset(
+    asset: { redirectUrl: string | null; data: Buffer | null; mimeType: string },
+    response: AssetResponse,
+  ) {
+    if (asset.redirectUrl) {
+      response.redirect(302, asset.redirectUrl);
+      return;
+    }
+    if (!asset.data) return;
+    response.setHeader("Content-Type", asset.mimeType);
+    response.setHeader("Content-Length", String(asset.data.byteLength));
+    response.setHeader("Content-Disposition", 'inline; filename="generation-result.webp"');
+    response.setHeader("Cache-Control", "private, max-age=3600");
+    response.setHeader("X-Content-Type-Options", "nosniff");
+    return new StreamableFile(asset.data);
   }
 }

@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { GenerationQueue } from "../src/modules/generation/generation.queue";
 import type { GenerationRepository } from "../src/modules/generation/generation.repository";
 import { GenerationService } from "../src/modules/generation/generation.service";
+import type { UploadsService } from "../src/modules/uploads/uploads.service";
 
 const input: CreateGenerationTaskRequest = {
   idempotencyKey: "request-12345678",
@@ -39,10 +40,13 @@ const task = {
   referenceImageUrls: [],
   unitCost: 1,
   totalCost: 2,
+  attempts: 0,
   idempotencyKey: input.idempotencyKey,
   queueJobId: null,
   errorCode: null,
   errorMessage: null,
+  inputModerationStatus: "PENDING" as const,
+  outputModerationStatus: "PENDING" as const,
   startedAt: null,
   completedAt: null,
   createdAt: new Date("2026-08-03T00:00:00.000Z"),
@@ -68,6 +72,7 @@ function createService() {
     listSessions: vi.fn().mockResolvedValue([]),
     findSession: vi.fn().mockResolvedValue(null),
     renameSession: vi.fn().mockResolvedValue(null),
+    updateSessionDraft: vi.fn().mockResolvedValue(null),
     deleteSession: vi.fn().mockResolvedValue("missing"),
     findTask: vi.fn().mockResolvedValue(task),
     cancelTask: vi.fn().mockResolvedValue(task),
@@ -76,7 +81,10 @@ function createService() {
   const queue = {
     enqueue: vi.fn().mockResolvedValue(task.id),
   } as unknown as GenerationQueue;
-  return { queue, repository, service: new GenerationService(repository, queue) };
+  const uploads = {
+    assertOwnedReferenceUrls: vi.fn().mockResolvedValue(undefined),
+  } as unknown as UploadsService;
+  return { queue, repository, uploads, service: new GenerationService(repository, queue, uploads) };
 }
 
 describe("GenerationService", () => {
@@ -98,6 +106,32 @@ describe("GenerationService", () => {
     );
     expect(queue.enqueue).toHaveBeenCalledWith(task.id);
     expect(repository.setQueueJobId).toHaveBeenCalledWith(task.id, task.id);
+  });
+
+  it("returns API-driven generation options", () => {
+    const { service } = createService();
+
+    expect(service.getOptions()).toMatchObject({
+      externalServicesMode: "mock",
+      imageCount: { min: 1, max: 8 },
+      costPerImage: { "2K": 1, "4K": 2 },
+    });
+  });
+
+  it("checks reference ownership before reserving quota", async () => {
+    const { repository, uploads, service } = createService();
+    const withReference = {
+      ...input,
+      referenceImageUrls: ["http://localhost:4000/uploads/references/upload-1/content"],
+    };
+
+    await service.createTask("user-1", withReference);
+
+    expect(uploads.assertOwnedReferenceUrls).toHaveBeenCalledWith(
+      "user-1",
+      withReference.referenceImageUrls,
+    );
+    expect(repository.createTask).toHaveBeenCalled();
   });
 
   it("does not enqueue an already persisted idempotent request twice", async () => {
@@ -160,6 +194,29 @@ describe("GenerationService", () => {
     });
   });
 
+  it("validates and persists a user-owned session draft", async () => {
+    const { repository, service } = createService();
+    const draft = {
+      prompt: "尚未提交的会话草稿",
+      model: "image-4.7",
+      ratio: "1:1" as const,
+      resolution: "2K" as const,
+      imageCount: 2,
+      referenceImageUrls: ["/inspiration/design-01.webp"],
+    };
+    vi.mocked(repository.updateSessionDraft).mockResolvedValue({ ...session, draft, tasks: [] });
+    vi.mocked(repository.findSession).mockResolvedValue({ ...session, draft, tasks: [] });
+
+    await expect(service.updateSessionDraft("user-1", session.id, draft)).resolves.toMatchObject({
+      id: session.id,
+      draft,
+    });
+    expect(repository.updateSessionDraft).toHaveBeenCalledWith("user-1", session.id, draft);
+    await expect(
+      service.updateSessionDraft("user-1", session.id, { ...draft, imageCount: 9 }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
   it("replays only events newer than Last-Event-ID and completes on terminal state", async () => {
     const { repository, service } = createService();
     vi.mocked(repository.findTask).mockResolvedValue({
@@ -191,6 +248,43 @@ describe("GenerationService", () => {
         type: "task.succeeded",
         data: expect.objectContaining({ status: "succeeded" }),
       }),
+    ]);
+  });
+
+  it("replays moderation events without converting the SSE stream to an error", async () => {
+    const { repository, service } = createService();
+    vi.mocked(repository.findTask).mockResolvedValue({
+      ...task,
+      status: "SUCCEEDED",
+      completedAt: new Date("2026-08-03T00:00:01.000Z"),
+    });
+    vi.mocked(repository.listEvents)
+      .mockResolvedValueOnce([
+        {
+          id: 6n,
+          taskId: task.id,
+          type: "task.input.moderated",
+          status: "GENERATING",
+          payload: { decision: "approved", codes: [] },
+          createdAt: new Date("2026-08-03T00:00:00.500Z"),
+        },
+        {
+          id: 7n,
+          taskId: task.id,
+          type: "task.output.moderated",
+          status: "GENERATING",
+          payload: { decision: "approved", codes: [] },
+          createdAt: new Date("2026-08-03T00:00:00.700Z"),
+        },
+      ])
+      .mockResolvedValueOnce([]);
+
+    const stream = await service.streamTaskEvents("user-1", task.id, "5");
+    const events = await lastValueFrom(stream.pipe(toArray()));
+
+    expect(events).toEqual([
+      expect.objectContaining({ id: "6", type: "task.input.moderated" }),
+      expect.objectContaining({ id: "7", type: "task.output.moderated" }),
     ]);
   });
 });
