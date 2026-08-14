@@ -82,6 +82,7 @@ jobs:
               && curl --fail --silent http://localhost:3001/login > /dev/null; then
               pnpm auth:smoke
               pnpm generation:smoke
+              pnpm reconciliation:smoke
               pnpm admin:smoke
               pnpm e2e
               exit 0
