@@ -344,6 +344,42 @@ export interface AdminGenerationTaskListResponse {
   pageCount: number;
 }
 
+export interface AdminQuotaReconciliationFinding {
+  id: string;
+  userId: string;
+  taskId: string | null;
+  kind:
+    | "missing_reserve"
+    | "missing_release"
+    | "missing_consume"
+    | "settlement_amount_mismatch"
+    | "total_drift"
+    | "reserved_drift"
+    | "available_drift";
+  status: "open" | "repaired" | "blocked";
+  expectedAmount: number | null;
+  actualAmount: number | null;
+  repairedAt: string | null;
+  createdAt: string;
+}
+
+export interface AdminQuotaReconciliationRun {
+  id: string;
+  status: "running" | "completed" | "failed";
+  startedAt: string;
+  completedAt: string | null;
+  scannedUsers: number;
+  scannedTasks: number;
+  mismatchCount: number;
+  repairedCount: number;
+  errorMessage: string | null;
+  findings: AdminQuotaReconciliationFinding[];
+}
+
+export interface AdminQuotaReconciliationResponse {
+  items: AdminQuotaReconciliationRun[];
+}
+
 export const adminInspirationStatuses = ["draft", "published", "archived"] as const;
 export type AdminInspirationStatus = (typeof adminInspirationStatuses)[number];
 

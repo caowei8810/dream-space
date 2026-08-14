@@ -66,6 +66,13 @@ const workerEnvSchema = z
     OBJECT_STORAGE_MODE: objectStorageMode,
     MOCK_ASSET_DIR: z.string().min(1).default("../../apps/web/public/inspiration"),
     MOCK_GENERATION_DELAY_MS: z.coerce.number().int().min(0).max(10_000).default(200),
+    QUOTA_RECONCILIATION_ENABLED: booleanString,
+    QUOTA_RECONCILIATION_INTERVAL_MS: z.coerce
+      .number()
+      .int()
+      .min(10_000)
+      .max(24 * 60 * 60 * 1000)
+      .default(60 * 60 * 1000),
   })
   .superRefine(requireObjectStorageCredentials);
 

@@ -2,6 +2,7 @@ import {
   type AdminGenerationTaskDetail,
   type AdminGenerationTaskListResponse,
   type AdminGenerationTaskSummary,
+  type AdminQuotaReconciliationResponse,
   generationTaskStatuses,
   type GenerationTaskStatus,
   moderationStatuses,
@@ -103,6 +104,41 @@ export class AdminTasksService {
         byteSize: result.byteSize,
         isAiGenerated: true,
         moderationStatus: this.mapModerationStatus(result.moderationStatus),
+      })),
+    };
+  }
+
+  async listReconciliationRuns(): Promise<AdminQuotaReconciliationResponse> {
+    const runs = await this.repository.listReconciliationRuns(20);
+    return {
+      items: runs.map((run) => ({
+        id: run.id,
+        status: run.status.toLowerCase() as "running" | "completed" | "failed",
+        startedAt: run.startedAt.toISOString(),
+        completedAt: run.completedAt?.toISOString() ?? null,
+        scannedUsers: run.scannedUsers,
+        scannedTasks: run.scannedTasks,
+        mismatchCount: run.mismatchCount,
+        repairedCount: run.repairedCount,
+        errorMessage: run.errorMessage,
+        findings: run.findings.map((finding) => ({
+          id: finding.id,
+          userId: finding.userId,
+          taskId: finding.taskId,
+          kind: finding.kind.toLowerCase() as
+            | "missing_reserve"
+            | "missing_release"
+            | "missing_consume"
+            | "settlement_amount_mismatch"
+            | "total_drift"
+            | "reserved_drift"
+            | "available_drift",
+          status: finding.status.toLowerCase() as "open" | "repaired" | "blocked",
+          expectedAmount: finding.expectedAmount,
+          actualAmount: finding.actualAmount,
+          repairedAt: finding.repairedAt?.toISOString() ?? null,
+          createdAt: finding.createdAt.toISOString(),
+        })),
       })),
     };
   }

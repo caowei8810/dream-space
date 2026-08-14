@@ -50,6 +50,11 @@ export class AdminTasksController {
     return this.serveAsset(await this.assets.readAny(resultId, "thumbnail"), response);
   }
 
+  @Get("reconciliation/runs")
+  listReconciliationRuns() {
+    return this.service.listReconciliationRuns();
+  }
+
   @Get(":taskId")
   get(@Param("taskId") taskId: string) {
     return this.service.get(taskId);

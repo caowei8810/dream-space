@@ -25,9 +25,19 @@ const detailInclude = {
   deadLetter: true,
 } as const;
 
+const reconciliationInclude = {
+  findings: {
+    orderBy: { createdAt: "desc" as const },
+    take: 100,
+  },
+} as const;
+
 export type AdminTaskListRecord = Prisma.GenerationTaskGetPayload<{ include: typeof listInclude }>;
 export type AdminTaskDetailRecord = Prisma.GenerationTaskGetPayload<{
   include: typeof detailInclude;
+}>;
+export type AdminQuotaReconciliationRunRecord = Prisma.QuotaReconciliationRunGetPayload<{
+  include: typeof reconciliationInclude;
 }>;
 
 @Injectable()
@@ -73,6 +83,14 @@ export class AdminTasksRepository {
     return this.database.generationTask.findUnique({
       where: { id: taskId },
       include: detailInclude,
+    });
+  }
+
+  listReconciliationRuns(limit: number): Promise<AdminQuotaReconciliationRunRecord[]> {
+    return this.database.quotaReconciliationRun.findMany({
+      take: limit,
+      orderBy: { createdAt: "desc" },
+      include: reconciliationInclude,
     });
   }
 }

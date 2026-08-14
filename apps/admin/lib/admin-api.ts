@@ -1,6 +1,7 @@
 import type {
   AdminGenerationTaskDetail,
   AdminGenerationTaskListResponse,
+  AdminQuotaReconciliationResponse,
   AdminInspirationInput,
   AdminInspirationListResponse,
   AdminInspirationRecord,
@@ -96,6 +97,8 @@ export const adminApi = {
       })),
     };
   },
+  reconciliationRuns: () =>
+    request<AdminQuotaReconciliationResponse>("/admin/tasks/reconciliation/runs"),
   inspirations: (filters: AdminInspirationFilters) => {
     const search = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => {

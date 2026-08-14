@@ -7,9 +7,14 @@ test.describe("管理端核心闭环", () => {
     await loginAdmin(page);
 
     await expect(page.getByRole("heading", { name: "生成任务", exact: true })).toBeVisible();
+    await expect(page.getByRole("region", { name: "最近额度对账" })).toContainText("额度对账");
     await page.getByLabel("搜索任务", { exact: true }).fill("玻璃花房");
     await page.getByRole("button", { name: "查询", exact: true }).click();
     await expect(page.getByRole("region", { name: "生成任务列表" })).toContainText("玻璃花房");
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(page.getByRole("region", { name: "最近额度对账" })).toBeVisible();
+    await expectHealthyDocument(page);
 
     await page.goto(`${adminUrl}/inspirations`);
     await page.getByLabel("搜索灵感", { exact: true }).fill("b5-smoke-inspiration");
@@ -45,9 +50,9 @@ test.describe("管理端核心闭环", () => {
     await expect(page.getByRole("button", { name: "新建灵感", exact: true })).toHaveCount(0);
     await expect(page.getByRole("button", { name: /发布灵感|下架灵感/ })).toHaveCount(0);
     const viewButtons = page.getByRole("button", { name: /查看灵感/ });
+    await expect(viewButtons.first()).toBeVisible();
     const viewButtonCount = await viewButtons.count();
     expect(viewButtonCount).toBeGreaterThan(0);
-    await expect(viewButtons.first()).toBeVisible();
 
     await page.setViewportSize({ width: 390, height: 844 });
     await expectHealthyDocument(page);

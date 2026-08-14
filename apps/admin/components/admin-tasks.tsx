@@ -3,12 +3,14 @@
 import type {
   AdminGenerationTaskDetail,
   AdminGenerationTaskListResponse,
+  AdminQuotaReconciliationResponse,
   GenerationTaskStatus,
   ModerationStatus,
 } from "@dream-space/contracts";
 import {
   ChevronLeft,
   ChevronRight,
+  CircleCheck,
   CircleAlert,
   Eye,
   LoaderCircle,
@@ -27,6 +29,8 @@ const emptyResponse: AdminGenerationTaskListResponse = {
   pageSize: 20,
   pageCount: 0,
 };
+
+const emptyReconciliation: AdminQuotaReconciliationResponse = { items: [] };
 
 const statusLabels: Record<GenerationTaskStatus, string> = {
   queued: "排队中",
@@ -56,6 +60,7 @@ function formatDate(value: string | null) {
 
 export function AdminTasks() {
   const [data, setData] = useState(emptyResponse);
+  const [reconciliation, setReconciliation] = useState(emptyReconciliation);
   const [draft, setDraft] = useState<AdminTaskFilters>({ pageSize: 20 });
   const [activeFilters, setActiveFilters] = useState<AdminTaskFilters>({ pageSize: 20 });
   const [loading, setLoading] = useState(true);
@@ -67,7 +72,12 @@ export function AdminTasks() {
     setLoading(true);
     setError("");
     try {
-      setData(await adminApi.tasks(filters));
+      const [tasks, reconciliationRuns] = await Promise.all([
+        adminApi.tasks(filters),
+        adminApi.reconciliationRuns(),
+      ]);
+      setData(tasks);
+      setReconciliation(reconciliationRuns);
     } catch (requestError) {
       if (requestError instanceof AdminApiError && requestError.status === 401) {
         notifyAdminSessionChanged();
@@ -113,6 +123,10 @@ export function AdminTasks() {
     }
   };
 
+  const latestReconciliation = reconciliation.items[0];
+  const blockedFindings =
+    latestReconciliation?.findings.filter((finding) => finding.status === "blocked").length ?? 0;
+
   return (
     <main className="admin-page">
       <header className="admin-page-header">
@@ -132,6 +146,36 @@ export function AdminTasks() {
           <RefreshCw className={loading ? "spin" : ""} aria-hidden="true" />
         </button>
       </header>
+
+      {latestReconciliation ? (
+        <section className="admin-reconciliation-strip" aria-label="最近额度对账">
+          <div className="admin-reconciliation-heading">
+            <CircleCheck aria-hidden="true" />
+            <span>
+              <strong>额度对账</strong>
+              <small>{formatDate(latestReconciliation.completedAt)}</small>
+            </span>
+          </div>
+          <dl>
+            <div>
+              <dt>扫描</dt>
+              <dd>{latestReconciliation.scannedTasks} 个任务</dd>
+            </div>
+            <div>
+              <dt>差异</dt>
+              <dd>{latestReconciliation.mismatchCount}</dd>
+            </div>
+            <div>
+              <dt>已补偿</dt>
+              <dd>{latestReconciliation.repairedCount}</dd>
+            </div>
+            <div className={blockedFindings ? "is-warning" : ""}>
+              <dt>待处理</dt>
+              <dd>{blockedFindings}</dd>
+            </div>
+          </dl>
+        </section>
+      ) : null}
 
       <form className="admin-filters" onSubmit={submitFilters}>
         <label className="admin-search-field">
