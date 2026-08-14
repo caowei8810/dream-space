@@ -12,6 +12,7 @@ import {
 import { PrismaGenerationStore } from "./generation/prisma-generation-store";
 import { DeterministicMockContentModerator } from "./moderation/content-moderator";
 import { GENERATION_QUEUE } from "./queues/names";
+import { QuotaReconciliationService } from "./reconciliation/quota-reconciliation";
 
 interface GenerationWorkerRuntime {
   connection: IORedis;
@@ -102,8 +103,30 @@ async function bootstrap() {
       },
     },
   );
+  let reconciliationTimer: NodeJS.Timeout | undefined;
+  if (env.QUOTA_RECONCILIATION_ENABLED) {
+    const reconciliation = new QuotaReconciliationService(database, {
+      windowMs: env.QUOTA_RECONCILIATION_INTERVAL_MS,
+    });
+    const runReconciliation = async () => {
+      const summary = await reconciliation.run();
+      console.log(
+        `Quota reconciliation ${summary.status.toLowerCase()}: run=${summary.runId} mismatches=${summary.mismatchCount} repaired=${summary.repairedCount}`,
+      );
+    };
+    await runReconciliation();
+    reconciliationTimer = setInterval(
+      () =>
+        void runReconciliation().catch((error: unknown) => {
+          console.error("Quota reconciliation failed to start", error);
+        }),
+      env.QUOTA_RECONCILIATION_INTERVAL_MS,
+    );
+    reconciliationTimer.unref();
+  }
 
   const shutdown = async () => {
+    if (reconciliationTimer) clearInterval(reconciliationTimer);
     await worker.close();
     await connection.quit();
     await database.$disconnect();

@@ -8,6 +8,8 @@ describe("environment configuration", () => {
     expect(parseApiEnv({}).OBJECT_STORAGE_MODE).toBe("local");
     expect(parseWorkerEnv({}).EXTERNAL_SERVICES_MODE).toBe("mock");
     expect(parseWorkerEnv({}).OBJECT_STORAGE_MODE).toBe("local");
+    expect(parseWorkerEnv({}).QUOTA_RECONCILIATION_ENABLED).toBe(true);
+    expect(parseWorkerEnv({}).QUOTA_RECONCILIATION_INTERVAL_MS).toBe(3_600_000);
   });
 
   it("accepts an explicit S3 object storage mode and signed URL TTL", () => {
@@ -30,5 +32,18 @@ describe("environment configuration", () => {
   it("accepts live mode only when explicitly configured", () => {
     expect(parseApiEnv({ EXTERNAL_SERVICES_MODE: "live" }).EXTERNAL_SERVICES_MODE).toBe("live");
     expect(() => parseApiEnv({ EXTERNAL_SERVICES_MODE: "invalid" })).toThrow();
+  });
+
+  it("validates the quota reconciliation schedule", () => {
+    expect(
+      parseWorkerEnv({
+        QUOTA_RECONCILIATION_ENABLED: "true",
+        QUOTA_RECONCILIATION_INTERVAL_MS: "60000",
+      }),
+    ).toMatchObject({
+      QUOTA_RECONCILIATION_ENABLED: true,
+      QUOTA_RECONCILIATION_INTERVAL_MS: 60_000,
+    });
+    expect(() => parseWorkerEnv({ QUOTA_RECONCILIATION_INTERVAL_MS: "1000" })).toThrow();
   });
 });

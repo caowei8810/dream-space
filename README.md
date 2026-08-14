@@ -10,8 +10,8 @@
 | 阶段 A1：目录与文档基线 | 已完成 | 正式工程目录、模块 README、开发计划            |
 | 阶段 A2：可运行工程骨架 | 已完成 | 四个应用、本机依赖、完整检查和 PR CI 均通过    |
 | 阶段 B：用户端 MVP      | 已完成 | B1-B5、完整栈 smoke、浏览器 E2E 和远端 CI 通过 |
-| 阶段 C：真实生成能力    | 进行中 | C1 安全参考图上传与存储边界已完成              |
-| 阶段 D：运营与上线      | 未开始 | 完整管理后台、审计、监控、备份和部署           |
+| 阶段 C：真实生成能力    | 进行中 | C1-C2、C3a、C4a 已完成；C4b 为低优先级运维能力 |
+| 阶段 D：运营与上线      | 未开始 | 先推进 ADM-0 至 ADM-4，再进入 D1-D6 上线门禁   |
 
 每个阶段的目标、验收条件和完成评估见 [开发阶段计划](docs/development-plan.md)。
 
@@ -131,6 +131,12 @@ API、Worker、PostgreSQL 和 Redis 启动后，可验证生成成功、取消�
 pnpm generation:smoke
 ```
 
+验证额度流水、缺失结算、安全补偿和同窗口幂等对账：
+
+```bash
+pnpm reconciliation:smoke
+```
+
 ### 运行高保真原型
 
 原型继续独立保留，用于阶段 B 的视觉和交互验收：
@@ -144,6 +150,9 @@ python3 -m http.server 8080 -d prototype
 ## 文档入口
 
 - [开发阶段计划](docs/development-plan.md)：阶段目标、验收条件和完成评估
+- [商用就绪审计与决策记录](docs/commercial-readiness.md)：计划偏差、架构决策、风险和上线门禁
+- [管理端产品需求](docs/admin-console-requirements.md)：角色、基础管理、审核、模型和运营需求
+- [管理端功能架构](docs/admin-console-architecture.md)：管理端信息架构、API 边界和 ADM 阶段路线
 - [项目目录规划](docs/project-structure.md)：应用、共享包及内部目录职责
 - [阶段 1 文档索引](docs/phase-1/README.md)：产品和设计交付物
 - [产品需求](docs/phase-1/01-product-requirements.md)
@@ -152,7 +161,7 @@ python3 -m http.server 8080 -d prototype
 - [交互状态矩阵](docs/phase-1/04-interaction-state-matrix.md)
 - [视觉规范](docs/phase-1/05-visual-specification.md)
 - [验收清单](docs/phase-1/06-acceptance-checklist.md)
-- [部署说明](docs/deployment.md)
+- [部署与发布方案](docs/deployment.md)
 
 ## 协作与安全
 

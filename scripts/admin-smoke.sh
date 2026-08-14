@@ -41,6 +41,9 @@ require_command jq
 anonymous_status=$(curl -sS -o "$TEMP_DIR/anonymous.json" -w '%{http_code}' \
   "$API_URL/admin/tasks")
 [ "$anonymous_status" = "401" ]
+anonymous_reconciliation_status=$(curl -sS -o "$TEMP_DIR/anonymous-reconciliation.json" \
+  -w '%{http_code}' "$API_URL/admin/tasks/reconciliation/runs")
+[ "$anonymous_reconciliation_status" = "401" ]
 
 login_user
 normal_user_status=$(curl -sS -b "$USER_COOKIE_JAR" -o "$TEMP_DIR/normal-user.json" \
@@ -72,7 +75,7 @@ session_before=$(curl -fsS -b "$ADMIN_COOKIE_JAR" "$API_URL/admin/auth/session")
 printf '%s\n' "[admin-smoke] isolated login and session passed"
 
 tasks=$(curl -fsS -b "$ADMIN_COOKIE_JAR" \
-  "$API_URL/admin/tasks?status=succeeded&model=image-4.7&createdFrom=$TODAY&createdTo=$TODAY&page=1&pageSize=20")
+  "$API_URL/admin/tasks?status=succeeded&model=image-4.7&createdFrom=2026-01-01&createdTo=$TODAY&page=1&pageSize=20")
 [ "$(printf '%s' "$tasks" | jq -er '.page')" = "1" ]
 [ "$(printf '%s' "$tasks" | jq -er '.pageSize')" = "20" ]
 [ "$(printf '%s' "$tasks" | jq -er '.total >= 1')" = "true" ]
@@ -100,6 +103,13 @@ fi
 curl -fsSL -b "$ADMIN_COOKIE_JAR" -o "$TEMP_DIR/admin-result.webp" "$result_url"
 [ -s "$TEMP_DIR/admin-result.webp" ]
 printf '%s\n' "[admin-smoke] task filters, pagination, detail and protected assets passed"
+
+reconciliation=$(curl -fsS -b "$ADMIN_COOKIE_JAR" \
+  "$API_URL/admin/tasks/reconciliation/runs")
+[ "$(printf '%s' "$reconciliation" | jq -er '.items | length >= 1')" = "true" ]
+[ "$(printf '%s' "$reconciliation" | jq -er '.items[0].status')" = "completed" ]
+[ "$(printf '%s' "$reconciliation" | jq -er '.items[0].scannedUsers >= 1')" = "true" ]
+printf '%s\n' "[admin-smoke] quota reconciliation visibility passed"
 
 inspiration_payload=$(jq -cn '{
   slug:"b5-smoke-inspiration",

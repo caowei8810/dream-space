@@ -151,4 +151,50 @@ describe("admin tasks service", () => {
       },
     });
   });
+
+  it("maps quota reconciliation runs and findings for administrators", async () => {
+    const repository = {
+      list: vi.fn(),
+      findById: vi.fn(),
+      listReconciliationRuns: vi.fn().mockResolvedValue([
+        {
+          id: "run-1",
+          status: "COMPLETED",
+          startedAt: new Date("2026-08-06T06:00:00Z"),
+          completedAt: new Date("2026-08-06T06:00:01Z"),
+          scannedUsers: 2,
+          scannedTasks: 5,
+          mismatchCount: 1,
+          repairedCount: 1,
+          errorMessage: null,
+          findings: [
+            {
+              id: "finding-1",
+              userId: "user-1",
+              taskId: "task-1",
+              kind: "MISSING_RELEASE",
+              status: "REPAIRED",
+              expectedAmount: 5,
+              actualAmount: 5,
+              repairedAt: new Date("2026-08-06T06:00:01Z"),
+              createdAt: new Date("2026-08-06T06:00:00Z"),
+            },
+          ],
+        },
+      ]),
+    };
+    const service = new AdminTasksService(repository as never);
+
+    await expect(service.listReconciliationRuns()).resolves.toMatchObject({
+      items: [
+        {
+          status: "completed",
+          mismatchCount: 1,
+          repairedCount: 1,
+          findings: [{ kind: "missing_release", status: "repaired", taskId: "task-1" }],
+        },
+      ],
+    });
+    expect(repository.listReconciliationRuns).toHaveBeenCalledWith(20);
+  });
 });

@@ -43,6 +43,28 @@ enum QuotaLedgerType {
   RELEASE
 }
 
+enum QuotaReconciliationRunStatus {
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum QuotaReconciliationFindingKind {
+  MISSING_RESERVE
+  MISSING_RELEASE
+  MISSING_CONSUME
+  SETTLEMENT_AMOUNT_MISMATCH
+  TOTAL_DRIFT
+  RESERVED_DRIFT
+  AVAILABLE_DRIFT
+}
+
+enum QuotaReconciliationFindingStatus {
+  OPEN
+  REPAIRED
+  BLOCKED
+}
+
 enum AdminRole {
   VIEWER
   OPERATOR
@@ -103,17 +125,18 @@ model Inspiration {
 }
 
 model User {
-  id                   String                @id @default(cuid())
-  phone                String                @unique
-  createdAt            DateTime              @default(now())
-  updatedAt            DateTime              @updatedAt
-  sessions             UserSession[]
-  agreementAcceptances AgreementAcceptance[]
-  generationSessions   GenerationSession[]
-  generationTasks      GenerationTask[]
-  quotaAccount         QuotaAccount?
-  quotaLedgerEntries   QuotaLedgerEntry[]
-  referenceUploads     ReferenceUpload[]
+  id                     String                       @id @default(cuid())
+  phone                  String                       @unique
+  createdAt              DateTime                     @default(now())
+  updatedAt              DateTime                     @updatedAt
+  sessions               UserSession[]
+  agreementAcceptances   AgreementAcceptance[]
+  generationSessions     GenerationSession[]
+  generationTasks        GenerationTask[]
+  quotaAccount           QuotaAccount?
+  quotaLedgerEntries     QuotaLedgerEntry[]
+  reconciliationFindings QuotaReconciliationFinding[]
+  referenceUploads       ReferenceUpload[]
 }
 
 model AdminUser {
@@ -271,13 +294,14 @@ model GenerationTaskEvent {
 }
 
 model QuotaAccount {
-  userId    String   @id
-  total     Int      @default(100)
-  available Int      @default(100)
-  reserved  Int      @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId                 String                       @id
+  total                  Int                          @default(100)
+  available              Int                          @default(100)
+  reserved               Int                          @default(0)
+  createdAt              DateTime                     @default(now())
+  updatedAt              DateTime                     @updatedAt
+  user                   User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reconciliationFindings QuotaReconciliationFinding[]
 }
 
 model QuotaLedgerEntry {
@@ -294,6 +318,46 @@ model QuotaLedgerEntry {
 
   @@index([userId, createdAt])
   @@index([taskId])
+}
+
+model QuotaReconciliationRun {
+  id            String                       @id @default(cuid())
+  windowKey     String                       @unique
+  status        QuotaReconciliationRunStatus @default(RUNNING)
+  startedAt     DateTime                     @default(now())
+  completedAt   DateTime?
+  scannedUsers  Int                          @default(0)
+  scannedTasks  Int                          @default(0)
+  mismatchCount Int                          @default(0)
+  repairedCount Int                          @default(0)
+  errorMessage  String?
+  createdAt     DateTime                     @default(now())
+  findings      QuotaReconciliationFinding[]
+
+  @@index([createdAt, status])
+}
+
+model QuotaReconciliationFinding {
+  id             String                           @id @default(cuid())
+  runId          String
+  userId         String
+  taskId         String?
+  kind           QuotaReconciliationFindingKind
+  status         QuotaReconciliationFindingStatus @default(OPEN)
+  idempotencyKey String
+  expectedAmount Int?
+  actualAmount   Int?
+  details        Json
+  repairedAt     DateTime?
+  createdAt      DateTime                         @default(now())
+  run            QuotaReconciliationRun           @relation(fields: [runId], references: [id], onDelete: Cascade)
+  user           User                             @relation(fields: [userId], references: [id], onDelete: Cascade, map: "QuotaReconciliationFinding_userId_fkey")
+  quotaAccount   QuotaAccount                     @relation(fields: [userId], references: [userId], onDelete: Cascade, map: "QuotaReconciliationFinding_userId_quotaAccount_fkey")
+
+  @@unique([runId, idempotencyKey])
+  @@index([runId, status])
+  @@index([userId, createdAt])
+  @@index([taskId, kind])
 }
 
 model VerificationCode {

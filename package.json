@@ -26,6 +26,7 @@
     "auth:smoke": "sh scripts/auth-smoke.sh",
     "admin:smoke": "sh scripts/admin-smoke.sh",
     "generation:smoke": "sh scripts/generation-smoke.sh",
+    "reconciliation:smoke": "pnpm --filter @dream-space/worker exec tsx ../../scripts/reconciliation-smoke.ts",
     "infra:up": "sh scripts/docker-compose.sh up -d",
     "infra:down": "sh scripts/docker-compose.sh down",
     "local:infra:up": "sh scripts/local-services.sh up",
