@@ -100,6 +100,8 @@ apps/admin/
 
 管理端单独运行、单独登录。前端隐藏按钮只是改善体验，真正的管理员权限必须由 API 再校验一次。
 
+管理端的完整产品需求和阶段切片见 [管理端产品需求](admin-console-requirements.md) 与 [管理端功能架构](admin-console-architecture.md)。当前代码只完成登录、灵感管理、任务查询和基础 RBAC；`users`、`moderation`、`models`、`audit-logs` 等目录是后续 ADM 切片的边界，不代表功能已经实现。
+
 ### 3. API 服务 `apps/api`
 
 ```text
