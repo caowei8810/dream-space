@@ -4,6 +4,7 @@ import type {
   InspirationListResponse,
   InspirationSummary,
 } from "@dream-space/contracts";
+import { parseApiEnv } from "@dream-space/config";
 import {
   DatabaseInspirationCategory,
   InspirationStatus,
@@ -32,6 +33,15 @@ const apiCategoryByDatabaseCategory: Record<string, InspirationCategory> = {
   DESIGN: "design",
 };
 
+const publicOrigin = new URL(parseApiEnv(process.env).API_PUBLIC_URL);
+
+function assetUrl(inspiration: InspirationModel, variant: "content" | "thumbnail") {
+  if (!inspiration.sourceResultId) {
+    return variant === "content" ? inspiration.imagePath : inspiration.thumbnailPath;
+  }
+  return new URL(`/inspirations/assets/${inspiration.slug}/${variant}`, publicOrigin).toString();
+}
+
 function toSummary(inspiration: InspirationModel): InspirationSummary {
   return {
     id: inspiration.id,
@@ -40,8 +50,8 @@ function toSummary(inspiration: InspirationModel): InspirationSummary {
     promptSummary:
       inspiration.prompt.length > 96 ? `${inspiration.prompt.slice(0, 96)}...` : inspiration.prompt,
     category: apiCategoryByDatabaseCategory[inspiration.category] ?? "design",
-    imageUrl: inspiration.imagePath,
-    thumbnailUrl: inspiration.thumbnailPath,
+    imageUrl: assetUrl(inspiration, "content"),
+    thumbnailUrl: assetUrl(inspiration, "thumbnail"),
     width: inspiration.width,
     height: inspiration.height,
     authorDisplayName: inspiration.authorDisplayName,
@@ -71,6 +81,7 @@ export class InspirationsRepository {
     const records = await this.database.inspiration.findMany({
       where: {
         status: InspirationStatus.PUBLISHED,
+        sourceResultId: { not: null },
         ...(category ? { category: databaseCategoryByApiCategory[category] } : {}),
         ...(query
           ? {
@@ -94,5 +105,12 @@ export class InspirationsRepository {
     });
 
     return record ? toDetail(record) : null;
+  }
+
+  async findPublishedAssetSource(slug: string) {
+    return this.database.inspiration.findFirst({
+      where: { slug, status: InspirationStatus.PUBLISHED, sourceResultId: { not: null } },
+      select: { sourceResultId: true },
+    });
   }
 }

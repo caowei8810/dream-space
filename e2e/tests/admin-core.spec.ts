@@ -7,16 +7,26 @@ test.describe("管理端核心闭环", () => {
     await loginAdmin(page);
 
     await expect(page.getByRole("heading", { name: "生成任务", exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "生成任务" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
     await expect(page.getByRole("region", { name: "最近额度对账" })).toContainText("额度对账");
     await page.getByLabel("搜索任务", { exact: true }).fill("玻璃花房");
     await page.getByRole("button", { name: "查询", exact: true }).click();
     await expect(page.getByRole("region", { name: "生成任务列表" })).toContainText("玻璃花房");
 
+    await page.setViewportSize({ width: 902, height: 858 });
+    await expectHealthyDocument(page);
     await page.setViewportSize({ width: 390, height: 844 });
     await expect(page.getByRole("region", { name: "最近额度对账" })).toBeVisible();
     await expectHealthyDocument(page);
 
     await page.goto(`${adminUrl}/inspirations`);
+    await expect(page.getByRole("link", { name: "灵感管理" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
     await page.getByLabel("搜索灵感", { exact: true }).fill("b5-smoke-inspiration");
     await page.getByRole("button", { name: "查询", exact: true }).click();
     const row = page.getByRole("row").filter({ hasText: "b5-smoke-inspiration" });
@@ -57,5 +67,93 @@ test.describe("管理端核心闭环", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await expectHealthyDocument(page);
     expect(runtimeErrors).toEqual([]);
+  });
+
+  test("Owner 可在基础管理中完成账号生命周期操作", async ({ page }) => {
+    const runtimeErrors = watchRuntimeErrors(page);
+    await loginAdmin(page);
+    await page.goto(`${adminUrl}/admin-users`);
+
+    await expect(page.getByRole("heading", { name: "管理员账号", exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "管理员账号" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    const row = page.getByRole("row").filter({ hasText: "ADM-SMOKE" });
+    await expect(row).toHaveCount(1);
+    await expect(row).toContainText("已启用");
+
+    await row.getByRole("button", { name: /停用管理员/ }).click();
+    await expect(page.getByRole("heading", { name: "停用账号" })).toBeVisible();
+    await page.getByRole("dialog").getByLabel("操作原因").fill("E2E 生命周期验证");
+    await page.getByRole("dialog").getByRole("button", { name: "确认", exact: true }).click();
+    await expect(row).toContainText("已停用");
+
+    await row.getByRole("button", { name: /激活管理员/ }).click();
+    await expect(page.getByRole("heading", { name: "激活账号" })).toBeVisible();
+    await page.getByRole("dialog").getByLabel("操作原因").fill("E2E 恢复验证");
+    await page.getByRole("dialog").getByRole("button", { name: "确认", exact: true }).click();
+    await expect(row).toContainText("已启用");
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expectHealthyDocument(page);
+    expect(runtimeErrors).toEqual([]);
+  });
+
+  test("会话接口异常时展示统一错误态并支持重试", async ({ page }) => {
+    const runtimeErrors = watchRuntimeErrors(page);
+    await loginAdmin(page);
+    await page.route("**/admin/auth/session", async (route) => {
+      await route.fulfill({ status: 503, contentType: "application/json", body: "{}" });
+    });
+
+    await page.reload();
+    await expect(page.getByRole("heading", { name: "无法连接管理 API" })).toBeVisible();
+    const retryButton = page.getByRole("button", { name: "重试" });
+    await page.unroute("**/admin/auth/session");
+    await retryButton.dispatchEvent("click");
+    await expect(page.getByRole("heading", { name: "生成任务", exact: true })).toBeVisible();
+    await expectHealthyDocument(page);
+    expect(runtimeErrors).toHaveLength(1);
+    expect(runtimeErrors[0]).toContain("503");
+  });
+
+  test("直接访问无权限模块时展示 403 并隐藏导航入口", async ({ page }) => {
+    const runtimeErrors = watchRuntimeErrors(page);
+    await loginAdmin(page);
+    await page.route("**/admin/auth/session", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          authenticated: true,
+          user: {
+            id: "restricted-admin",
+            employeeNo: "ADM-RESTRICTED",
+            displayName: "受限管理员",
+            phoneMasked: "188****0000",
+            roles: [{ id: "role-viewer", code: "viewer", name: "只读审阅员", system: true }],
+            permissions: ["tasks:read"],
+          },
+        }),
+      });
+    });
+
+    await page.goto(`${adminUrl}/inspirations`);
+    await expect(page.getByRole("heading", { name: "无权访问" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "灵感管理" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "生成任务" })).toBeVisible();
+    await expectHealthyDocument(page);
+    expect(runtimeErrors).toEqual([]);
+  });
+
+  test("未知地址展示统一 404 状态", async ({ page }) => {
+    await page.goto(`${adminUrl}/not-a-real-page`);
+    await expect(page.getByText("页面不存在", { exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "返回生成任务" })).toHaveAttribute(
+      "href",
+      "/tasks",
+    );
+    await expectHealthyDocument(page);
   });
 });

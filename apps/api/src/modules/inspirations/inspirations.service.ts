@@ -38,4 +38,10 @@ export class InspirationsService {
     }
     return inspiration;
   }
+
+  async getPublishedAssetSource(slug: string) {
+    const source = await this.repository.findPublishedAssetSource(slug);
+    if (!source?.sourceResultId) throw new NotFoundException("Inspiration asset not found");
+    return source.sourceResultId;
+  }
 }

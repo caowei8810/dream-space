@@ -13,7 +13,6 @@ import {
   CircleCheck,
   CircleAlert,
   Eye,
-  LoaderCircle,
   RefreshCw,
   Search,
   X,
@@ -21,6 +20,7 @@ import {
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { AdminApiError, adminApi, type AdminTaskFilters } from "../lib/admin-api";
 import { notifyAdminSessionChanged } from "../lib/use-admin-session";
+import { AdminState } from "./admin-state";
 
 const emptyResponse: AdminGenerationTaskListResponse = {
   items: [],
@@ -317,17 +317,14 @@ export function AdminTasks() {
           </tbody>
         </table>
         {!loading && data.items.length === 0 ? (
-          <div className="admin-empty-state">
-            <Search aria-hidden="true" />
-            <strong>没有符合条件的任务</strong>
-            <span>调整筛选条件后重新查询。</span>
-          </div>
+          <AdminState
+            kind="empty"
+            title="没有符合条件的任务"
+            description="调整筛选条件后重新查询。"
+          />
         ) : null}
         {loading && data.items.length === 0 ? (
-          <div className="admin-empty-state">
-            <LoaderCircle className="spin" aria-hidden="true" />
-            <strong>正在加载任务</strong>
-          </div>
+          <AdminState kind="loading" title="正在加载任务" />
         ) : null}
       </section>
 

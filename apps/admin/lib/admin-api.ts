@@ -1,8 +1,22 @@
 import type {
+  AdminAccountActionInput,
+  AdminAccountCreateInput,
+  AdminAccountListResponse,
+  AdminAccountRecord,
+  AdminAccountUpdateInput,
+  AdminDashboardSummary,
+  AdminRoleActionInput,
+  AdminRoleCreateInput,
+  AdminRoleListResponse,
+  AdminRoleRecord,
+  AdminRoleUpdateInput,
+  AdminUserListResponse,
+  AdminUserRecord,
+  AdminUserStatusInput,
   AdminGenerationTaskDetail,
   AdminGenerationTaskListResponse,
   AdminQuotaReconciliationResponse,
-  AdminInspirationInput,
+  AdminInspirationCandidateListResponse,
   AdminInspirationListResponse,
   AdminInspirationRecord,
   AdminLoginRequest,
@@ -62,6 +76,21 @@ export interface AdminInspirationFilters {
   pageSize?: number;
 }
 
+export interface AdminAccountFilters {
+  query?: string;
+  status?: string;
+  roleId?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface AdminUserFilters {
+  query?: string;
+  status?: string;
+  page?: number;
+  pageSize?: number;
+}
+
 export function resolveAdminAssetUrl(value: string) {
   if (/^(?:https?:|data:|blob:)/i.test(value)) return value;
   return new URL(value, webAppUrl).toString();
@@ -80,6 +109,90 @@ export const adminApi = {
       body: JSON.stringify(input),
     }),
   logout: () => request<void>("/admin/auth/logout", { method: "POST" }),
+  dashboardSummary: () => request<AdminDashboardSummary>("/admin/dashboard/summary"),
+  roles: () => request<AdminRoleListResponse>("/admin/roles"),
+  role: (id: string) => request<AdminRoleRecord>(`/admin/roles/${id}`),
+  createRole: (input: AdminRoleCreateInput) =>
+    request<AdminRoleRecord>("/admin/roles", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  updateRole: (id: string, input: AdminRoleUpdateInput) =>
+    request<AdminRoleRecord>(`/admin/roles/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
+  deleteRole: (id: string, input: AdminRoleActionInput) =>
+    request<void>(`/admin/roles/${id}`, {
+      method: "DELETE",
+      body: JSON.stringify(input),
+    }),
+  users: (filters: AdminUserFilters) => {
+    const search = new URLSearchParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== "") search.set(key, String(value));
+    });
+    return request<AdminUserListResponse>(`/admin/users?${search.toString()}`);
+  },
+  user: (id: string) => request<AdminUserRecord>(`/admin/users/${id}`),
+  restrictUser: (id: string, input: AdminUserStatusInput) =>
+    request<AdminUserRecord>(`/admin/users/${id}/restrict`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  banUser: (id: string, input: AdminUserStatusInput) =>
+    request<AdminUserRecord>(`/admin/users/${id}/ban`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  activateUser: (id: string, input: AdminUserStatusInput) =>
+    request<AdminUserRecord>(`/admin/users/${id}/activate`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  revokeUserSessions: (id: string, input: AdminUserStatusInput) =>
+    request<{ revokedSessionCount: number }>(`/admin/users/${id}/revoke-sessions`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  adminAccounts: (filters: AdminAccountFilters) => {
+    const search = new URLSearchParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== "") search.set(key, String(value));
+    });
+    return request<AdminAccountListResponse>(`/admin/admin-users?${search.toString()}`);
+  },
+  adminAccount: (id: string) => request<AdminAccountRecord>(`/admin/admin-users/${id}`),
+  createAdminAccount: (input: AdminAccountCreateInput) =>
+    request<AdminAccountRecord>("/admin/admin-users", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  updateAdminAccount: (id: string, input: AdminAccountUpdateInput) =>
+    request<AdminAccountRecord>(`/admin/admin-users/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
+  activateAdminAccount: (id: string, input: AdminAccountActionInput) =>
+    request<AdminAccountRecord>(`/admin/admin-users/${id}/activate`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  suspendAdminAccount: (id: string, input: AdminAccountActionInput) =>
+    request<AdminAccountRecord>(`/admin/admin-users/${id}/suspend`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  revokeAdminAccount: (id: string, input: AdminAccountActionInput) =>
+    request<AdminAccountRecord>(`/admin/admin-users/${id}/revoke`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  revokeAdminSessions: (id: string, input: AdminAccountActionInput) =>
+    request<{ revokedSessionCount: number }>(`/admin/admin-users/${id}/revoke-sessions`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
   tasks: (filters: AdminTaskFilters) => {
     const search = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => {
@@ -106,19 +219,20 @@ export const adminApi = {
     });
     return request<AdminInspirationListResponse>(`/admin/inspirations?${search.toString()}`);
   },
+  inspirationCandidates: (filters: AdminInspirationFilters) => {
+    const search = new URLSearchParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== "") search.set(key, String(value));
+    });
+    return request<AdminInspirationCandidateListResponse>(
+      `/admin/inspiration-candidates?${search.toString()}`,
+    );
+  },
   inspiration: (id: string) => request<AdminInspirationRecord>(`/admin/inspirations/${id}`),
-  createInspiration: (input: AdminInspirationInput) =>
-    request<AdminInspirationRecord>("/admin/inspirations", {
+  publishCandidate: (resultId: string) =>
+    request<AdminInspirationRecord>(`/admin/inspiration-candidates/${resultId}/publish`, {
       method: "POST",
-      body: JSON.stringify(input),
     }),
-  updateInspiration: (id: string, input: AdminInspirationInput) =>
-    request<AdminInspirationRecord>(`/admin/inspirations/${id}`, {
-      method: "PATCH",
-      body: JSON.stringify(input),
-    }),
-  publishInspiration: (id: string) =>
-    request<AdminInspirationRecord>(`/admin/inspirations/${id}/publish`, { method: "POST" }),
   unpublishInspiration: (id: string) =>
     request<AdminInspirationRecord>(`/admin/inspirations/${id}/unpublish`, { method: "POST" }),
 };

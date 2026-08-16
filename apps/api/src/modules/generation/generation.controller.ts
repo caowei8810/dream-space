@@ -117,7 +117,10 @@ export class GenerationController {
     @Headers("cookie") cookie: string | undefined,
     @Body() input: CreateGenerationTaskRequest,
   ) {
-    return this.service.createTask(await this.requireUserId(cookie), input);
+    return this.service.createTask(
+      (await this.auth.requireActiveUser(readSessionToken(cookie))).id,
+      input,
+    );
   }
 
   @Get("tasks/:taskId")

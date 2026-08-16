@@ -1,15 +1,25 @@
-import type { DatabaseAdminRole, DatabaseClient } from "@dream-space/db";
+import type { DatabaseAdminUserStatus, DatabaseClient } from "@dream-space/db";
 import { Inject, Injectable } from "@nestjs/common";
 import { DATABASE_CLIENT } from "../database/database.module";
 
 export interface AdminRecord {
   id: string;
   phone: string;
+  employeeNo: string;
   displayName: string;
-  role: DatabaseAdminRole;
-  active: boolean;
+  status: DatabaseAdminUserStatus;
   createdAt: Date;
   updatedAt: Date;
+  roles: Array<{
+    role: {
+      id: string;
+      code: string;
+      name: string;
+      system: boolean;
+      active: boolean;
+      permissions: Array<{ permission: { code: string; active: boolean } }>;
+    };
+  }>;
 }
 
 interface AdminChallengeRecord {
@@ -27,7 +37,10 @@ export class AdminAuthRepository {
   constructor(@Inject(DATABASE_CLIENT) private readonly database: DatabaseClient) {}
 
   findActiveAdminByPhone(phone: string): Promise<AdminRecord | null> {
-    return this.database.adminUser.findFirst({ where: { phone, active: true } });
+    return this.database.adminUser.findFirst({
+      where: { phone, status: "ACTIVE" },
+      include: this.identityInclude,
+    });
   }
 
   async createChallenge(input: {
@@ -77,7 +90,8 @@ export class AdminAuthRepository {
       if (consumed.count !== 1) return null;
 
       const admin = await transaction.adminUser.findFirst({
-        where: { phone: input.phone, active: true },
+        where: { phone: input.phone, status: "ACTIVE" },
+        include: this.identityInclude,
       });
       if (!admin) return null;
       await transaction.adminSession.create({
@@ -87,14 +101,18 @@ export class AdminAuthRepository {
           expiresAt: input.sessionExpiresAt,
         },
       });
+      await transaction.adminUser.update({
+        where: { id: admin.id },
+        data: { lastLoginAt: new Date() },
+      });
       return admin;
     });
   }
 
   async findSession(tokenHash: string): Promise<AdminRecord | null> {
     const session = await this.database.adminSession.findFirst({
-      where: { tokenHash, expiresAt: { gt: new Date() }, adminUser: { active: true } },
-      include: { adminUser: true },
+      where: { tokenHash, expiresAt: { gt: new Date() }, adminUser: { status: "ACTIVE" } },
+      include: { adminUser: { include: this.identityInclude } },
     });
     if (!session) return null;
     await this.database.adminSession.update({
@@ -107,4 +125,20 @@ export class AdminAuthRepository {
   async deleteSession(tokenHash: string) {
     await this.database.adminSession.deleteMany({ where: { tokenHash } });
   }
+
+  private readonly identityInclude = {
+    roles: {
+      where: { role: { active: true } },
+      include: {
+        role: {
+          include: {
+            permissions: {
+              where: { permission: { active: true } },
+              include: { permission: true },
+            },
+          },
+        },
+      },
+    },
+  } as const;
 }

@@ -33,7 +33,10 @@ export class UploadsController {
     @Headers("cookie") cookie: string | undefined,
     @UploadedFile() file: ReferenceUploadFile | undefined,
   ) {
-    return this.service.createReference(await this.requireUserId(cookie), file);
+    return this.service.createReference(
+      (await this.auth.requireActiveUser(readSessionToken(cookie))).id,
+      file,
+    );
   }
 
   @Get("references/:uploadId/content")

@@ -1,14 +1,12 @@
-import type {
-  AdminInspirationInput,
-  AdminInspirationSourceType,
-  AdminInspirationStatus,
-  InspirationCategory,
-} from "@dream-space/contracts";
+import type { AdminInspirationStatus, InspirationCategory } from "@dream-space/contracts";
 import {
   type DatabaseClient,
   DatabaseInspirationCategory,
   InspirationSourceType as DatabaseInspirationSourceType,
   InspirationStatus as DatabaseInspirationStatus,
+  DatabaseModerationStatus,
+  decodeGenerationRatio,
+  decodeGenerationResolution,
   type InspirationModel,
   type Prisma,
 } from "@dream-space/db";
@@ -18,6 +16,12 @@ import { DATABASE_CLIENT } from "../database/database.module";
 export interface AdminInspirationQuery {
   status?: AdminInspirationStatus;
   category?: InspirationCategory;
+  query?: string;
+  page: number;
+  pageSize: number;
+}
+
+export interface InspirationCandidateQuery {
   query?: string;
   page: number;
   pageSize: number;
@@ -37,35 +41,25 @@ const databaseStatus: Record<AdminInspirationStatus, DatabaseInspirationStatus> 
   archived: DatabaseInspirationStatus.ARCHIVED,
 };
 
-const databaseSourceType: Record<AdminInspirationSourceType, DatabaseInspirationSourceType> = {
-  ai_public_gallery: DatabaseInspirationSourceType.AI_PUBLIC_GALLERY,
-  licensed: DatabaseInspirationSourceType.LICENSED,
-  internal: DatabaseInspirationSourceType.INTERNAL,
-};
-
-function toDatabaseInput(input: AdminInspirationInput) {
-  return {
-    slug: input.slug,
-    title: input.title,
-    prompt: input.prompt,
-    category: databaseCategory[input.category],
-    imagePath: input.imageUrl,
-    thumbnailPath: input.thumbnailUrl,
-    width: input.width,
-    height: input.height,
-    modelName: input.modelName,
-    ratio: input.ratio,
-    resolutionLabel: input.resolutionLabel,
-    authorDisplayName: input.authorDisplayName,
-    sourceType: databaseSourceType[input.sourceType],
-    sourceName: input.sourceName,
-    sourceUrl: input.sourceUrl ?? null,
-    licenseBasis: input.licenseBasis,
-    isAiGenerated: input.isAiGenerated,
-    likeCount: input.likeCount,
-    sortOrder: input.sortOrder,
-  };
-}
+const candidateInclude = {
+  task: {
+    select: {
+      id: true,
+      prompt: true,
+      model: true,
+      ratio: true,
+      resolution: true,
+      inputModerationStatus: true,
+      outputModerationStatus: true,
+      createdAt: true,
+      user: { select: { phone: true } },
+    },
+  },
+  inspiration: { select: { id: true } },
+} as const;
+export type CandidateRecord = Prisma.GenerationResultGetPayload<{
+  include: typeof candidateInclude;
+}>;
 
 @Injectable()
 export class AdminInspirationsRepository {
@@ -73,6 +67,7 @@ export class AdminInspirationsRepository {
 
   async list(input: AdminInspirationQuery) {
     const where: Prisma.InspirationWhereInput = {
+      sourceResultId: { not: null },
       ...(input.status ? { status: databaseStatus[input.status] } : {}),
       ...(input.category ? { category: databaseCategory[input.category] } : {}),
       ...(input.query
@@ -81,8 +76,6 @@ export class AdminInspirationsRepository {
               { slug: { contains: input.query, mode: "insensitive" } },
               { title: { contains: input.query, mode: "insensitive" } },
               { prompt: { contains: input.query, mode: "insensitive" } },
-              { modelName: { contains: input.query, mode: "insensitive" } },
-              { sourceName: { contains: input.query, mode: "insensitive" } },
             ],
           }
         : {}),
@@ -103,25 +96,99 @@ export class AdminInspirationsRepository {
     return this.database.inspiration.findUnique({ where: { id } });
   }
 
-  async slugExists(slug: string, excludeId?: string) {
-    const count = await this.database.inspiration.count({
-      where: { slug, ...(excludeId ? { id: { not: excludeId } } : {}) },
-    });
-    return count > 0;
-  }
-
-  create(input: AdminInspirationInput): Promise<InspirationModel> {
-    return this.database.inspiration.create({
-      data: {
-        ...toDatabaseInput(input),
-        status: DatabaseInspirationStatus.DRAFT,
-        publishedAt: null,
+  async listCandidates(input: InspirationCandidateQuery) {
+    const where: Prisma.GenerationResultWhereInput = {
+      moderationStatus: DatabaseModerationStatus.APPROVED,
+      task: {
+        status: { in: ["SUCCEEDED", "PARTIALLY_SUCCEEDED"] },
+        inputModerationStatus: DatabaseModerationStatus.APPROVED,
+        outputModerationStatus: DatabaseModerationStatus.APPROVED,
+        ...(input.query
+          ? {
+              OR: [
+                { prompt: { contains: input.query, mode: "insensitive" } },
+                { model: { contains: input.query, mode: "insensitive" } },
+                { user: { phone: { contains: input.query } } },
+              ],
+            }
+          : {}),
       },
+      inspiration: null,
+    };
+    const [items, total] = await this.database.$transaction([
+      this.database.generationResult.findMany({
+        where,
+        include: candidateInclude,
+        orderBy: [{ createdAt: "desc" }, { id: "asc" }],
+        skip: (input.page - 1) * input.pageSize,
+        take: input.pageSize,
+      }),
+      this.database.generationResult.count({ where }),
+    ]);
+    return { items, total };
+  }
+
+  findCandidate(resultId: string): Promise<CandidateRecord | null> {
+    return this.database.generationResult.findFirst({
+      where: {
+        id: resultId,
+        moderationStatus: DatabaseModerationStatus.APPROVED,
+        task: {
+          status: { in: ["SUCCEEDED", "PARTIALLY_SUCCEEDED"] },
+          inputModerationStatus: DatabaseModerationStatus.APPROVED,
+          outputModerationStatus: DatabaseModerationStatus.APPROVED,
+        },
+      },
+      include: candidateInclude,
     });
   }
 
-  update(id: string, input: AdminInspirationInput): Promise<InspirationModel> {
-    return this.database.inspiration.update({ where: { id }, data: toDatabaseInput(input) });
+  async publishCandidate(
+    resultId: string,
+    input: { title: string; category: InspirationCategory; sortOrder: number },
+  ) {
+    return this.database.$transaction(async (transaction) => {
+      const result = await transaction.generationResult.findFirstOrThrow({
+        where: {
+          id: resultId,
+          moderationStatus: DatabaseModerationStatus.APPROVED,
+          task: {
+            status: { in: ["SUCCEEDED", "PARTIALLY_SUCCEEDED"] },
+            inputModerationStatus: DatabaseModerationStatus.APPROVED,
+            outputModerationStatus: DatabaseModerationStatus.APPROVED,
+          },
+          inspiration: null,
+        },
+        include: { task: { include: { user: true } } },
+      });
+      const slug = `user-result-${result.id}`;
+      return transaction.inspiration.create({
+        data: {
+          slug,
+          title: input.title,
+          prompt: result.task.prompt,
+          category: databaseCategory[input.category],
+          imagePath: `/inspirations/assets/${slug}/content`,
+          thumbnailPath: `/inspirations/assets/${slug}/thumbnail`,
+          width: result.width,
+          height: result.height,
+          modelName: result.task.model,
+          ratio: decodeGenerationRatio(result.task.ratio),
+          resolutionLabel: decodeGenerationResolution(result.task.resolution),
+          authorDisplayName: "用户作品",
+          sourceType: DatabaseInspirationSourceType.INTERNAL,
+          sourceName: "用户生成图片",
+          sourceUrl: null,
+          licenseBasis: "用户生成内容，平台精选发布",
+          isAiGenerated: result.isAiGenerated,
+          likeCount: 0,
+          sortOrder: input.sortOrder,
+          status: DatabaseInspirationStatus.PUBLISHED,
+          publishedAt: new Date(),
+          sourceResultId: result.id,
+        },
+      });
+    });
   }
 
   publish(id: string): Promise<InspirationModel> {

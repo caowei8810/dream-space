@@ -65,10 +65,23 @@ enum QuotaReconciliationFindingStatus {
   BLOCKED
 }
 
-enum AdminRole {
-  VIEWER
-  OPERATOR
-  ADMIN
+enum AdminUserStatus {
+  INVITED
+  ACTIVE
+  SUSPENDED
+  REVOKED
+}
+
+enum AdminPermissionRisk {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum UserStatus {
+  ACTIVE
+  RESTRICTED
+  BANNED
 }
 
 enum GenerationRatio {
@@ -119,6 +132,8 @@ model Inspiration {
   publishedAt       DateTime?
   createdAt         DateTime              @default(now())
   updatedAt         DateTime              @updatedAt
+  sourceResultId    String?               @unique
+  sourceResult      GenerationResult?     @relation(fields: [sourceResultId], references: [id], onDelete: Restrict)
 
   @@index([status, category, sortOrder])
   @@index([status, publishedAt])
@@ -127,6 +142,9 @@ model Inspiration {
 model User {
   id                     String                       @id @default(cuid())
   phone                  String                       @unique
+  status                 UserStatus                   @default(ACTIVE)
+  statusReason           String?
+  statusChangedAt        DateTime?
   createdAt              DateTime                     @default(now())
   updatedAt              DateTime                     @updatedAt
   sessions               UserSession[]
@@ -137,19 +155,98 @@ model User {
   quotaLedgerEntries     QuotaLedgerEntry[]
   reconciliationFindings QuotaReconciliationFinding[]
   referenceUploads       ReferenceUpload[]
+
+  @@index([status, updatedAt])
+  @@index([createdAt])
 }
 
 model AdminUser {
-  id          String         @id @default(cuid())
-  phone       String         @unique
-  displayName String
-  role        AdminRole      @default(VIEWER)
-  active      Boolean        @default(true)
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  sessions    AdminSession[]
+  id              String           @id @default(cuid())
+  employeeNo      String           @unique
+  phone           String           @unique
+  displayName     String
+  status          AdminUserStatus  @default(INVITED)
+  lastLoginAt     DateTime?
+  suspendedAt     DateTime?
+  suspendedReason String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  sessions        AdminSession[]
+  roles           AdminUserRole[]
+  auditEvents     AdminAuditLog[]  @relation("AdminAuditActor")
 
-  @@index([active, role])
+  @@index([status, updatedAt])
+  @@index([displayName])
+}
+
+model AdminRole {
+  id          String                @id @default(cuid())
+  code        String                @unique
+  name        String
+  description String
+  system      Boolean               @default(false)
+  active      Boolean               @default(true)
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+  users       AdminUserRole[]
+  permissions AdminRolePermission[]
+
+  @@index([active, name])
+}
+
+model AdminPermission {
+  id          String                @id @default(cuid())
+  code        String                @unique
+  name        String
+  description String
+  risk        AdminPermissionRisk   @default(LOW)
+  active      Boolean               @default(true)
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+  roles       AdminRolePermission[]
+
+  @@index([active, risk])
+}
+
+model AdminUserRole {
+  adminUserId String
+  roleId      String
+  assignedAt  DateTime  @default(now())
+  assignedBy  String?
+  adminUser   AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+  role        AdminRole @relation(fields: [roleId], references: [id], onDelete: Restrict)
+
+  @@id([adminUserId, roleId])
+  @@index([roleId, adminUserId])
+}
+
+model AdminRolePermission {
+  roleId       String
+  permissionId String
+  grantedAt    DateTime        @default(now())
+  role         AdminRole       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   AdminPermission @relation(fields: [permissionId], references: [id], onDelete: Restrict)
+
+  @@id([roleId, permissionId])
+  @@index([permissionId, roleId])
+}
+
+model AdminAuditLog {
+  id               String     @id @default(cuid())
+  actorAdminUserId String?
+  action           String
+  resourceType     String
+  resourceId       String
+  reason           String
+  requestId        String
+  before           Json?
+  after            Json?
+  createdAt        DateTime   @default(now())
+  actor            AdminUser? @relation("AdminAuditActor", fields: [actorAdminUserId], references: [id], onDelete: SetNull)
+
+  @@index([actorAdminUserId, createdAt])
+  @@index([resourceType, resourceId, createdAt])
+  @@index([requestId])
 }
 
 model AdminVerificationCode {
@@ -259,6 +356,7 @@ model GenerationResult {
   isAiGenerated      Boolean          @default(true)
   createdAt          DateTime         @default(now())
   task               GenerationTask   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  inspiration        Inspiration?
 
   @@unique([taskId, index])
   @@index([taskId])

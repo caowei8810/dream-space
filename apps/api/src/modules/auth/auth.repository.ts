@@ -25,6 +25,7 @@ interface UserRecord {
   phone: string;
   createdAt: Date;
   updatedAt: Date;
+  status: "ACTIVE" | "RESTRICTED" | "BANNED";
 }
 
 @Injectable()
@@ -33,6 +34,10 @@ export class AuthRepository {
 
   async createChallenge(input: { id: string; phone: string; codeHash: string; expiresAt: Date }) {
     await this.database.verificationCode.create({ data: input });
+  }
+
+  findUserByPhone(phone: string): Promise<{ status: UserRecord["status"] } | null> {
+    return this.database.user.findUnique({ where: { phone }, select: { status: true } });
   }
 
   findChallenge(id: string): Promise<ChallengeRecord | null> {
@@ -72,6 +77,7 @@ export class AuthRepository {
         create: { phone: input.phone },
         update: {},
       });
+      if (user.status === "BANNED") return null;
       await transaction.agreementAcceptance.upsert({
         where: {
           userId_version: { userId: user.id, version: input.agreementVersion },
@@ -103,7 +109,7 @@ export class AuthRepository {
 
   async findSession(tokenHash: string): Promise<UserRecord | null> {
     const session = await this.database.userSession.findFirst({
-      where: { tokenHash, expiresAt: { gt: new Date() } },
+      where: { tokenHash, expiresAt: { gt: new Date() }, user: { status: { not: "BANNED" } } },
       include: { user: true },
     });
     if (!session) return null;

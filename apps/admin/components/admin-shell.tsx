@@ -1,15 +1,22 @@
 "use client";
 
-import { ClipboardList, Images, LogOut, PanelLeftClose, ShieldCheck } from "lucide-react";
+import { LogOut, PanelLeftClose, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useState } from "react";
+import {
+  adminNavigationItems,
+  adminNavigationSections,
+  requiredPermissionForPath,
+} from "../lib/admin-navigation";
+import { hasAdminPermission } from "../lib/admin-permissions";
 import { useAdminSession } from "../lib/use-admin-session";
+import { AdminState } from "./admin-state";
 
 export function AdminShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { session, loading, error, logout } = useAdminSession();
+  const { session, loading, error, logout, refresh } = useAdminSession();
   const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
@@ -17,12 +24,37 @@ export function AdminShell({ children }: { children: ReactNode }) {
   }, [loading, router, session]);
 
   if (loading) {
-    return <main className="admin-state-page">正在验证管理员会话…</main>;
+    return (
+      <main className="admin-state-page">
+        <AdminState kind="loading" title="正在验证管理员会话" />
+      </main>
+    );
   }
   if (error) {
-    return <main className="admin-state-page">无法连接管理 API，请检查服务状态。</main>;
+    return (
+      <main className="admin-state-page">
+        <AdminState
+          kind="error"
+          title="无法连接管理 API"
+          description="请检查服务状态后重试。"
+          onRetry={() => void refresh()}
+        />
+      </main>
+    );
   }
-  if (!session?.authenticated) return <main className="admin-state-page">正在进入登录页…</main>;
+  if (!session?.authenticated) {
+    return (
+      <main className="admin-state-page">
+        <AdminState kind="loading" title="正在进入登录页" />
+      </main>
+    );
+  }
+
+  const requiredPermission = requiredPermissionForPath(pathname);
+  const canAccessPage = !requiredPermission || hasAdminPermission(session, requiredPermission);
+  const navigationItems = adminNavigationItems.filter((item) =>
+    hasAdminPermission(session, item.permission),
+  );
 
   return (
     <div className={`admin-layout${collapsed ? " is-collapsed" : ""}`}>
@@ -45,17 +77,30 @@ export function AdminShell({ children }: { children: ReactNode }) {
           </button>
         </div>
         <nav aria-label="管理端导航">
-          <Link className={pathname.startsWith("/tasks") ? "active" : ""} href="/tasks">
-            <ClipboardList aria-hidden="true" />
-            <span>生成任务</span>
-          </Link>
-          <Link
-            className={pathname.startsWith("/inspirations") ? "active" : ""}
-            href="/inspirations"
-          >
-            <Images aria-hidden="true" />
-            <span>灵感管理</span>
-          </Link>
+          {adminNavigationSections.map((section) => {
+            const items = navigationItems.filter((item) => item.section === section);
+            if (items.length === 0) return null;
+            return (
+              <div className="admin-nav-section" key={section}>
+                <p>{section}</p>
+                {items.map((item) => {
+                  const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+                  const Icon = item.icon;
+                  return (
+                    <Link
+                      key={item.href}
+                      className={active ? "active" : ""}
+                      href={item.href}
+                      aria-current={active ? "page" : undefined}
+                    >
+                      <Icon aria-hidden="true" />
+                      <span>{item.label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            );
+          })}
         </nav>
         <div className="admin-sidebar-account">
           <span className="admin-avatar">{session.user.displayName.slice(0, 1)}</span>
@@ -74,7 +119,15 @@ export function AdminShell({ children }: { children: ReactNode }) {
           </button>
         </div>
       </aside>
-      <div className="admin-main">{children}</div>
+      <div className="admin-main">
+        {canAccessPage ? (
+          children
+        ) : (
+          <main className="admin-state-page">
+            <AdminState kind="forbidden" />
+          </main>
+        )}
+      </div>
     </div>
   );
 }

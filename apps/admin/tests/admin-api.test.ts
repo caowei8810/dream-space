@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { AdminInspirationInput } from "@dream-space/contracts";
 import { adminApi, type AdminApiError, resolveAdminAssetUrl } from "../lib/admin-api";
 
 afterEach(() => vi.unstubAllGlobals());
@@ -59,6 +58,37 @@ describe("admin API client", () => {
     } satisfies Partial<AdminApiError>);
   });
 
+  it("calls the dashboard and role endpoints with the admin session", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ generation: {}, users: {}, revenue: {} })),
+      )
+      .mockResolvedValueOnce(new Response(JSON.stringify({ items: [], permissions: [] })))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: "role-1" })));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await adminApi.dashboardSummary();
+    await adminApi.roles();
+    await adminApi.deleteRole("role-1", { reason: "自动化测试" });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "http://localhost:4000/admin/dashboard/summary",
+      expect.objectContaining({ credentials: "include" }),
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "http://localhost:4000/admin/roles",
+      expect.objectContaining({ credentials: "include" }),
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      "http://localhost:4000/admin/roles/role-1",
+      expect.objectContaining({ method: "DELETE", credentials: "include" }),
+    );
+  });
+
   it("loads relative generation assets from the user web origin", async () => {
     expect(resolveAdminAssetUrl("/inspiration/portrait-01.webp")).toBe(
       "http://localhost:3000/inspiration/portrait-01.webp",
@@ -68,55 +98,27 @@ describe("admin API client", () => {
     );
   });
 
-  it("calls real inspiration management endpoints", async () => {
+  it("calls real inspiration candidate and publish endpoints", async () => {
     const fetchMock = vi
       .fn()
       .mockImplementation(() => Promise.resolve(new Response(JSON.stringify({}))));
     vi.stubGlobal("fetch", fetchMock);
-    const input = {
-      slug: "managed-inspiration",
-      title: "管理端灵感",
-      prompt: "柔和自然光",
-      category: "portrait",
-      imageUrl: "/inspiration/portrait-01.webp",
-      thumbnailUrl: "/inspiration/portrait-01.webp",
-      width: 1350,
-      height: 2400,
-      modelName: "image-4.7",
-      ratio: "9:16",
-      resolutionLabel: "1350 × 2400",
-      authorDisplayName: "运营精选",
-      sourceType: "internal",
-      sourceName: "造梦空间",
-      sourceUrl: null,
-      licenseBasis: "内部生成素材",
-      isAiGenerated: true,
-      likeCount: 0,
-      sortOrder: 0,
-    } satisfies AdminInspirationInput;
-
-    await adminApi.createInspiration(input);
-    await adminApi.updateInspiration("inspiration-1", input);
-    await adminApi.publishInspiration("inspiration-1");
+    await adminApi.inspirationCandidates({ query: "花房", page: 1, pageSize: 20 });
+    await adminApi.publishCandidate("result-1");
     await adminApi.unpublishInspiration("inspiration-1");
 
     expect(fetchMock).toHaveBeenNthCalledWith(
       1,
-      "http://localhost:4000/admin/inspirations",
-      expect.objectContaining({ method: "POST", credentials: "include" }),
+      "http://localhost:4000/admin/inspiration-candidates?query=%E8%8A%B1%E6%88%BF&page=1&pageSize=20",
+      expect.objectContaining({ credentials: "include" }),
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
-      "http://localhost:4000/admin/inspirations/inspiration-1",
-      expect.objectContaining({ method: "PATCH", credentials: "include" }),
-    );
-    expect(fetchMock).toHaveBeenNthCalledWith(
-      3,
-      "http://localhost:4000/admin/inspirations/inspiration-1/publish",
+      "http://localhost:4000/admin/inspiration-candidates/result-1/publish",
       expect.objectContaining({ method: "POST", credentials: "include" }),
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
-      4,
+      3,
       "http://localhost:4000/admin/inspirations/inspiration-1/unpublish",
       expect.objectContaining({ method: "POST", credentials: "include" }),
     );
