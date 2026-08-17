@@ -52,7 +52,36 @@ export const authAgreementVersion = "2026-08-03" as const;
 export interface AuthUser {
   id: string;
   phoneMasked: string;
+  status: UserStatus;
   createdAt: string;
+}
+
+export const userStatuses = ["active", "restricted", "banned"] as const;
+export type UserStatus = (typeof userStatuses)[number];
+
+export interface AdminUserRecord {
+  id: string;
+  phoneMasked: string;
+  status: UserStatus;
+  statusReason: string | null;
+  statusChangedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  activeSessionCount: number;
+  generationTaskCount: number;
+  referenceUploadCount: number;
+}
+
+export interface AdminUserListResponse {
+  items: AdminUserRecord[];
+  total: number;
+  page: number;
+  pageSize: number;
+  pageCount: number;
+}
+
+export interface AdminUserStatusInput {
+  reason: string;
 }
 
 export type AuthSessionResponse =
@@ -99,18 +128,159 @@ export interface LoginRequest extends AgreementConsents {
 export const adminDemoPhone = "18800000000" as const;
 export const adminViewerDemoPhone = "18800000001" as const;
 
-export const adminRoles = ["viewer", "operator", "admin"] as const;
-export type AdminRole = (typeof adminRoles)[number];
+export const adminBuiltInRoleCodes = ["viewer", "operator", "owner"] as const;
+export type AdminBuiltInRoleCode = (typeof adminBuiltInRoleCodes)[number];
 
-export const adminPermissions = ["tasks:read", "inspirations:read", "inspirations:write"] as const;
+export const adminPermissions = [
+  "dashboard:read",
+  "tasks:read",
+  "inspirations:read",
+  "inspirations:publish",
+  "admin-accounts:read",
+  "admin-accounts:write",
+  "admin-sessions:revoke",
+  "users:read",
+  "users:write",
+  "user-sessions:revoke",
+  "roles:read",
+  "roles:write",
+  "permissions:read",
+] as const;
 export type AdminPermission = (typeof adminPermissions)[number];
+
+export interface AdminDashboardSummary {
+  window: { from: string; to: string; timezone: "Asia/Shanghai" };
+  generation: {
+    total: number;
+    succeeded: number;
+    failed: number;
+    successRate: number;
+    averageLatencyMs: number | null;
+    pendingReview: number;
+  };
+  users: {
+    total: number;
+    active: number;
+    restricted: number;
+    banned: number;
+    newToday: number;
+  };
+  revenue: {
+    available: false;
+    grossCents: 0;
+    refundCents: 0;
+    note: string;
+  };
+  generatedAt: string;
+}
+
+export interface AdminPermissionRecord {
+  id: string;
+  code: AdminPermission;
+  name: string;
+  description: string;
+  risk: "low" | "medium" | "high";
+  active: boolean;
+}
+
+export interface AdminRoleRecord {
+  id: string;
+  code: string;
+  name: string;
+  description: string;
+  system: boolean;
+  active: boolean;
+  userCount: number;
+  permissions: AdminPermissionRecord[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminRoleListResponse {
+  items: AdminRoleRecord[];
+  permissions: AdminPermissionRecord[];
+}
+
+export interface AdminRoleCreateInput {
+  code: string;
+  name: string;
+  description: string;
+  permissionIds: string[];
+  reason: string;
+}
+
+export interface AdminRoleUpdateInput {
+  name: string;
+  description: string;
+  active: boolean;
+  permissionIds: string[];
+  reason: string;
+}
+
+export interface AdminRoleActionInput {
+  reason: string;
+}
+
+export const adminAccountStatuses = ["invited", "active", "suspended", "revoked"] as const;
+export type AdminAccountStatus = (typeof adminAccountStatuses)[number];
+
+export interface AdminRoleSummary {
+  id: string;
+  code: string;
+  name: string;
+  system: boolean;
+}
 
 export interface AdminUser {
   id: string;
+  employeeNo: string;
   displayName: string;
   phoneMasked: string;
-  role: AdminRole;
+  roles: AdminRoleSummary[];
   permissions: AdminPermission[];
+}
+
+export interface AdminAccountRecord {
+  id: string;
+  employeeNo: string;
+  displayName: string;
+  phoneMasked: string;
+  roles: AdminRoleSummary[];
+  status: AdminAccountStatus;
+  lastLoginAt: string | null;
+  suspendedAt: string | null;
+  suspendedReason: string | null;
+  sessionCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminAccountListResponse {
+  items: AdminAccountRecord[];
+  roles: AdminRoleSummary[];
+  total: number;
+  page: number;
+  pageSize: number;
+  pageCount: number;
+}
+
+export interface AdminAccountCreateInput {
+  employeeNo: string;
+  displayName: string;
+  phone: string;
+  roleIds: string[];
+  reason: string;
+}
+
+export interface AdminAccountUpdateInput {
+  displayName: string;
+  phone?: string;
+  roleIds: string[];
+  reason: string;
+}
+
+export interface AdminAccountActionInput {
+  reason: string;
 }
 
 export type AdminSessionResponse =
@@ -411,28 +581,39 @@ export interface AdminInspirationRecord {
   publishedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  sourceResultId: string | null;
 }
 
-export interface AdminInspirationInput {
-  slug: string;
-  title: string;
-  prompt: string;
-  category: InspirationCategory;
+export interface AdminInspirationCandidateRecord {
+  resultId: string;
+  taskId: string;
   imageUrl: string;
   thumbnailUrl: string;
   width: number;
   height: number;
+  mimeType: string;
+  prompt: string;
   modelName: string;
   ratio: string;
   resolutionLabel: string;
-  authorDisplayName: string;
-  sourceType: AdminInspirationSourceType;
-  sourceName: string;
-  sourceUrl?: string | null;
-  licenseBasis: string;
-  isAiGenerated: boolean;
-  likeCount: number;
-  sortOrder: number;
+  userPhoneMasked: string;
+  createdAt: string;
+  inputModerationStatus: ModerationStatus;
+  outputModerationStatus: ModerationStatus;
+  publishedInspirationId: string | null;
+}
+
+export interface AdminInspirationCandidateListResponse {
+  items: AdminInspirationCandidateRecord[];
+  total: number;
+  page: number;
+  pageSize: number;
+  pageCount: number;
+}
+
+export interface AdminInspirationPublishInput {
+  /** 发布参数由服务端从用户生成任务派生，客户端不提交可编辑图源或文案。 */
+  readonly source?: never;
 }
 
 export interface AdminInspirationListResponse {

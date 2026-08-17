@@ -25,6 +25,7 @@ function hash(value: string) {
 
 function createService() {
   const repository = {
+    findUserByPhone: vi.fn().mockResolvedValue(null),
     createChallenge: vi.fn().mockResolvedValue(undefined),
     findReusableChallenge: vi.fn().mockResolvedValue(null),
     findChallenge: vi.fn().mockResolvedValue({
@@ -40,6 +41,7 @@ function createService() {
     completeLogin: vi.fn().mockResolvedValue({
       id: "user-1",
       phone: validLogin.phone,
+      status: "ACTIVE",
       createdAt: new Date("2026-08-03T00:00:00.000Z"),
       updatedAt: new Date("2026-08-03T00:00:00.000Z"),
     }),
@@ -105,6 +107,24 @@ describe("AuthService", () => {
     );
   });
 
+  it("blocks banned users and prevents restricted users from generating", async () => {
+    const { repository, service } = createService();
+    vi.mocked(repository.findUserByPhone).mockResolvedValue({ status: "BANNED" });
+    await expect(service.sendCode({ phone: validLogin.phone })).rejects.toMatchObject({
+      status: 403,
+    });
+
+    vi.mocked(repository.findUserByPhone).mockResolvedValue(null);
+    vi.mocked(repository.findSession).mockResolvedValue({
+      id: "user-1",
+      phone: validLogin.phone,
+      status: "RESTRICTED",
+      createdAt: new Date("2026-08-03T00:00:00.000Z"),
+      updatedAt: new Date("2026-08-03T00:00:00.000Z"),
+    });
+    await expect(service.requireActiveUser("session-token")).rejects.toMatchObject({ status: 403 });
+  });
+
   it("counts a wrong code attempt without creating a session", async () => {
     const { repository, service } = createService();
 
@@ -125,6 +145,7 @@ describe("AuthService", () => {
       user: {
         id: "user-1",
         phoneMasked: "138****8000",
+        status: "active",
         createdAt: "2026-08-03T00:00:00.000Z",
       },
     });

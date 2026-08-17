@@ -9,6 +9,7 @@ import {
 import { parseApiEnv } from "@dream-space/config";
 import {
   BadRequestException,
+  ForbiddenException,
   Inject,
   Injectable,
   ServiceUnavailableException,
@@ -39,6 +40,10 @@ export class AuthService {
       throw new ServiceUnavailableException("短信验证码服务尚未配置");
     }
     const phone = this.normalizePhone(input.phone);
+    const existingUser = await this.repository.findUserByPhone(phone);
+    if (existingUser?.status === "BANNED") {
+      throw new ForbiddenException("当前账号已被封禁");
+    }
     const reusable = await this.repository.findReusableChallenge(phone);
     if (reusable) {
       const elapsedSeconds = Math.floor((Date.now() - reusable.createdAt.getTime()) / 1000);
@@ -120,6 +125,17 @@ export class AuthService {
     if (token) await this.repository.deleteSession(hash(token));
   }
 
+  async requireActiveUser(token: string | null) {
+    const session = await this.getSession(token);
+    if (!session.authenticated) throw new UnauthorizedException("请先登录");
+    if (session.user.status !== "active") {
+      throw new ForbiddenException(
+        session.user.status === "banned" ? "当前账号已被封禁" : "当前账号暂不能发起生成",
+      );
+    }
+    return session.user;
+  }
+
   private normalizePhone(value: string) {
     const phone = value?.replace(/\s+/g, "") ?? "";
     if (!phonePattern.test(phone)) throw new BadRequestException("请输入正确的 11 位手机号");
@@ -137,10 +153,16 @@ export class AuthService {
     }
   }
 
-  private mapUser(user: { id: string; phone: string; createdAt: Date }): AuthUser {
+  private mapUser(user: {
+    id: string;
+    phone: string;
+    status: "ACTIVE" | "RESTRICTED" | "BANNED";
+    createdAt: Date;
+  }): AuthUser {
     return {
       id: user.id,
       phoneMasked: maskPhone(user.phone),
+      status: user.status.toLowerCase() as AuthUser["status"],
       createdAt: user.createdAt.toISOString(),
     };
   }

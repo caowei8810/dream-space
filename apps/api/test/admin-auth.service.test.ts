@@ -15,13 +15,40 @@ function challenge(id = "admin-challenge") {
   };
 }
 
-function admin(role: "ADMIN" | "OPERATOR" | "VIEWER" = "ADMIN") {
+function admin(role: "owner" | "operator" | "viewer" = "owner") {
+  const permissions =
+    role === "owner"
+      ? [
+          "tasks:read",
+          "inspirations:read",
+          "inspirations:publish",
+          "admin-accounts:read",
+          "admin-accounts:write",
+          "admin-sessions:revoke",
+        ]
+      : role === "operator"
+        ? ["tasks:read", "inspirations:read", "inspirations:publish"]
+        : ["tasks:read", "inspirations:read"];
   return {
     id: "admin-1",
+    employeeNo: "ADM0001",
     phone: "18800000000",
     displayName: "本地管理员",
-    role,
-    active: true,
+    status: "ACTIVE" as const,
+    roles: [
+      {
+        role: {
+          id: `role-${role}`,
+          code: role,
+          name: role,
+          system: true,
+          active: true,
+          permissions: permissions.map((code) => ({
+            permission: { code, active: true },
+          })),
+        },
+      },
+    ],
     createdAt: new Date("2026-08-03T00:00:00Z"),
     updatedAt: new Date("2026-08-03T00:00:00Z"),
   };
@@ -52,8 +79,9 @@ describe("admin auth service", () => {
     } satisfies AdminLoginRequest);
     expect(result.response.user).toMatchObject({
       displayName: "本地管理员",
-      role: "admin",
-      permissions: expect.arrayContaining(["tasks:read", "inspirations:write"]),
+      employeeNo: "ADM0001",
+      roles: [expect.objectContaining({ code: "owner" })],
+      permissions: expect.arrayContaining(["tasks:read", "inspirations:publish"]),
     });
     expect(repository.completeLogin).toHaveBeenCalledOnce();
   });
@@ -69,7 +97,7 @@ describe("admin auth service", () => {
 
   it("returns 401 without an admin session and 403 without the required role permission", async () => {
     const repository = {
-      findSession: vi.fn().mockResolvedValue(admin("VIEWER")),
+      findSession: vi.fn().mockResolvedValue(admin("viewer")),
     };
     const service = new AdminAuthService(repository as never);
 
@@ -77,10 +105,10 @@ describe("admin auth service", () => {
       status: 401,
     });
     await expect(
-      service.requirePermission("dreamspace_admin_session=viewer-token", "inspirations:write"),
+      service.requirePermission("dreamspace_admin_session=viewer-token", "inspirations:publish"),
     ).rejects.toMatchObject({ status: 403 });
     await expect(
       service.requirePermission("dreamspace_admin_session=viewer-token", "tasks:read"),
-    ).resolves.toMatchObject({ role: "viewer" });
+    ).resolves.toMatchObject({ roles: [expect.objectContaining({ code: "viewer" })] });
   });
 });

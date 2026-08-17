@@ -9,7 +9,9 @@ import {
 export { Prisma } from "./generated/client/client";
 
 export {
-  AdminRole as DatabaseAdminRole,
+  AdminPermissionRisk as DatabaseAdminPermissionRisk,
+  AdminUserStatus as DatabaseAdminUserStatus,
+  UserStatus as DatabaseUserStatus,
   GenerationTaskStatus as DatabaseGenerationTaskStatus,
   GenerationRatio as DatabaseGenerationRatio,
   GenerationResolution as DatabaseGenerationResolution,

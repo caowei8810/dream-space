@@ -1,9 +1,9 @@
 import {
   type AdminLoginRequest,
   type AdminPermission,
-  type AdminRole,
   type AdminSessionResponse,
   type AdminUser,
+  adminPermissions,
   type SendCodeRequest,
   type SendCodeResponse,
 } from "@dream-space/contracts";
@@ -23,11 +23,7 @@ import { readAdminSessionToken } from "./admin-session-cookie";
 const demoCode = "123456" as const;
 const phonePattern = /^1[3-9]\d{9}$/;
 
-const permissionsByRole: Record<AdminRole, AdminPermission[]> = {
-  viewer: ["tasks:read", "inspirations:read"],
-  operator: ["tasks:read", "inspirations:read", "inspirations:write"],
-  admin: ["tasks:read", "inspirations:read", "inspirations:write"],
-};
+const knownPermissions = new Set<string>(adminPermissions);
 
 function hash(value: string) {
   return createHash("sha256").update(value).digest("hex");
@@ -143,13 +139,28 @@ export class AdminAuthService {
   }
 
   private mapUser(admin: AdminRecord): AdminUser {
-    const role = admin.role.toLowerCase() as AdminRole;
+    const roles = admin.roles.map(({ role }) => ({
+      id: role.id,
+      code: role.code,
+      name: role.name,
+      system: role.system,
+    }));
+    const permissions = [
+      ...new Set(
+        admin.roles.flatMap(({ role }) =>
+          role.permissions
+            .map(({ permission }) => permission.code)
+            .filter((code): code is AdminPermission => knownPermissions.has(code)),
+        ),
+      ),
+    ];
     return {
       id: admin.id,
+      employeeNo: admin.employeeNo,
       displayName: admin.displayName,
       phoneMasked: maskPhone(admin.phone),
-      role,
-      permissions: [...permissionsByRole[role]],
+      roles,
+      permissions,
     };
   }
 }

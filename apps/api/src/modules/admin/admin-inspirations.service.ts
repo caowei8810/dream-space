@@ -1,12 +1,18 @@
+import { parseApiEnv } from "@dream-space/config";
 import {
-  type AdminInspirationInput,
-  type AdminInspirationListResponse,
-  type AdminInspirationRecord,
-  adminInspirationSourceTypes,
-  adminInspirationStatuses,
+  decodeGenerationRatio,
+  decodeGenerationResolution,
+  type InspirationModel,
+} from "@dream-space/db";
+import {
   inspirationCategories,
+  type AdminInspirationCandidateListResponse,
+  type AdminInspirationCandidateRecord,
+  type AdminInspirationRecord,
+  type AdminInspirationStatus,
+  type InspirationCategory,
+  type ModerationStatus,
 } from "@dream-space/contracts";
-import type { InspirationModel } from "@dream-space/db";
 import {
   BadRequestException,
   ConflictException,
@@ -14,9 +20,9 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { AdminInspirationsRepository } from "./admin-inspirations.repository";
+import { AdminInspirationsRepository, type CandidateRecord } from "./admin-inspirations.repository";
 
-interface RawAdminInspirationQuery {
+interface RawQuery {
   status?: string;
   category?: string;
   query?: string;
@@ -25,53 +31,63 @@ interface RawAdminInspirationQuery {
 }
 
 const categories = new Set<string>(inspirationCategories.map((category) => category.id));
-const statuses = new Set<string>(adminInspirationStatuses);
-const sourceTypes = new Set<string>(adminInspirationSourceTypes);
-
-const apiCategory: Record<string, AdminInspirationRecord["category"]> = {
+const statuses = new Set<string>(["draft", "published", "archived"]);
+const apiCategory: Record<string, InspirationCategory> = {
   PORTRAIT: "portrait",
   PHOTOGRAPHY: "photography",
   ANIME: "anime",
   ILLUSTRATION: "illustration",
   DESIGN: "design",
 };
-
-const apiStatus: Record<string, AdminInspirationRecord["status"]> = {
+const apiStatus: Record<string, AdminInspirationStatus> = {
   DRAFT: "draft",
   PUBLISHED: "published",
   ARCHIVED: "archived",
 };
 
-const apiSourceType: Record<string, AdminInspirationRecord["sourceType"]> = {
-  AI_PUBLIC_GALLERY: "ai_public_gallery",
-  LICENSED: "licensed",
-  INTERNAL: "internal",
-};
+function maskPhone(phone: string) {
+  return phone.length >= 7 ? `${phone.slice(0, 3)}****${phone.slice(-4)}` : "已注册用户";
+}
 
 @Injectable()
 export class AdminInspirationsService {
+  private readonly publicOrigin = new URL(parseApiEnv(process.env).API_PUBLIC_URL);
+
   constructor(
     @Inject(AdminInspirationsRepository) private readonly repository: AdminInspirationsRepository,
   ) {}
 
-  async list(raw: RawAdminInspirationQuery): Promise<AdminInspirationListResponse> {
+  async list(raw: RawQuery) {
     const status = raw.status?.trim().toLowerCase() || undefined;
     if (status && !statuses.has(status)) throw new BadRequestException("灵感状态不正确");
     const category = raw.category?.trim().toLowerCase() || undefined;
     if (category && !categories.has(category)) throw new BadRequestException("灵感分类不正确");
-    const query = raw.query?.replace(/\s+/g, " ").trim() || undefined;
-    if (query && query.length > 100) throw new BadRequestException("搜索关键词过长");
-    const page = this.integer(raw.page, 1, 1, 1_000_000, "页码");
-    const pageSize = this.integer(raw.pageSize, 20, 1, 100, "每页数量");
+    const query = this.query(raw.query);
+    const page = this.integer(raw.page, 1, "页码", 1, 1_000_000);
+    const pageSize = this.integer(raw.pageSize, 20, "每页数量", 1, 100);
     const result = await this.repository.list({
-      status: status as Parameters<AdminInspirationsRepository["list"]>[0]["status"],
-      category: category as Parameters<AdminInspirationsRepository["list"]>[0]["category"],
+      status: status as AdminInspirationStatus,
+      category: category as InspirationCategory,
       query,
       page,
       pageSize,
     });
     return {
-      items: result.items.map((item) => this.map(item)),
+      items: result.items.map((item) => this.mapInspiration(item)),
+      total: result.total,
+      page,
+      pageSize,
+      pageCount: Math.ceil(result.total / pageSize),
+    };
+  }
+
+  async candidates(raw: RawQuery): Promise<AdminInspirationCandidateListResponse> {
+    const query = this.query(raw.query);
+    const page = this.integer(raw.page, 1, "页码", 1, 1_000_000);
+    const pageSize = this.integer(raw.pageSize, 20, "每页数量", 1, 100);
+    const result = await this.repository.listCandidates({ query, page, pageSize });
+    return {
+      items: result.items.map((item) => this.mapCandidate(item)),
       total: result.total,
       page,
       pageSize,
@@ -80,78 +96,121 @@ export class AdminInspirationsService {
   }
 
   async get(id: string) {
-    const item = await this.find(id);
-    return this.map(item);
+    const item = await this.repository.findById(this.id(id));
+    if (!item) throw new NotFoundException("灵感不存在");
+    return this.mapInspiration(item);
   }
 
-  async create(raw: AdminInspirationInput) {
-    const input = this.validate(raw);
-    if (await this.repository.slugExists(input.slug)) {
-      throw new ConflictException("灵感 slug 已存在");
-    }
-    return this.map(await this.repository.create(input));
+  async getCandidate(resultId: string) {
+    const item = await this.repository.findCandidate(this.id(resultId));
+    if (!item) throw new NotFoundException("没有找到可精选的审核通过图片");
+    return this.mapCandidate(item);
   }
 
-  async update(id: string, raw: AdminInspirationInput) {
-    await this.find(id);
-    const input = this.validate(raw);
-    if (await this.repository.slugExists(input.slug, id.trim())) {
-      throw new ConflictException("灵感 slug 已存在");
+  async publishCandidate(resultId: string) {
+    const candidate = await this.repository.findCandidate(this.id(resultId));
+    if (!candidate) throw new NotFoundException("没有找到可精选的审核通过图片");
+    const input = this.defaultPublishInput(candidate.task.prompt);
+    try {
+      return this.mapInspiration(await this.repository.publishCandidate(this.id(resultId), input));
+    } catch (error) {
+      if ((error as { code?: string }).code === "P2002") {
+        throw new ConflictException("该图片已经发布为灵感或 slug 已存在");
+      }
+      throw error;
     }
-    return this.map(await this.repository.update(id.trim(), input));
   }
 
   async publish(id: string) {
-    await this.find(id);
-    return this.map(await this.repository.publish(id.trim()));
+    const item = await this.repository.findById(this.id(id));
+    if (!item?.sourceResultId) throw new ConflictException("只有用户生成图片才能发布为灵感");
+    return this.mapInspiration(await this.repository.publish(this.id(id)));
   }
 
   async unpublish(id: string) {
-    await this.find(id);
-    return this.map(await this.repository.unpublish(id.trim()));
-  }
-
-  private async find(id: string) {
-    const normalized = id?.trim();
-    if (!normalized) throw new BadRequestException("灵感 ID 不正确");
-    const item = await this.repository.findById(normalized);
+    const item = await this.repository.findById(this.id(id));
     if (!item) throw new NotFoundException("灵感不存在");
-    return item;
+    return this.mapInspiration(await this.repository.unpublish(this.id(id)));
   }
 
-  private validate(raw: AdminInspirationInput): AdminInspirationInput {
-    const slug = this.text(raw?.slug, "slug", 2, 80).toLowerCase();
-    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
-      throw new BadRequestException("slug 只能包含小写字母、数字和中划线");
-    }
-    const category = raw?.category;
-    if (!categories.has(category)) throw new BadRequestException("灵感分类不正确");
-    const sourceType = raw?.sourceType;
-    if (!sourceTypes.has(sourceType)) throw new BadRequestException("素材来源类型不正确");
-    if (typeof raw?.isAiGenerated !== "boolean") {
-      throw new BadRequestException("请标记是否为 AI 生成内容");
-    }
+  private defaultPublishInput(prompt: string) {
+    const normalized = prompt.replace(/\s+/g, " ").trim();
     return {
-      slug,
-      title: this.text(raw.title, "标题", 2, 100),
-      prompt: this.text(raw.prompt, "提示词", 1, 4_000),
-      category: category as AdminInspirationInput["category"],
-      imageUrl: this.assetUrl(raw.imageUrl, "原图地址"),
-      thumbnailUrl: this.assetUrl(raw.thumbnailUrl, "缩略图地址"),
-      width: this.number(raw.width, 1, 10_000, "图片宽度"),
-      height: this.number(raw.height, 1, 10_000, "图片高度"),
-      modelName: this.text(raw.modelName, "模型名称", 1, 64),
-      ratio: this.text(raw.ratio, "图片比例", 1, 16),
-      resolutionLabel: this.text(raw.resolutionLabel, "分辨率", 1, 64),
-      authorDisplayName: this.text(raw.authorDisplayName, "作者名称", 1, 64),
-      sourceType: sourceType as AdminInspirationInput["sourceType"],
-      sourceName: this.text(raw.sourceName, "来源名称", 1, 120),
-      sourceUrl: raw.sourceUrl ? this.httpUrl(raw.sourceUrl, "来源链接") : null,
-      licenseBasis: this.text(raw.licenseBasis, "授权依据", 1, 500),
-      isAiGenerated: raw.isAiGenerated,
-      likeCount: this.number(raw.likeCount, 0, 1_000_000, "点赞数"),
-      sortOrder: this.number(raw.sortOrder, 0, 1_000_000, "排序值"),
+      title: normalized.length >= 2 ? normalized.slice(0, 100) : "用户生成精选",
+      category: "photography" as const,
+      sortOrder: 0,
     };
+  }
+
+  private mapCandidate(item: CandidateRecord): AdminInspirationCandidateRecord {
+    const apiOrigin = this.publicOrigin;
+    return {
+      resultId: item.id,
+      taskId: item.task.id,
+      imageUrl: new URL(`/admin/inspiration-candidates/${item.id}/content`, apiOrigin).toString(),
+      thumbnailUrl: new URL(
+        `/admin/inspiration-candidates/${item.id}/thumbnail`,
+        apiOrigin,
+      ).toString(),
+      width: item.width,
+      height: item.height,
+      mimeType: item.mimeType,
+      prompt: item.task.prompt,
+      modelName: item.task.model,
+      ratio: decodeGenerationRatio(item.task.ratio),
+      resolutionLabel: decodeGenerationResolution(item.task.resolution),
+      userPhoneMasked: maskPhone(item.task.user.phone),
+      createdAt: item.createdAt.toISOString(),
+      inputModerationStatus: item.task.inputModerationStatus.toLowerCase() as ModerationStatus,
+      outputModerationStatus: item.task.outputModerationStatus.toLowerCase() as ModerationStatus,
+      publishedInspirationId: item.inspiration?.id ?? null,
+    };
+  }
+
+  private mapInspiration(item: InspirationModel): AdminInspirationRecord {
+    return {
+      id: item.id,
+      slug: item.slug,
+      title: item.title,
+      prompt: item.prompt,
+      category: apiCategory[item.category] ?? "design",
+      imageUrl: item.sourceResultId
+        ? new URL(`/inspirations/assets/${item.slug}/content`, this.publicOrigin).toString()
+        : item.imagePath,
+      thumbnailUrl: item.sourceResultId
+        ? new URL(`/inspirations/assets/${item.slug}/thumbnail`, this.publicOrigin).toString()
+        : item.thumbnailPath,
+      width: item.width,
+      height: item.height,
+      modelName: item.modelName,
+      ratio: item.ratio,
+      resolutionLabel: item.resolutionLabel,
+      authorDisplayName: item.authorDisplayName,
+      sourceType: "internal",
+      sourceName: item.sourceResultId ? "用户生成图片" : item.sourceName,
+      sourceUrl: null,
+      licenseBasis: item.licenseBasis,
+      isAiGenerated: item.isAiGenerated,
+      likeCount: item.likeCount,
+      sortOrder: item.sortOrder,
+      status: apiStatus[item.status] ?? "draft",
+      publishedAt: item.publishedAt?.toISOString() ?? null,
+      createdAt: item.createdAt.toISOString(),
+      updatedAt: item.updatedAt.toISOString(),
+      sourceResultId: item.sourceResultId ?? null,
+    };
+  }
+
+  private query(value?: string) {
+    const query = value?.replace(/\s+/g, " ").trim() || undefined;
+    if (query && query.length > 100) throw new BadRequestException("搜索关键词过长");
+    return query;
+  }
+
+  private id(value: string) {
+    const normalized = value?.trim();
+    if (!normalized) throw new BadRequestException("灵感 ID 不正确");
+    return normalized;
   }
 
   private text(value: unknown, label: string, min: number, max: number) {
@@ -163,70 +222,18 @@ export class AdminInspirationsService {
     return normalized;
   }
 
-  private number(value: unknown, min: number, max: number, label: string) {
-    if (!Number.isInteger(value) || (value as number) < min || (value as number) > max) {
-      throw new BadRequestException(`${label}不正确`);
-    }
-    return value as number;
-  }
-
   private integer(
-    value: string | undefined,
+    value: string | number | undefined,
     fallback: number,
+    label: string,
     min: number,
     max: number,
-    label: string,
   ) {
-    if (!value?.trim()) return fallback;
+    if (value === undefined || value === "") return fallback;
     const parsed = Number(value);
     if (!Number.isInteger(parsed) || parsed < min || parsed > max) {
       throw new BadRequestException(`${label}不正确`);
     }
     return parsed;
-  }
-
-  private assetUrl(value: unknown, label: string) {
-    const normalized = this.text(value, label, 1, 500);
-    if (normalized.startsWith("/")) return normalized;
-    return this.httpUrl(normalized, label);
-  }
-
-  private httpUrl(value: string, label: string) {
-    try {
-      const url = new URL(value);
-      if (url.protocol !== "http:" && url.protocol !== "https:") throw new Error("protocol");
-      return url.toString();
-    } catch {
-      throw new BadRequestException(`${label}不正确`);
-    }
-  }
-
-  private map(item: InspirationModel): AdminInspirationRecord {
-    return {
-      id: item.id,
-      slug: item.slug,
-      title: item.title,
-      prompt: item.prompt,
-      category: apiCategory[item.category] ?? "design",
-      imageUrl: item.imagePath,
-      thumbnailUrl: item.thumbnailPath,
-      width: item.width,
-      height: item.height,
-      modelName: item.modelName,
-      ratio: item.ratio,
-      resolutionLabel: item.resolutionLabel,
-      authorDisplayName: item.authorDisplayName,
-      sourceType: apiSourceType[item.sourceType] ?? "internal",
-      sourceName: item.sourceName,
-      sourceUrl: item.sourceUrl,
-      licenseBasis: item.licenseBasis,
-      isAiGenerated: item.isAiGenerated,
-      likeCount: item.likeCount,
-      sortOrder: item.sortOrder,
-      status: apiStatus[item.status] ?? "draft",
-      publishedAt: item.publishedAt?.toISOString() ?? null,
-      createdAt: item.createdAt.toISOString(),
-      updatedAt: item.updatedAt.toISOString(),
-    };
   }
 }

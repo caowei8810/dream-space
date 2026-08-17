@@ -11,7 +11,7 @@
 | 阶段 A2：可运行工程骨架 | 已完成 | 四个应用、本机依赖、完整检查和 PR CI 均通过    |
 | 阶段 B：用户端 MVP      | 已完成 | B1-B5、完整栈 smoke、浏览器 E2E 和远端 CI 通过 |
 | 阶段 C：真实生成能力    | 进行中 | C1-C2、C3a、C4a 已完成；C4b 为低优先级运维能力 |
-| 阶段 D：运营与上线      | 未开始 | 先推进 ADM-0 至 ADM-4，再进入 D1-D6 上线门禁   |
+| 阶段 D：运营与上线      | 未开始 | Phase 2 的 P2-0 至 P2-8，再进入 D1-D6 上线门禁 |
 
 每个阶段的目标、验收条件和完成评估见 [开发阶段计划](docs/development-plan.md)。
 
@@ -119,7 +119,7 @@ pnpm check
 pnpm auth:smoke
 ```
 
-管理端、API 和 PostgreSQL 启动后，可验证管理员独立会话、普通用户隔离、任务查询、灵感 CRUD/发布可见性、只读角色 403 和退出：
+管理端、API 和 PostgreSQL 启动后，可验证管理员独立会话、普通用户隔离、任务查询、用户生成灵感发布可见性、只读角色 403 和退出；现有灵感写接口属于历史 MVP，Phase 2 将收紧为用户生成结果精选发布：
 
 ```bash
 pnpm admin:smoke
@@ -155,6 +155,7 @@ python3 -m http.server 8080 -d prototype
 - [管理端功能架构](docs/admin-console-architecture.md)：管理端信息架构、API 边界和 ADM 阶段路线
 - [项目目录规划](docs/project-structure.md)：应用、共享包及内部目录职责
 - [阶段 1 文档索引](docs/phase-1/README.md)：产品和设计交付物
+- [Phase 2 商用平台文档索引](docs/phase-2/README.md)：管理后台、审核、风控、计费、套餐和运营需求
 - [产品需求](docs/phase-1/01-product-requirements.md)
 - [信息架构与用户流程](docs/phase-1/02-information-architecture-and-user-flows.md)
 - [页面与组件清单](docs/phase-1/03-page-and-component-inventory.md)
