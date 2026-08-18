@@ -44,6 +44,7 @@ import { Observable } from "rxjs";
 import { GenerationQueue } from "./generation.queue";
 import { GenerationRepository } from "./generation.repository";
 import { UploadsService } from "../uploads/uploads.service";
+import { RiskService } from "../risk/risk.service";
 
 const allowedReferenceUrl = /^(https?:\/\/|\/)/;
 
@@ -57,6 +58,7 @@ export class GenerationService {
     @Inject(GenerationRepository) private readonly repository: GenerationRepository,
     @Inject(GenerationQueue) private readonly queue: GenerationQueue,
     @Inject(UploadsService) private readonly uploads: UploadsService,
+    @Inject(RiskService) private readonly risk: RiskService,
   ) {}
 
   async createTask(
@@ -64,6 +66,7 @@ export class GenerationService {
     rawInput: CreateGenerationTaskRequest,
   ): Promise<CreateGenerationTaskResponse> {
     const input = this.validateCreateInput(rawInput);
+    await this.risk.inspectPrompt(userId, input.prompt, `generation:${input.idempotencyKey}`);
     await this.uploads.assertOwnedReferenceUrls(userId, input.referenceImageUrls);
     const unitCost = calculateGenerationCost(1, input.resolution);
     const totalCost = calculateGenerationCost(input.imageCount, input.resolution);

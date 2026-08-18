@@ -1218,6 +1218,67 @@ button:disabled {
   }
 }
 
+.admin-form-full {
+  grid-column: 1 / -1;
+}
+
+.admin-risk-pattern {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-risk-note {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin-top: 16px;
+  color: var(--admin-muted);
+  font-size: 12px;
+}
+
+.admin-risk-note svg {
+  width: 16px;
+  flex: 0 0 auto;
+  color: var(--admin-warning);
+}
+
+.admin-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgb(16 24 28 / 38%);
+}
+
+.admin-modal {
+  width: min(640px, 100%);
+  max-height: min(760px, 92vh);
+  overflow: auto;
+  padding: 24px;
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  background: var(--admin-surface);
+  box-shadow: 0 20px 60px rgb(16 24 28 / 22%);
+}
+
+.admin-modal-header,
+.admin-modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-modal-actions {
+  grid-column: 1 / -1;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
 /* Inspiration management */
 .admin-page-header-actions,
 .admin-editor-actions {
