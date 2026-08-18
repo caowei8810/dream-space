@@ -4,6 +4,7 @@ import {
   Images,
   LayoutDashboard,
   ShieldCheck,
+  ShieldAlert,
   UserRound,
   UserRoundCog,
   type LucideIcon,
@@ -38,6 +39,13 @@ export const adminNavigationItems: readonly AdminNavigationItem[] = [
     section: "业务运营",
     permission: "tasks:read",
     icon: ClipboardList,
+  },
+  {
+    href: "/risk",
+    label: "提示词风控",
+    section: "业务运营",
+    permission: "risk-rules:read",
+    icon: ShieldAlert,
   },
   {
     href: "/inspirations",

@@ -84,6 +84,76 @@ export interface AdminUserStatusInput {
   reason: string;
 }
 
+export const riskRuleMatchTypes = ["keyword", "regex"] as const;
+export type RiskRuleMatchType = (typeof riskRuleMatchTypes)[number];
+export const riskRuleStatuses = ["draft", "published", "archived"] as const;
+export type RiskRuleStatus = (typeof riskRuleStatuses)[number];
+export const riskActions = ["reject", "restrict", "ban", "manual_review"] as const;
+export type RiskAction = (typeof riskActions)[number];
+export const riskHitStatuses = ["open", "resolved", "ignored"] as const;
+export type RiskHitStatus = (typeof riskHitStatuses)[number];
+
+export interface AdminRiskRuleRecord {
+  id: string;
+  code: string;
+  version: number;
+  name: string;
+  matchType: RiskRuleMatchType;
+  pattern: string;
+  category: string;
+  action: RiskAction;
+  priority: number;
+  status: RiskRuleStatus;
+  enabled: boolean;
+  startsAt: string | null;
+  endsAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  hitCount: number;
+}
+
+export interface AdminRiskRuleListResponse {
+  items: AdminRiskRuleRecord[];
+  total: number;
+}
+
+export interface AdminRiskRuleCreateInput {
+  code: string;
+  name: string;
+  matchType: RiskRuleMatchType;
+  pattern: string;
+  category: string;
+  action: RiskAction;
+  priority?: number;
+  startsAt?: string | null;
+  endsAt?: string | null;
+  reason: string;
+}
+
+export interface AdminRiskRuleActionInput {
+  reason: string;
+}
+
+export interface AdminRiskHitRecord {
+  id: string;
+  userId: string;
+  taskId: string | null;
+  ruleId: string | null;
+  ruleVersion: number | null;
+  action: RiskAction;
+  status: RiskHitStatus;
+  decision: string;
+  inputLength: number;
+  requestId: string;
+  createdAt: string;
+  resolvedAt: string | null;
+}
+
+export interface AdminRiskHitListResponse {
+  items: AdminRiskHitRecord[];
+  total: number;
+}
+
 export type AuthSessionResponse =
   { authenticated: false } | { authenticated: true; user: AuthUser };
 
@@ -145,6 +215,9 @@ export const adminPermissions = [
   "roles:read",
   "roles:write",
   "permissions:read",
+  "risk-rules:read",
+  "risk-rules:write",
+  "risk-rules:publish",
 ] as const;
 export type AdminPermission = (typeof adminPermissions)[number];
 

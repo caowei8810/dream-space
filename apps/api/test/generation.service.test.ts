@@ -6,6 +6,7 @@ import type { GenerationQueue } from "../src/modules/generation/generation.queue
 import type { GenerationRepository } from "../src/modules/generation/generation.repository";
 import { GenerationService } from "../src/modules/generation/generation.service";
 import type { UploadsService } from "../src/modules/uploads/uploads.service";
+import type { RiskService } from "../src/modules/risk/risk.service";
 
 const input: CreateGenerationTaskRequest = {
   idempotencyKey: "request-12345678",
@@ -84,7 +85,8 @@ function createService() {
   const uploads = {
     assertOwnedReferenceUrls: vi.fn().mockResolvedValue(undefined),
   } as unknown as UploadsService;
-  return { queue, repository, uploads, service: new GenerationService(repository, queue, uploads) };
+  const risk = { inspectPrompt: vi.fn().mockResolvedValue(undefined) } as unknown as RiskService;
+  return { queue, repository, uploads, risk, service: new GenerationService(repository, queue, uploads, risk) };
 }
 
 describe("GenerationService", () => {

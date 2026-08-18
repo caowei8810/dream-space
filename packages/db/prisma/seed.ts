@@ -35,6 +35,9 @@ async function main() {
       "roles:read": "查看角色与权限",
       "roles:write": "管理角色与权限",
       "permissions:read": "查看权限点",
+      "risk-rules:read": "查看提示词风控规则",
+      "risk-rules:write": "编辑提示词风控规则草稿",
+      "risk-rules:publish": "发布和下线提示词风控规则",
     };
     for (const code of adminPermissions) {
       await database.adminPermission.upsert({

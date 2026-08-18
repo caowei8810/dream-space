@@ -13,6 +13,10 @@ import type {
   AdminUserListResponse,
   AdminUserRecord,
   AdminUserStatusInput,
+  AdminRiskRuleCreateInput,
+  AdminRiskRuleActionInput,
+  AdminRiskRuleListResponse,
+  AdminRiskHitListResponse,
   AdminGenerationTaskDetail,
   AdminGenerationTaskListResponse,
   AdminQuotaReconciliationResponse,
@@ -152,6 +156,29 @@ export const adminApi = {
     }),
   revokeUserSessions: (id: string, input: AdminUserStatusInput) =>
     request<{ revokedSessionCount: number }>(`/admin/users/${id}/revoke-sessions`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  riskRules: () => request<AdminRiskRuleListResponse>("/admin/risk/rules"),
+  riskHits: (filters: { status?: string; page?: number; pageSize?: number } = {}) => {
+    const search = new URLSearchParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== "") search.set(key, String(value));
+    });
+    return request<AdminRiskHitListResponse>(`/admin/risk/hits?${search.toString()}`);
+  },
+  createRiskRule: (input: AdminRiskRuleCreateInput) =>
+    request<AdminRiskRuleListResponse["items"][number]>("/admin/risk/rules", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  publishRiskRule: (id: string, input: AdminRiskRuleActionInput) =>
+    request<AdminRiskRuleListResponse["items"][number]>(`/admin/risk/rules/${id}/publish`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  archiveRiskRule: (id: string, input: AdminRiskRuleActionInput) =>
+    request<AdminRiskRuleListResponse["items"][number]>(`/admin/risk/rules/${id}/archive`, {
       method: "POST",
       body: JSON.stringify(input),
     }),

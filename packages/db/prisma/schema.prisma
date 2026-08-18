@@ -84,6 +84,34 @@ enum UserStatus {
   BANNED
 }
 
+enum RiskRuleMatchType {
+  KEYWORD
+  REGEX
+}
+
+enum RiskRuleStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum RiskAction {
+  REJECT
+  RESTRICT
+  BAN
+  MANUAL_REVIEW
+}
+
+enum RiskHitStatus {
+  OPEN
+  RESOLVED
+  IGNORED
+}
+
+enum RiskSubjectType {
+  PROMPT
+}
+
 enum GenerationRatio {
   SMART      @map("smart")
   RATIO_21_9 @map("21:9")
@@ -155,6 +183,7 @@ model User {
   quotaLedgerEntries     QuotaLedgerEntry[]
   reconciliationFindings QuotaReconciliationFinding[]
   referenceUploads       ReferenceUpload[]
+  riskHits               RiskHit[]
 
   @@index([status, updatedAt])
   @@index([createdAt])
@@ -249,6 +278,56 @@ model AdminAuditLog {
   @@index([requestId])
 }
 
+model RiskRule {
+  id         String             @id @default(cuid())
+  code       String
+  version    Int                @default(1)
+  name       String
+  matchType  RiskRuleMatchType
+  pattern    String             @db.Text
+  category   String
+  action     RiskAction
+  priority   Int                @default(0)
+  status     RiskRuleStatus     @default(DRAFT)
+  enabled    Boolean            @default(false)
+  startsAt   DateTime?
+  endsAt     DateTime?
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+  hits       RiskHit[]
+
+  @@unique([code, version])
+  @@index([status, enabled, priority])
+  @@index([startsAt, endsAt])
+}
+
+model RiskHit {
+  id          String          @id @default(cuid())
+  userId      String
+  taskId      String?
+  ruleId      String?
+  ruleVersion Int?
+  subjectType RiskSubjectType
+  inputHash   String
+  inputLength Int
+  action      RiskAction
+  status      RiskHitStatus   @default(RESOLVED)
+  decision    String
+  requestId   String
+  metadata    Json?
+  createdAt   DateTime        @default(now())
+  resolvedAt  DateTime?
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task        GenerationTask? @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  rule        RiskRule?       @relation(fields: [ruleId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@unique([userId, requestId])
+  @@index([status, createdAt])
+  @@index([ruleId, createdAt])
+  @@index([taskId])
+}
+
 model AdminVerificationCode {
   id         String    @id
   phone      String
@@ -317,6 +396,7 @@ model GenerationTask {
   events                 GenerationTaskEvent[]
   quotaLedgerEntries     QuotaLedgerEntry[]
   deadLetter             GenerationDeadLetter?
+  riskHits               RiskHit[]
 
   @@unique([userId, idempotencyKey])
   @@index([sessionId, createdAt])

@@ -25,9 +25,12 @@ import { AdminPermissionGuard } from "./admin-permission.guard";
 import { AdminTasksController } from "./admin-tasks.controller";
 import { AdminTasksRepository } from "./admin-tasks.repository";
 import { AdminTasksService } from "./admin-tasks.service";
+import { AdminRiskController } from "./admin-risk.controller";
+import { AdminRiskService } from "./admin-risk.service";
+import { RiskModule } from "../risk/risk.module";
 
 @Module({
-  imports: [GenerationModule],
+  imports: [GenerationModule, RiskModule],
   controllers: [
     AdminAuthController,
     AdminDashboardController,
@@ -37,6 +40,7 @@ import { AdminTasksService } from "./admin-tasks.service";
     AdminInspirationsController,
     AdminInspirationCandidatesController,
     AdminTasksController,
+    AdminRiskController,
   ],
   providers: [
     AdminAuthRepository,
@@ -54,6 +58,7 @@ import { AdminTasksService } from "./admin-tasks.service";
     AdminInspirationsService,
     AdminTasksRepository,
     AdminTasksService,
+    AdminRiskService,
   ],
   exports: [AdminAuthService],
 })
