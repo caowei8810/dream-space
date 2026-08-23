@@ -35,9 +35,19 @@ async function main() {
       "roles:read": "查看角色与权限",
       "roles:write": "管理角色与权限",
       "permissions:read": "查看权限点",
+      "audit:read": "查看操作审计日志",
       "risk-rules:read": "查看提示词风控规则",
       "risk-rules:write": "编辑提示词风控规则草稿",
       "risk-rules:publish": "发布和下线提示词风控规则",
+      "moderation:read": "查看人工审核队列和申诉",
+      "moderation:write": "领取并处理人工审核和申诉",
+      "billing:read": "查看计费规则和钱包",
+      "billing:write": "编辑计费规则和钱包调整",
+      "billing:publish": "发布计费规则",
+      "plans:read": "查看套餐",
+      "plans:write": "编辑套餐",
+      "plans:publish": "发布套餐",
+      "refunds:create": "发起退款",
     };
     for (const code of adminPermissions) {
       await database.adminPermission.upsert({

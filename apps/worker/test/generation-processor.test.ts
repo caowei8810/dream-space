@@ -52,6 +52,7 @@ function createProcessor() {
   const store = {
     start: vi.fn().mockResolvedValue(task),
     recordModeration: vi.fn().mockResolvedValue("recorded"),
+    holdForReview: vi.fn().mockResolvedValue("reviewing"),
     succeed: vi.fn().mockResolvedValue("succeeded"),
     fail: vi.fn().mockResolvedValue("failed"),
   } as unknown as GenerationStore;
@@ -219,6 +220,26 @@ describe("GenerationProcessor", () => {
     );
   });
 
+  it("holds marked input for manual review without releasing reserved quota", async () => {
+    const { processor, provider, store } = createProcessor();
+    vi.mocked(store.start).mockResolvedValue({ ...task, prompt: "测试提示词 [mock-review-input]" });
+
+    await expect(processor.process({ taskId: task.id })).resolves.toEqual({ taskId: task.id, status: "reviewing" });
+    expect(provider.generate).not.toHaveBeenCalled();
+    expect(store.holdForReview).toHaveBeenCalledWith(task.id);
+    expect(store.fail).not.toHaveBeenCalled();
+  });
+
+  it("persists output objects as pending when output moderation requires review", async () => {
+    const { processor, provider, store, objects } = createProcessor();
+    vi.mocked(provider.generate).mockResolvedValue([{ index: 0, data: Buffer.concat([sourceImage, Buffer.from("MOCK_MODERATION_REVIEW_OUTPUT")]), mimeType: "image/webp" }]);
+
+    await expect(processor.process({ taskId: task.id })).resolves.toEqual({ taskId: task.id, status: "reviewing" });
+    expect(store.holdForReview).toHaveBeenCalledWith(task.id, expect.arrayContaining([expect.objectContaining({ moderationStatus: "pending" })]));
+    expect(objects.size).toBe(2);
+    expect(store.succeed).not.toHaveBeenCalled();
+  });
+
   it("rejects marked output before writing any object", async () => {
     const { processor, provider, store, storage, objects } = createProcessor();
     vi.mocked(provider.generate).mockResolvedValue([
@@ -260,7 +281,7 @@ describe("GenerationProcessor", () => {
   it("keeps mock results in one prompt-matched theme", async () => {
     const provider = new DeterministicMockProvider(
       0,
-      resolve(process.cwd(), "../../apps/web/public/inspiration"),
+      resolve(process.cwd(), "../web/public/inspiration"),
     );
     const results = await provider.generate({
       ...task,

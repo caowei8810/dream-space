@@ -5,6 +5,8 @@ import {
   LayoutDashboard,
   ShieldCheck,
   ShieldAlert,
+  Receipt,
+  FileClock,
   UserRound,
   UserRoundCog,
   type LucideIcon,
@@ -48,6 +50,20 @@ export const adminNavigationItems: readonly AdminNavigationItem[] = [
     icon: ShieldAlert,
   },
   {
+    href: "/moderation",
+    label: "人工审核",
+    section: "业务运营",
+    permission: "moderation:read",
+    icon: ShieldAlert,
+  },
+  {
+    href: "/billing",
+    label: "计费规则",
+    section: "业务运营",
+    permission: "billing:read",
+    icon: Receipt,
+  },
+  {
     href: "/inspirations",
     label: "灵感精选",
     section: "内容运营",
@@ -67,6 +83,13 @@ export const adminNavigationItems: readonly AdminNavigationItem[] = [
     section: "系统管理",
     permission: "roles:read",
     icon: ShieldCheck,
+  },
+  {
+    href: "/audit",
+    label: "操作审计",
+    section: "系统管理",
+    permission: "audit:read",
+    icon: FileClock,
   },
 ];
 

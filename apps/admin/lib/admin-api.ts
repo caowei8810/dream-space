@@ -17,12 +17,21 @@ import type {
   AdminRiskRuleActionInput,
   AdminRiskRuleListResponse,
   AdminRiskHitListResponse,
+  AdminModerationDecisionInput,
+  AdminBillingRuleCreateInput,
+  AdminBillingPromotionCreateInput,
+  AdminBillingRuleListResponse,
+  AdminPlanCreateInput,
+  AdminPlanListResponse,
+  AdminModerationReviewListResponse,
+  AdminModerationAppealListResponse,
   AdminGenerationTaskDetail,
   AdminGenerationTaskListResponse,
   AdminQuotaReconciliationResponse,
   AdminInspirationCandidateListResponse,
   AdminInspirationListResponse,
   AdminInspirationRecord,
+  AdminAuditLogListResponse,
   AdminLoginRequest,
   AdminSessionResponse,
   SendCodeRequest,
@@ -115,6 +124,11 @@ export const adminApi = {
   logout: () => request<void>("/admin/auth/logout", { method: "POST" }),
   dashboardSummary: () => request<AdminDashboardSummary>("/admin/dashboard/summary"),
   roles: () => request<AdminRoleListResponse>("/admin/roles"),
+  auditLogs: (filters: { action?: string; resourceType?: string; actor?: string; requestId?: string; page?: number; pageSize?: number } = {}) => {
+    const search = new URLSearchParams();
+    Object.entries(filters).forEach(([key, value]) => { if (value !== undefined && value !== "") search.set(key, String(value)); });
+    return request<AdminAuditLogListResponse>(`/admin/audit/logs?${search.toString()}`);
+  },
   role: (id: string) => request<AdminRoleRecord>(`/admin/roles/${id}`),
   createRole: (input: AdminRoleCreateInput) =>
     request<AdminRoleRecord>("/admin/roles", {
@@ -182,6 +196,23 @@ export const adminApi = {
       method: "POST",
       body: JSON.stringify(input),
     }),
+  moderationReviews: (filters: { status?: string; page?: number; pageSize?: number } = {}) => {
+    const search = new URLSearchParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== "") search.set(key, String(value));
+    });
+    return request<AdminModerationReviewListResponse>(`/admin/moderation/reviews?${search.toString()}`);
+  },
+  claimModerationReview: (id: string) =>
+    request(`/admin/moderation/reviews/${id}/claim`, { method: "POST" }),
+  decideModerationReview: (id: string, input: AdminModerationDecisionInput) =>
+    request(`/admin/moderation/reviews/${id}/decision`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  moderationAppeals: () => request<AdminModerationAppealListResponse>("/admin/moderation/appeals"),
+  decideModerationAppeal: (id: string, input: AdminModerationDecisionInput) =>
+    request(`/admin/moderation/appeals/${id}/decision`, { method: "POST", body: JSON.stringify(input) }),
   adminAccounts: (filters: AdminAccountFilters) => {
     const search = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => {
@@ -195,6 +226,13 @@ export const adminApi = {
       method: "POST",
       body: JSON.stringify(input),
     }),
+  billingRules: () => request<AdminBillingRuleListResponse>("/admin/billing/rules"),
+  createBillingRule: (input: AdminBillingRuleCreateInput) => request("/admin/billing/rules", { method: "POST", body: JSON.stringify(input) }),
+  publishBillingRule: (id: string, reason: string) => request(`/admin/billing/rules/${id}/publish`, { method: "POST", body: JSON.stringify({ reason }) }),
+  createBillingPromotion: (input: AdminBillingPromotionCreateInput) => request("/admin/billing/promotions", { method: "POST", body: JSON.stringify(input) }),
+  plans: () => request<AdminPlanListResponse>("/admin/billing/plans"),
+  createPlan: (input: AdminPlanCreateInput) => request("/admin/billing/plans", { method: "POST", body: JSON.stringify(input) }),
+  publishPlan: (id: string, reason: string) => request(`/admin/billing/plans/${id}/publish`, { method: "POST", body: JSON.stringify({ reason }) }),
   updateAdminAccount: (id: string, input: AdminAccountUpdateInput) =>
     request<AdminAccountRecord>(`/admin/admin-users/${id}`, {
       method: "PATCH",

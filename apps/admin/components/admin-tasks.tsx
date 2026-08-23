@@ -35,6 +35,7 @@ const emptyReconciliation: AdminQuotaReconciliationResponse = { items: [] };
 const statusLabels: Record<GenerationTaskStatus, string> = {
   queued: "排队中",
   generating: "生成中",
+  reviewing: "审核中",
   succeeded: "已完成",
   partially_succeeded: "部分完成",
   failed: "失败",

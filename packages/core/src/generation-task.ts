@@ -4,7 +4,8 @@ export type { GenerationTaskStatus } from "@dream-space/contracts";
 
 const allowedTransitions: Record<GenerationTaskStatus, readonly GenerationTaskStatus[]> = {
   queued: ["generating", "cancelled", "failed"],
-  generating: ["succeeded", "partially_succeeded", "failed", "cancelled"],
+  generating: ["reviewing", "succeeded", "partially_succeeded", "failed", "cancelled"],
+  reviewing: ["queued", "succeeded", "failed", "cancelled"],
   succeeded: [],
   partially_succeeded: [],
   failed: [],

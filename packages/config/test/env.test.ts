@@ -30,7 +30,7 @@ describe("environment configuration", () => {
   });
 
   it("accepts live mode only when explicitly configured", () => {
-    expect(parseApiEnv({ EXTERNAL_SERVICES_MODE: "live" }).EXTERNAL_SERVICES_MODE).toBe("live");
+    expect(parseApiEnv({ EXTERNAL_SERVICES_MODE: "live", PAYMENT_WEBHOOK_SECRET: "x".repeat(32) }).EXTERNAL_SERVICES_MODE).toBe("live");
     expect(() => parseApiEnv({ EXTERNAL_SERVICES_MODE: "invalid" })).toThrow();
   });
 
