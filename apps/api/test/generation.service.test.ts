@@ -7,6 +7,7 @@ import type { GenerationRepository } from "../src/modules/generation/generation.
 import { GenerationService } from "../src/modules/generation/generation.service";
 import type { UploadsService } from "../src/modules/uploads/uploads.service";
 import type { RiskService } from "../src/modules/risk/risk.service";
+import type { BillingService } from "../src/modules/billing/billing.service";
 
 const input: CreateGenerationTaskRequest = {
   idempotencyKey: "request-12345678",
@@ -108,6 +109,14 @@ describe("GenerationService", () => {
     );
     expect(queue.enqueue).toHaveBeenCalledWith(task.id);
     expect(repository.setQueueJobId).toHaveBeenCalledWith(task.id, task.id);
+  });
+
+  it("stores the server billing snapshot on a generated task", async () => {
+    const { queue, repository, uploads, risk } = createService();
+    const billing = { quote: vi.fn().mockResolvedValue({ promotionCode: "HALF", ruleVersion: 3, finalUnitCents: 5, finalTotalCents: 10 }) };
+    const service = new GenerationService(repository, queue, uploads, risk, billing as unknown as BillingService);
+    await service.createTask("user-1", { ...input, promotionCode: "half" });
+    expect(repository.createTask).toHaveBeenCalledWith(expect.objectContaining({ billingRuleVersion: 3, billingPromotionCode: "HALF", billingUnitCents: 5, billingTotalCents: 10 }));
   });
 
   it("returns API-driven generation options", () => {

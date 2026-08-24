@@ -2,6 +2,7 @@ import { canTransitionTask } from "@dream-space/core";
 import {
   decodeGenerationRatio,
   decodeGenerationResolution,
+  type Prisma,
   type DatabaseClient,
 } from "@dream-space/db";
 import type {
@@ -56,6 +57,8 @@ export class PrismaGenerationStore implements GenerationStore {
         resolution: decodeGenerationResolution(task.resolution),
         imageCount: task.imageCount,
         totalCost: task.totalCost,
+        entitlementReserved: task.entitlementReserved,
+        cashReservedCents: task.cashReservedCents,
         attempts: task.attempts + 1,
       };
     });
@@ -67,7 +70,7 @@ export class PrismaGenerationStore implements GenerationStore {
     decision: ModerationDecision,
   ): Promise<"recorded" | "ignored"> {
     return this.database.$transaction(async (transaction) => {
-      const status = decision.status.toUpperCase() as "APPROVED" | "REJECTED";
+      const status = decision.status === "review" ? "PENDING" : decision.status.toUpperCase() as "APPROVED" | "REJECTED";
       const changed = await transaction.generationTask.updateMany({
         where: { id: taskId, status: "GENERATING" },
         data:
@@ -76,6 +79,16 @@ export class PrismaGenerationStore implements GenerationStore {
             : { outputModerationStatus: status },
       });
       if (changed.count !== 1) return "ignored";
+      if (decision.status === "review") {
+        await transaction.moderationReview.create({
+          data: {
+            taskId,
+            stage: stage.toUpperCase() as "INPUT" | "OUTPUT",
+            reasonCode: decision.codes[0] ?? "MANUAL_REVIEW_REQUIRED",
+            reason: "自动审核标记为可疑，等待人工审核",
+          },
+        });
+      }
       await transaction.generationTaskEvent.create({
         data: {
           taskId,
@@ -85,6 +98,43 @@ export class PrismaGenerationStore implements GenerationStore {
         },
       });
       return "recorded";
+    });
+  }
+
+  async holdForReview(taskId: string, results: StoredGenerationResult[] = []): Promise<"reviewing" | "ignored"> {
+    return this.database.$transaction(async (transaction) => {
+      const changed = await transaction.generationTask.updateMany({
+        where: { id: taskId, status: "GENERATING" },
+        data: { status: "REVIEWING" },
+      });
+      if (changed.count !== 1) return "ignored";
+      if (results.length) {
+        await transaction.generationResult.createMany({
+          data: results.map((result) => ({
+            id: result.id,
+            taskId,
+            index: result.index,
+            imagePath: result.imagePath,
+            objectKey: result.objectKey,
+            thumbnailObjectKey: result.thumbnailObjectKey,
+            checksumSha256: result.checksumSha256,
+            width: result.width,
+            height: result.height,
+            mimeType: result.mimeType,
+            byteSize: result.byteSize,
+            thumbnailWidth: result.thumbnailWidth,
+            thumbnailHeight: result.thumbnailHeight,
+            thumbnailByteSize: result.thumbnailByteSize,
+            moderationStatus: "PENDING",
+            isAiGenerated: true,
+          })),
+          skipDuplicates: true,
+        });
+      }
+      await transaction.generationTaskEvent.create({
+        data: { taskId, type: "task.reviewing", status: "REVIEWING", payload: { resultCount: results.length } },
+      });
+      return "reviewing";
     });
   }
 
@@ -128,6 +178,7 @@ export class PrismaGenerationStore implements GenerationStore {
         where: { userId: task.userId },
         data: { reserved: { decrement: task.totalCost } },
       });
+      await this.settlePaidBilling(transaction, task, "consume");
       await Promise.all([
         transaction.quotaLedgerEntry.upsert({
           where: { idempotencyKey: "consume:" + task.id },
@@ -190,6 +241,7 @@ export class PrismaGenerationStore implements GenerationStore {
           reserved: { decrement: task.totalCost },
         },
       });
+      await this.settlePaidBilling(transaction, task, "release");
       if (options?.deadLetter) {
         await transaction.generationDeadLetter.upsert({
           where: { taskId },
@@ -235,5 +287,22 @@ export class PrismaGenerationStore implements GenerationStore {
       ]);
       return "failed";
     });
+  }
+
+  private async settlePaidBilling(transaction: Prisma.TransactionClient, task: { id: string; userId: string; cashReservedCents: number; entitlementReserved: number }, mode: "release" | "consume") {
+    if (task.cashReservedCents > 0) {
+      const changed = await transaction.cashAccount.updateMany({ where: { userId: task.userId, reserved: { gte: task.cashReservedCents } }, data: mode === "release" ? { reserved: { decrement: task.cashReservedCents }, available: { increment: task.cashReservedCents } } : { reserved: { decrement: task.cashReservedCents } } });
+      if (changed.count !== 1) throw new Error("CASH_SETTLEMENT_STATE_INVALID");
+      const account = await transaction.cashAccount.findUniqueOrThrow({ where: { userId: task.userId } });
+      await transaction.cashLedgerEntry.upsert({ where: { idempotencyKey: `task-cash-${mode}:${task.id}` }, create: { userId: task.userId, taskId: task.id, type: mode === "release" ? "RELEASE" : "CONSUME", amount: task.cashReservedCents, balanceAfter: account.available, idempotencyKey: `task-cash-${mode}:${task.id}` }, update: {} });
+    }
+    if (!transaction.entitlementLedgerEntry) return;
+    const entries = await transaction.entitlementLedgerEntry.findMany({ where: { taskId: task.id, type: "RESERVE" } });
+    for (const entry of entries) {
+      const changed = await transaction.userEntitlement.updateMany({ where: { id: entry.entitlementId, reserved: { gte: entry.amount } }, data: mode === "release" ? { reserved: { decrement: entry.amount }, available: { increment: entry.amount } } : { reserved: { decrement: entry.amount } } });
+      if (changed.count !== 1) throw new Error("ENTITLEMENT_SETTLEMENT_STATE_INVALID");
+      const next = await transaction.userEntitlement.findUniqueOrThrow({ where: { id: entry.entitlementId } });
+      await transaction.entitlementLedgerEntry.upsert({ where: { idempotencyKey: `task-entitlement-${mode}:${task.id}:${entry.entitlementId}` }, create: { userId: task.userId, entitlementId: entry.entitlementId, taskId: task.id, type: mode === "release" ? "RELEASE" : "CONSUME", amount: entry.amount, balanceAfter: next.available, idempotencyKey: `task-entitlement-${mode}:${task.id}:${entry.entitlementId}` }, update: {} });
+    }
   }
 }

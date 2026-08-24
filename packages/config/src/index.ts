@@ -39,6 +39,15 @@ function requireObjectStorageCredentials(
   }
 }
 
+function requireLivePaymentSecret(
+  value: { NODE_ENV: "development" | "test" | "production"; EXTERNAL_SERVICES_MODE: "mock" | "live"; PAYMENT_WEBHOOK_SECRET: string },
+  context: z.RefinementCtx,
+) {
+  if (value.NODE_ENV === "production" && value.EXTERNAL_SERVICES_MODE === "live" && value.PAYMENT_WEBHOOK_SECRET.length < 32) {
+    context.addIssue({ code: "custom", path: ["PAYMENT_WEBHOOK_SECRET"], message: "A 32-character payment webhook secret is required in live mode" });
+  }
+}
+
 const apiEnvSchema = z
   .object({
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
@@ -46,14 +55,18 @@ const apiEnvSchema = z
     WEB_ORIGIN: z.url().default("http://localhost:3000"),
     ADMIN_ORIGIN: z.url().default("http://localhost:3001"),
     API_PUBLIC_URL: z.url().default("http://localhost:4000"),
+    RATE_LIMIT_WINDOW_SECONDS: z.coerce.number().int().min(1).max(3600).default(60),
+    RATE_LIMIT_MAX_REQUESTS: z.coerce.number().int().min(1).max(100_000).default(120),
     AUTH_CODE_TTL_SECONDS: z.coerce.number().int().min(60).max(900).default(300),
     AUTH_SESSION_DAYS: z.coerce.number().int().min(1).max(90).default(30),
     REDIS_URL: z.url().default("redis://localhost:6379"),
     ...objectStorageEnv,
     OBJECT_STORAGE_MODE: objectStorageMode,
     EXTERNAL_SERVICES_MODE: externalServicesMode,
+    PAYMENT_WEBHOOK_SECRET: z.string().default(""),
   })
-  .superRefine(requireObjectStorageCredentials);
+  .superRefine(requireObjectStorageCredentials)
+  .superRefine(requireLivePaymentSecret);
 
 const workerEnvSchema = z
   .object({

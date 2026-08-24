@@ -30,6 +30,7 @@ enum InspirationSourceType {
 enum GenerationTaskStatus {
   QUEUED
   GENERATING
+  REVIEWING
   SUCCEEDED
   PARTIALLY_SUCCEEDED
   FAILED
@@ -135,6 +136,89 @@ enum ModerationStatus {
   REJECTED
 }
 
+enum ModerationReviewStatus {
+  OPEN
+  CLAIMED
+  APPROVED
+  REJECTED
+}
+
+enum ModerationReviewStage {
+  INPUT
+  OUTPUT
+}
+
+enum AppealStatus {
+  OPEN
+  ACCEPTED
+  REJECTED
+}
+
+enum BillingRuleStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum BillingPromotionStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum CashLedgerType {
+  GRANT
+  RESERVE
+  CONSUME
+  RELEASE
+  REFUND
+  ADJUSTMENT
+}
+
+enum PlanStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum PaymentEventStatus {
+  RECEIVED
+  PROCESSED
+  IGNORED
+  FAILED
+}
+
+enum EntitlementStatus {
+  ACTIVE
+  EXPIRED
+  EXHAUSTED
+  REFUNDED
+}
+
+enum EntitlementLedgerType {
+  GRANT
+  RESERVE
+  CONSUME
+  RELEASE
+  EXPIRE
+  REFUND
+  ADJUSTMENT
+}
+
+enum RefundStatus {
+  REQUESTED
+  COMPLETED
+  FAILED
+}
+
 model Inspiration {
   id                String                @id @default(cuid())
   slug              String                @unique
@@ -180,13 +264,177 @@ model User {
   generationSessions     GenerationSession[]
   generationTasks        GenerationTask[]
   quotaAccount           QuotaAccount?
+  cashAccount            CashAccount?
   quotaLedgerEntries     QuotaLedgerEntry[]
+  cashLedgerEntries      CashLedgerEntry[] @relation("CashLedgerOwner")
   reconciliationFindings QuotaReconciliationFinding[]
   referenceUploads       ReferenceUpload[]
   riskHits               RiskHit[]
+  appeals                ModerationAppeal[]
+  orders                 BillingOrder[]
+  entitlements           UserEntitlement[]
+  entitlementLedger      EntitlementLedgerEntry[]
 
   @@index([status, updatedAt])
   @@index([createdAt])
+}
+
+model BillingRule {
+  id              String           @id @default(cuid())
+  version         Int              @unique
+  standardUnitCents Int
+  currency        String           @default("CNY")
+  status          BillingRuleStatus @default(DRAFT)
+  publishedAt     DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  promotions      BillingPromotion[]
+
+  @@index([status, publishedAt])
+}
+
+model BillingPromotion {
+  id            String                  @id @default(cuid())
+  code          String                  @unique
+  name          String
+  discountBps   Int
+  priority      Int                     @default(0)
+  stacking      Boolean                 @default(false)
+  startsAt      DateTime
+  endsAt        DateTime?
+  status        BillingPromotionStatus  @default(DRAFT)
+  ruleVersion   Int
+  rule          BillingRule             @relation(fields: [ruleVersion], references: [version], onDelete: Restrict)
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+
+  @@index([status, startsAt, endsAt, priority])
+  @@index([ruleVersion])
+}
+
+model Plan {
+  id          String       @id @default(cuid())
+  code        String       @unique
+  name        String
+  description String
+  status      PlanStatus   @default(DRAFT)
+  sortOrder   Int          @default(0)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  versions    PlanVersion[]
+
+  @@index([status, sortOrder])
+}
+
+model PlanVersion {
+  id                  String       @id @default(cuid())
+  planId              String
+  version             Int
+  priceCents          Int
+  imageCount          Int
+  validDays           Int
+  modelAllowlist      Json?
+  resolutionAllowlist Json?
+  dailyLimit          Int?
+  concurrencyLimit    Int?
+  createdAt           DateTime     @default(now())
+  plan                Plan         @relation(fields: [planId], references: [id], onDelete: Cascade)
+  orders              BillingOrder[]
+  entitlements        UserEntitlement[]
+
+  @@unique([planId, version])
+  @@index([planId, createdAt])
+}
+
+model BillingOrder {
+  id                String          @id @default(cuid())
+  userId            String
+  planVersionId     String
+  status            OrderStatus     @default(PENDING)
+  amountCents       Int
+  refundedCents     Int             @default(0)
+  idempotencyKey    String          @unique
+  providerOrderId   String?         @unique
+  paidAt            DateTime?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  user              User            @relation(fields: [userId], references: [id], onDelete: Restrict)
+  planVersion       PlanVersion     @relation(fields: [planVersionId], references: [id], onDelete: Restrict)
+  paymentEvents     PaymentEvent[]
+  entitlement       UserEntitlement?
+  refunds           Refund[]
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+}
+
+model PaymentEvent {
+  id              String             @id @default(cuid())
+  provider        String
+  providerEventId String
+  orderId         String?
+  status          PaymentEventStatus @default(RECEIVED)
+  payload         Json
+  errorMessage    String?
+  createdAt       DateTime           @default(now())
+  processedAt     DateTime?
+  order           BillingOrder?      @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@unique([provider, providerEventId])
+  @@index([orderId, createdAt])
+}
+
+model UserEntitlement {
+  id             String                   @id @default(cuid())
+  userId         String
+  planVersionId  String
+  orderId        String?                  @unique
+  available      Int
+  reserved       Int                    @default(0)
+  expiresAt      DateTime
+  status         EntitlementStatus       @default(ACTIVE)
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  user           User                   @relation(fields: [userId], references: [id], onDelete: Restrict)
+  planVersion    PlanVersion            @relation(fields: [planVersionId], references: [id], onDelete: Restrict)
+  order          BillingOrder?          @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  ledger         EntitlementLedgerEntry[]
+
+  @@index([userId, status, expiresAt])
+}
+
+model EntitlementLedgerEntry {
+  id             String                @id @default(cuid())
+  userId         String
+  entitlementId  String
+  taskId         String?
+  type           EntitlementLedgerType
+  amount         Int
+  balanceAfter   Int
+  idempotencyKey String                @unique
+  metadata       Json?
+  createdAt      DateTime              @default(now())
+  user           User                  @relation(fields: [userId], references: [id], onDelete: Restrict)
+  entitlement    UserEntitlement      @relation(fields: [entitlementId], references: [id], onDelete: Restrict)
+  task           GenerationTask?      @relation(fields: [taskId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([entitlementId, createdAt])
+  @@index([taskId, type])
+}
+
+model Refund {
+  id             String       @id @default(cuid())
+  orderId        String
+  amountCents    Int
+  status         RefundStatus @default(REQUESTED)
+  idempotencyKey String       @unique
+  reason         String
+  createdAt      DateTime     @default(now())
+  completedAt    DateTime?
+  order          BillingOrder @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@index([orderId, createdAt])
 }
 
 model AdminUser {
@@ -203,6 +451,8 @@ model AdminUser {
   sessions        AdminSession[]
   roles           AdminUserRole[]
   auditEvents     AdminAuditLog[]  @relation("AdminAuditActor")
+  claimedReviews  ModerationReview[] @relation("ModerationReviewAssignee")
+  decidedAppeals  ModerationAppeal[] @relation("ModerationAppealDecider")
 
   @@index([status, updatedAt])
   @@index([displayName])
@@ -378,6 +628,12 @@ model GenerationTask {
   referenceImageUrls     Json
   unitCost               Int
   totalCost              Int
+  billingRuleVersion     Int?
+  billingPromotionCode   String?
+  billingUnitCents       Int?
+  billingTotalCents      Int?
+  entitlementReserved    Int                 @default(0)
+  cashReservedCents      Int                 @default(0)
   idempotencyKey         String
   queueJobId             String?
   attempts               Int                   @default(0)
@@ -395,8 +651,12 @@ model GenerationTask {
   results                GenerationResult[]
   events                 GenerationTaskEvent[]
   quotaLedgerEntries     QuotaLedgerEntry[]
+  cashLedgerEntries      CashLedgerEntry[]
+  entitlementLedger     EntitlementLedgerEntry[]
   deadLetter             GenerationDeadLetter?
   riskHits               RiskHit[]
+  moderationReviews      ModerationReview[]
+  appeals                ModerationAppeal[]
 
   @@unique([userId, idempotencyKey])
   @@index([sessionId, createdAt])
@@ -437,9 +697,59 @@ model GenerationResult {
   createdAt          DateTime         @default(now())
   task               GenerationTask   @relation(fields: [taskId], references: [id], onDelete: Cascade)
   inspiration        Inspiration?
+  moderationReviews  ModerationReview[]
+  appeals            ModerationAppeal[]
 
   @@unique([taskId, index])
   @@index([taskId])
+}
+
+model ModerationReview {
+  id            String                 @id @default(cuid())
+  taskId        String?
+  resultId      String?
+  stage         ModerationReviewStage
+  status        ModerationReviewStatus  @default(OPEN)
+  reasonCode    String
+  reason        String?
+  assignedToId  String?
+  claimedAt     DateTime?
+  decision      String?
+  decisionNote  String?
+  decidedAt     DateTime?
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+  task          GenerationTask?        @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  result        GenerationResult?      @relation(fields: [resultId], references: [id], onDelete: Cascade)
+  assignedTo    AdminUser?             @relation("ModerationReviewAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([assignedToId, status])
+  @@index([taskId, stage])
+  @@index([resultId, stage])
+}
+
+model ModerationAppeal {
+  id            String        @id @default(cuid())
+  userId        String
+  taskId        String?
+  resultId      String?
+  reason        String        @db.Text
+  status        AppealStatus  @default(OPEN)
+  decisionNote  String?
+  decidedById   String?
+  decidedAt     DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task          GenerationTask? @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  result        GenerationResult? @relation(fields: [resultId], references: [id], onDelete: Cascade)
+  decidedBy     AdminUser?    @relation("ModerationAppealDecider", fields: [decidedById], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
+  @@index([taskId])
+  @@index([resultId])
 }
 
 model ReferenceUpload {
@@ -480,6 +790,36 @@ model QuotaAccount {
   updatedAt              DateTime                     @updatedAt
   user                   User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
   reconciliationFindings QuotaReconciliationFinding[]
+}
+
+model CashAccount {
+  userId    String            @id
+  available Int               @default(0)
+  reserved  Int               @default(0)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entries   CashLedgerEntry[] @relation("CashAccountEntries")
+
+  @@index([available, reserved])
+}
+
+model CashLedgerEntry {
+  id             String          @id @default(cuid())
+  userId         String
+  taskId         String?
+  type           CashLedgerType
+  amount         Int
+  balanceAfter   Int
+  idempotencyKey String          @unique
+  metadata       Json?
+  createdAt      DateTime        @default(now())
+  account        CashAccount     @relation("CashAccountEntries", fields: [userId], references: [userId], onDelete: Cascade, map: "CashLedgerEntry_account_fkey")
+  user           User            @relation("CashLedgerOwner", fields: [userId], references: [id], onDelete: Cascade, map: "CashLedgerEntry_user_fkey")
+  task           GenerationTask? @relation(fields: [taskId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([taskId, type])
 }
 
 model QuotaLedgerEntry {

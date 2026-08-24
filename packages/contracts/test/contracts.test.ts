@@ -32,6 +32,7 @@ describe("service contracts", () => {
     expect(generationTaskStatuses).toEqual([
       "queued",
       "generating",
+      "reviewing",
       "succeeded",
       "partially_succeeded",
       "failed",

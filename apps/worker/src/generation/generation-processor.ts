@@ -26,6 +26,8 @@ export interface GenerationTaskSnapshot {
   resolution: GenerationResolution;
   imageCount: number;
   totalCost: number;
+  entitlementReserved?: number;
+  cashReservedCents?: number;
   attempts: number;
 }
 
@@ -56,7 +58,7 @@ export interface StoredGenerationResult {
   thumbnailWidth: number;
   thumbnailHeight: number;
   thumbnailByteSize: number;
-  moderationStatus: "approved";
+  moderationStatus: "approved" | "pending";
 }
 
 export interface GenerationStore {
@@ -66,6 +68,7 @@ export interface GenerationStore {
     stage: ModerationStage,
     decision: ModerationDecision,
   ): Promise<"recorded" | "ignored">;
+  holdForReview(taskId: string, results?: StoredGenerationResult[]): Promise<"reviewing" | "ignored">;
   succeed(taskId: string, results: StoredGenerationResult[]): Promise<"succeeded" | "ignored">;
   fail(
     taskId: string,
@@ -248,13 +251,13 @@ export class DeterministicMockProvider implements GenerationProvider {
 export class GenerationOutputPipeline {
   constructor(private readonly storage: ObjectStorage) {}
 
-  async persist(task: GenerationTaskSnapshot, images: ProviderImage[]) {
+  async persist(task: GenerationTaskSnapshot, images: ProviderImage[], moderationStatus: "approved" | "pending" = "approved") {
     if (images.length !== task.imageCount) {
       throw new Error(`provider returned ${images.length} images for requested ${task.imageCount}`);
     }
     const stored: StoredGenerationResult[] = [];
     try {
-      for (const image of images) stored.push(await this.persistOne(task, image));
+      for (const image of images) stored.push(await this.persistOne(task, image, moderationStatus));
       return stored;
     } catch (error) {
       await this.cleanup(stored);
@@ -271,7 +274,7 @@ export class GenerationOutputPipeline {
     );
   }
 
-  private async persistOne(task: GenerationTaskSnapshot, image: ProviderImage) {
+  private async persistOne(task: GenerationTaskSnapshot, image: ProviderImage, moderationStatus: "approved" | "pending") {
     const { width, height } = resolveOutputDimensions(task.ratio, task.resolution);
     const resultId = randomUUID();
     const objectKey = `results/${task.id}/${resultId}.webp`;
@@ -308,7 +311,7 @@ export class GenerationOutputPipeline {
       thumbnailWidth: thumbnail.info.width,
       thumbnailHeight: thumbnail.info.height,
       thumbnailByteSize: thumbnail.data.byteLength,
-      moderationStatus: "approved" as const,
+      moderationStatus,
     };
   }
 }
@@ -339,6 +342,9 @@ export class GenerationProcessor {
     try {
       const inputDecision = await this.moderator.moderateInput(task);
       await this.store.recordModeration(task.id, "input", inputDecision);
+      if (inputDecision.status === "review") {
+        return { taskId: task.id, status: await this.store.holdForReview(task.id) };
+      }
       if (inputDecision.status === "rejected") {
         return {
           taskId: task.id,
@@ -355,11 +361,17 @@ export class GenerationProcessor {
         images.map((image) => this.moderator.moderateOutput(task, image)),
       );
       const rejectedOutput = outputDecisions.find((decision) => decision.status === "rejected");
-      const outputDecision: ModerationDecision = rejectedOutput ?? {
+      const outputDecision: ModerationDecision = rejectedOutput ?? outputDecisions.find((decision) => decision.status === "review") ?? {
         status: "approved",
         codes: [],
       };
       await this.store.recordModeration(task.id, "output", outputDecision);
+      if (outputDecision.status === "review") {
+        stored = await this.output.persist(task, images, "pending");
+        const status = await this.store.holdForReview(task.id, stored);
+        if (status === "ignored") await this.output.cleanup(stored);
+        return { taskId: task.id, status };
+      }
       if (rejectedOutput) {
         return {
           taskId: task.id,

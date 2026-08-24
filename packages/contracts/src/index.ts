@@ -154,6 +154,65 @@ export interface AdminRiskHitListResponse {
   total: number;
 }
 
+export const moderationReviewStatuses = ["open", "claimed", "approved", "rejected"] as const;
+export type ModerationReviewStatus = (typeof moderationReviewStatuses)[number];
+export const moderationReviewStages = ["input", "output"] as const;
+export type ModerationReviewStage = (typeof moderationReviewStages)[number];
+export const appealStatuses = ["open", "accepted", "rejected"] as const;
+export type AppealStatus = (typeof appealStatuses)[number];
+
+export interface AdminModerationReviewRecord {
+  id: string;
+  taskId: string | null;
+  resultId: string | null;
+  stage: ModerationReviewStage;
+  status: ModerationReviewStatus;
+  reasonCode: string;
+  reason: string | null;
+  assignedToId: string | null;
+  assignedToName: string | null;
+  decision: string | null;
+  decisionNote: string | null;
+  createdAt: string;
+  claimedAt: string | null;
+  decidedAt: string | null;
+}
+
+export interface AdminModerationReviewListResponse {
+  items: AdminModerationReviewRecord[];
+  total: number;
+  page: number;
+  pageSize: number;
+  pageCount: number;
+}
+
+export interface AdminModerationDecisionInput {
+  decision: "approved" | "rejected";
+  note: string;
+}
+
+export interface AppealCreateInput {
+  taskId?: string;
+  resultId?: string;
+  reason: string;
+}
+
+export interface AppealRecord {
+  id: string;
+  taskId: string | null;
+  resultId: string | null;
+  reason: string;
+  status: AppealStatus;
+  decisionNote: string | null;
+  createdAt: string;
+  decidedAt: string | null;
+}
+
+export interface AdminModerationAppealListResponse {
+  items: AppealRecord[];
+  total: number;
+}
+
 export type AuthSessionResponse =
   { authenticated: false } | { authenticated: true; user: AuthUser };
 
@@ -215,11 +274,41 @@ export const adminPermissions = [
   "roles:read",
   "roles:write",
   "permissions:read",
+  "audit:read",
   "risk-rules:read",
   "risk-rules:write",
   "risk-rules:publish",
+  "moderation:read",
+  "moderation:write",
+  "billing:read",
+  "billing:write",
+  "billing:publish",
+  "plans:read",
+  "plans:write",
+  "plans:publish",
+  "refunds:create",
 ] as const;
 export type AdminPermission = (typeof adminPermissions)[number];
+
+export interface AdminAuditLogRecord {
+  id: string;
+  actor: { displayName: string; employeeNo: string } | null;
+  action: string;
+  resourceType: string;
+  resourceId: string;
+  reason: string;
+  requestId: string;
+  before: unknown;
+  after: unknown;
+  createdAt: string;
+}
+
+export interface AdminAuditLogListResponse {
+  items: AdminAuditLogRecord[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
 
 export interface AdminDashboardSummary {
   window: { from: string; to: string; timezone: "Asia/Shanghai" };
@@ -370,6 +459,7 @@ export const generationQueueName = "image-generation" as const;
 export const generationTaskStatuses = [
   "queued",
   "generating",
+  "reviewing",
   "succeeded",
   "partially_succeeded",
   "failed",
@@ -406,6 +496,7 @@ export interface CreateGenerationTaskRequest {
   resolution: GenerationResolution;
   imageCount: number;
   referenceImageUrls: string[];
+  promotionCode?: string;
 }
 
 export interface GenerationModelOption {
@@ -460,6 +551,10 @@ export interface GenerationTaskResponse {
   referenceImageUrls: string[];
   unitCost: number;
   totalCost: number;
+  billingRuleVersion: number | null;
+  billingPromotionCode: string | null;
+  billingUnitCents: number | null;
+  billingTotalCents: number | null;
   attempts: number;
   errorCode: string | null;
   errorMessage: string | null;
@@ -505,6 +600,156 @@ export interface QuotaResponse {
   remainingPercent: number;
 }
 
+export interface BillingQuoteRequest {
+  imageCount: number;
+  promotionCode?: string;
+}
+
+export interface BillingQuoteResponse {
+  imageCount: number;
+  standardUnitCents: number;
+  standardTotalCents: number;
+  discountCents: number;
+  finalUnitCents: number;
+  finalTotalCents: number;
+  promotionCode: string | null;
+  currency: "CNY";
+  ruleVersion: number;
+}
+
+export interface CashWalletResponse {
+  currency: "CNY";
+  availableCents: number;
+  reservedCents: number;
+}
+
+export interface AdminCashGrantInput {
+  amountCents: number;
+  reason: string;
+}
+
+export interface PlanRecord {
+  id: string;
+  code: string;
+  name: string;
+  description: string;
+  version: number;
+  priceCents: number;
+  imageCount: number;
+  validDays: number;
+  modelAllowlist: string[];
+  resolutionAllowlist: string[];
+  dailyLimit: number | null;
+  concurrencyLimit: number | null;
+}
+
+export interface PlanListResponse { items: PlanRecord[]; }
+
+export interface OrderCreateInput {
+  planVersionId: string;
+  idempotencyKey: string;
+}
+
+export interface OrderRecord {
+  id: string;
+  planVersionId: string;
+  planCode: string;
+  planName: string;
+  status: "pending" | "paid" | "failed" | "refunded" | "partially_refunded";
+  amountCents: number;
+  refundedCents: number;
+  createdAt: string;
+  paidAt: string | null;
+}
+
+export interface OrderListResponse { items: OrderRecord[]; }
+
+export interface PaymentCallbackInput {
+  provider: string;
+  providerEventId: string;
+  orderId: string;
+  paidAmountCents: number;
+  payload?: Record<string, unknown>;
+}
+
+export interface RefundCreateInput {
+  orderId: string;
+  amountCents: number;
+  reason: string;
+  idempotencyKey: string;
+}
+
+export interface EntitlementRecord {
+  id: string;
+  planVersionId: string;
+  available: number;
+  reserved: number;
+  expiresAt: string;
+  status: "active" | "expired" | "exhausted" | "refunded";
+}
+
+export interface AdminPlanCreateInput {
+  code: string;
+  name: string;
+  description: string;
+  priceCents: number;
+  imageCount: number;
+  validDays: number;
+  reason: string;
+}
+
+export interface AdminPlanRecord extends PlanRecord {
+  status: "draft" | "published" | "archived";
+}
+
+export interface AdminPlanListResponse { items: AdminPlanRecord[]; total: number; }
+
+export interface AdminBillingRuleRecord {
+  id: string;
+  version: number;
+  standardUnitCents: number;
+  currency: "CNY";
+  status: "draft" | "published" | "archived";
+  publishedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  promotions: AdminBillingPromotionRecord[];
+}
+
+export interface AdminBillingPromotionRecord {
+  id: string;
+  code: string;
+  name: string;
+  discountBps: number;
+  priority: number;
+  stacking: boolean;
+  startsAt: string;
+  endsAt: string | null;
+  status: "draft" | "published" | "archived";
+}
+
+export interface AdminBillingRuleListResponse {
+  items: AdminBillingRuleRecord[];
+  total: number;
+}
+
+export interface AdminBillingRuleCreateInput {
+  standardUnitCents: number;
+  reason: string;
+}
+
+export interface AdminBillingPromotionCreateInput {
+  ruleVersion: number;
+  code: string;
+  name: string;
+  discountBps: number;
+  priority?: number;
+  stacking?: boolean;
+  startsAt: string;
+  endsAt?: string | null;
+  reason: string;
+}
+
 export interface CreateGenerationTaskResponse {
   session: GenerationSessionSummary;
   task: GenerationTaskResponse;
@@ -524,6 +769,7 @@ export const generationEventTypes = [
   "task.retrying",
   "task.input.moderated",
   "task.output.moderated",
+  "task.reviewing",
   "task.succeeded",
   "task.partially_succeeded",
   "task.failed",

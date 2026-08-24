@@ -28,9 +28,14 @@ import { AdminTasksService } from "./admin-tasks.service";
 import { AdminRiskController } from "./admin-risk.controller";
 import { AdminRiskService } from "./admin-risk.service";
 import { RiskModule } from "../risk/risk.module";
+import { BillingModule } from "../billing/billing.module";
+import { AdminBillingController } from "../billing/admin-billing.controller";
+import { AdminAuditController } from "./admin-audit.controller";
+import { AdminAuditRepository } from "./admin-audit.repository";
+import { AdminAuditService } from "./admin-audit.service";
 
 @Module({
-  imports: [GenerationModule, RiskModule],
+  imports: [GenerationModule, RiskModule, BillingModule],
   controllers: [
     AdminAuthController,
     AdminDashboardController,
@@ -41,6 +46,8 @@ import { RiskModule } from "../risk/risk.module";
     AdminInspirationCandidatesController,
     AdminTasksController,
     AdminRiskController,
+    AdminBillingController,
+    AdminAuditController,
   ],
   providers: [
     AdminAuthRepository,
@@ -59,6 +66,8 @@ import { RiskModule } from "../risk/risk.module";
     AdminTasksRepository,
     AdminTasksService,
     AdminRiskService,
+    AdminAuditRepository,
+    AdminAuditService,
   ],
   exports: [AdminAuthService],
 })

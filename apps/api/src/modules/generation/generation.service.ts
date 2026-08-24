@@ -37,6 +37,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  Optional,
   ServiceUnavailableException,
   type MessageEvent,
 } from "@nestjs/common";
@@ -45,6 +46,7 @@ import { GenerationQueue } from "./generation.queue";
 import { GenerationRepository } from "./generation.repository";
 import { UploadsService } from "../uploads/uploads.service";
 import { RiskService } from "../risk/risk.service";
+import { BillingService } from "../billing/billing.service";
 
 const allowedReferenceUrl = /^(https?:\/\/|\/)/;
 
@@ -59,6 +61,7 @@ export class GenerationService {
     @Inject(GenerationQueue) private readonly queue: GenerationQueue,
     @Inject(UploadsService) private readonly uploads: UploadsService,
     @Inject(RiskService) private readonly risk: RiskService,
+    @Optional() @Inject(BillingService) private readonly billing?: BillingService,
   ) {}
 
   async createTask(
@@ -70,11 +73,16 @@ export class GenerationService {
     await this.uploads.assertOwnedReferenceUrls(userId, input.referenceImageUrls);
     const unitCost = calculateGenerationCost(1, input.resolution);
     const totalCost = calculateGenerationCost(input.imageCount, input.resolution);
+    const quote = this.billing ? await this.billing.quote({ imageCount: input.imageCount, promotionCode: input.promotionCode }) : null;
     const result = await this.repository.createTask({
       ...input,
       userId,
       unitCost,
       totalCost,
+      billingRuleVersion: quote?.ruleVersion ?? null,
+      billingPromotionCode: quote?.promotionCode ?? null,
+      billingUnitCents: quote?.finalUnitCents ?? null,
+      billingTotalCents: quote?.finalTotalCents ?? null,
       sessionTitle: createGenerationSessionTitle(input.prompt),
     });
     if (!result) throw new NotFoundException("生成会话不存在");
@@ -93,6 +101,9 @@ export class GenerationService {
         required: totalCost,
         available,
       });
+    }
+    if ("insufficientBilling" in result) {
+      throw new BadRequestException({ code: "INSUFFICIENT_BILLING_BALANCE", message: "套餐权益或现金余额不足，本次生成未入队" });
     }
 
     if (result.task.status === "QUEUED" && !result.task.queueJobId) {
@@ -256,6 +267,7 @@ export class GenerationService {
       typeof input.idempotencyKey === "string" ? input.idempotencyKey.trim() : "";
     const prompt = typeof input.prompt === "string" ? input.prompt.trim() : "";
     const model = typeof input.model === "string" ? input.model.trim() : "";
+    const promotionCode = typeof input.promotionCode === "string" ? input.promotionCode.trim().toUpperCase() : undefined;
     if (!/^[A-Za-z0-9:_-]{8,128}$/.test(idempotencyKey)) {
       throw new BadRequestException("幂等键格式不正确");
     }
@@ -294,6 +306,7 @@ export class GenerationService {
       resolution: input.resolution,
       imageCount: input.imageCount,
       referenceImageUrls: [...input.referenceImageUrls],
+      ...(promotionCode ? { promotionCode } : {}),
     };
   }
 
@@ -377,6 +390,10 @@ export class GenerationService {
     referenceImageUrls: unknown;
     unitCost: number;
     totalCost: number;
+    billingRuleVersion?: number | null;
+    billingPromotionCode?: string | null;
+    billingUnitCents?: number | null;
+    billingTotalCents?: number | null;
     attempts: number;
     errorCode: string | null;
     errorMessage: string | null;
@@ -413,6 +430,10 @@ export class GenerationService {
         : [],
       unitCost: task.unitCost,
       totalCost: task.totalCost,
+      billingRuleVersion: task.billingRuleVersion ?? null,
+      billingPromotionCode: task.billingPromotionCode ?? null,
+      billingUnitCents: task.billingUnitCents ?? null,
+      billingTotalCents: task.billingTotalCents ?? null,
       attempts: task.attempts,
       errorCode: task.errorCode,
       errorMessage: task.errorMessage,

@@ -85,4 +85,13 @@ describe("GenerationResultAssetsService", () => {
 
     await expect(service.readAny("result-1", "content")).rejects.toBeInstanceOf(NotFoundException);
   });
+
+  it("does not expose assets before moderation approval", async () => {
+    const { repository, service, storage } = createService();
+    repository.findResult.mockResolvedValue({ ...storedResult, moderationStatus: "PENDING" });
+
+    await expect(service.readAny("result-1", "content")).rejects.toBeInstanceOf(NotFoundException);
+    expect(storage.get).not.toHaveBeenCalled();
+    expect(storage.createSignedGetUrl).not.toHaveBeenCalled();
+  });
 });
