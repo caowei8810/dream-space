@@ -11,13 +11,13 @@ async function main() {
         where: { slug: inspiration.slug },
         update: {
           ...inspiration,
-          status: "ARCHIVED",
-          publishedAt: null,
+          status: "PUBLISHED",
+          publishedAt: new Date(inspiration.publishedAt),
         },
         create: {
           ...inspiration,
-          status: "ARCHIVED",
-          publishedAt: null,
+          status: "PUBLISHED",
+          publishedAt: new Date(inspiration.publishedAt),
         },
       });
     }
