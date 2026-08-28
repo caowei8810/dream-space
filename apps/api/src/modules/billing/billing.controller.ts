@@ -1,7 +1,21 @@
-import type { BillingQuoteRequest, OrderCreateInput, PaymentCallbackInput } from "@dream-space/contracts";
+import type {
+  BillingQuoteRequest,
+  OrderCreateInput,
+  PaymentCallbackInput,
+} from "@dream-space/contracts";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { parseApiEnv } from "@dream-space/config";
-import { Body, Controller, Get, Headers, Inject, Post, Req, UnauthorizedException, BadRequestException } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  Headers,
+  Inject,
+  Post,
+  Req,
+  UnauthorizedException,
+  BadRequestException,
+} from "@nestjs/common";
 import { AuthService } from "../auth/auth.service";
 import { readSessionToken } from "../auth/session-cookie";
 import { BillingService } from "./billing.service";
@@ -33,10 +47,15 @@ export class BillingController {
   }
 
   @Get("plans")
-  plans() { return this.billing.plans(); }
+  plans() {
+    return this.billing.plans();
+  }
 
   @Post("orders")
-  async createOrder(@Headers("cookie") cookie: string | undefined, @Body() input: OrderCreateInput) {
+  async createOrder(
+    @Headers("cookie") cookie: string | undefined,
+    @Body() input: OrderCreateInput,
+  ) {
     const session = await this.auth.getSession(readSessionToken(cookie));
     if (!session.authenticated) throw new UnauthorizedException("请先登录");
     return this.billing.createOrder(session.user.id, input);
@@ -63,7 +82,9 @@ export class BillingController {
     @Req() request: RawBodyRequest,
   ) {
     if (this.env.EXTERNAL_SERVICES_MODE === "live") {
-      const expected = `sha256=${createHmac("sha256", this.env.PAYMENT_WEBHOOK_SECRET).update(request.rawBody ?? Buffer.from(JSON.stringify(input))).digest("hex")}`;
+      const expected = `sha256=${createHmac("sha256", this.env.PAYMENT_WEBHOOK_SECRET)
+        .update(request.rawBody ?? Buffer.from(JSON.stringify(input)))
+        .digest("hex")}`;
       const actual = Buffer.from(signature ?? "");
       const expectedBuffer = Buffer.from(expected);
       if (actual.length !== expectedBuffer.length || !timingSafeEqual(actual, expectedBuffer)) {

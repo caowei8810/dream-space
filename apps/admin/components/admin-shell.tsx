@@ -20,8 +20,8 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
-    if (!loading && (!session || !session.authenticated)) router.replace("/login");
-  }, [loading, router, session]);
+    if (!loading && !error && (!session || !session.authenticated)) router.replace("/login");
+  }, [error, loading, router, session]);
 
   if (loading) {
     return (

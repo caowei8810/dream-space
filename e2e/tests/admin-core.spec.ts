@@ -23,27 +23,42 @@ test.describe("管理端核心闭环", () => {
     await expectHealthyDocument(page);
 
     await page.goto(`${adminUrl}/inspirations`);
-    await expect(page.getByRole("link", { name: "灵感管理" })).toHaveAttribute(
+    await expect(page.getByRole("link", { name: "灵感精选" })).toHaveAttribute(
       "aria-current",
       "page",
     );
-    await page.getByLabel("搜索灵感", { exact: true }).fill("b5-smoke-inspiration");
-    await page.getByRole("button", { name: "查询", exact: true }).click();
-    const row = page.getByRole("row").filter({ hasText: "b5-smoke-inspiration" });
-    await expect(row).toHaveCount(1);
+    const candidate = page.getByRole("article").first();
+    if ((await candidate.count()) === 0) {
+      await expect(
+        page.getByRole("heading", { name: "暂无可精选图片", exact: true }),
+      ).toBeVisible();
+      await expectHealthyDocument(page);
+      expect(runtimeErrors).toEqual([]);
+      return;
+    }
+    await expect(candidate).toBeVisible();
+    const prompt = (await candidate.locator(".admin-curation-card-body > p").textContent())?.trim();
+    expect(prompt).toBeTruthy();
 
-    const publish = row.getByRole("button", { name: /发布灵感/ });
-    if (await publish.isVisible()) await publish.click();
-    await expect(row).toContainText("已发布");
+    const publishResponse = page.waitForResponse(
+      (response) =>
+        /\/admin\/inspiration-candidates\/[^/]+\/publish$/.test(response.url()) &&
+        response.request().method() === "POST",
+    );
+    await candidate.getByRole("button", { name: "发布灵感", exact: true }).click();
+    const publishedRecord = (await (await publishResponse).json()) as { slug: string };
+    await page.getByRole("tab", { name: /已发布/ }).click();
+    const published = page.getByRole("article").filter({ hasText: prompt! });
+    await expect(published).toHaveCount(1);
     const publicResponse = await page.request.get(
-      "http://localhost:4000/inspirations/b5-smoke-inspiration",
+      `http://localhost:4000/inspirations/${publishedRecord.slug}`,
     );
     expect(publicResponse.status()).toBe(200);
 
-    await row.getByRole("button", { name: /下架灵感/ }).click();
-    await expect(row).toContainText("已下架");
+    await published.getByRole("button", { name: "下架", exact: true }).click();
+    await expect(published).toHaveCount(0);
     const hiddenResponse = await page.request.get(
-      "http://localhost:4000/inspirations/b5-smoke-inspiration",
+      `http://localhost:4000/inspirations/${publishedRecord.slug}`,
     );
     expect(hiddenResponse.status()).toBe(404);
 
@@ -56,13 +71,10 @@ test.describe("管理端核心闭环", () => {
     await loginAdmin(page, "18800000001");
     await page.goto(`${adminUrl}/inspirations`);
 
-    await expect(page.getByText("只读权限", { exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "新建灵感", exact: true })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: /发布灵感|下架灵感/ })).toHaveCount(0);
-    const viewButtons = page.getByRole("button", { name: /查看灵感/ });
-    await expect(viewButtons.first()).toBeVisible();
-    const viewButtonCount = await viewButtons.count();
-    expect(viewButtonCount).toBeGreaterThan(0);
+    await expect(page.getByRole("heading", { name: "灵感精选", exact: true })).toBeVisible();
+    await expect(page.getByRole("tab", { name: /待精选/ })).toBeVisible();
+    await expect(page.getByRole("tab", { name: /已发布/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: /发布灵感|下架/ })).toHaveCount(0);
 
     await page.setViewportSize({ width: 390, height: 844 });
     await expectHealthyDocument(page);
@@ -141,7 +153,7 @@ test.describe("管理端核心闭环", () => {
 
     await page.goto(`${adminUrl}/inspirations`);
     await expect(page.getByRole("heading", { name: "无权访问" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "灵感管理" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "灵感精选" })).toHaveCount(0);
     await expect(page.getByRole("link", { name: "生成任务" })).toBeVisible();
     await expectHealthyDocument(page);
     expect(runtimeErrors).toEqual([]);

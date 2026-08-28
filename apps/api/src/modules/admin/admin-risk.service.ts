@@ -6,12 +6,7 @@ import {
   type RiskAction,
   type RiskRuleMatchType,
 } from "@dream-space/contracts";
-import {
-  BadRequestException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from "@nestjs/common";
+import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
 import { RiskRepository } from "../risk/risk.repository";
 
@@ -100,11 +95,14 @@ export class AdminRiskService {
     if (!/^[a-z0-9][a-z0-9._-]{1,63}$/.test(code)) {
       throw new BadRequestException("规则编码应为 2-64 位小写字母、数字、点、下划线或短横线");
     }
-    if (name.length < 2 || name.length > 80) throw new BadRequestException("规则名称长度应为 2-80 个字符");
-    if (!riskRuleMatchTypes.includes(input.matchType)) throw new BadRequestException("匹配类型不正确");
+    if (name.length < 2 || name.length > 80)
+      throw new BadRequestException("规则名称长度应为 2-80 个字符");
+    if (!riskRuleMatchTypes.includes(input.matchType))
+      throw new BadRequestException("匹配类型不正确");
     if (!riskActions.includes(input.action)) throw new BadRequestException("处置动作不正确");
     if (!category || category.length > 40) throw new BadRequestException("风险分类不正确");
-    if (!pattern || pattern.length > 500) throw new BadRequestException("匹配内容长度应为 1-500 个字符");
+    if (!pattern || pattern.length > 500)
+      throw new BadRequestException("匹配内容长度应为 1-500 个字符");
     if (input.matchType === "regex") {
       if (/\\[1-9]|\(\?<|\(.*\+.*\).*\+/.test(pattern)) {
         throw new BadRequestException("正则表达式包含不允许的高风险结构");
@@ -181,7 +179,8 @@ export class AdminRiskService {
   private reason(value: unknown) {
     if (typeof value !== "string") throw new BadRequestException("请填写操作原因");
     const result = value.replace(/\s+/g, " ").trim();
-    if (result.length < 2 || result.length > 500) throw new BadRequestException("操作原因长度应为 2-500 个字符");
+    if (result.length < 2 || result.length > 500)
+      throw new BadRequestException("操作原因长度应为 2-500 个字符");
     return result;
   }
 
@@ -191,10 +190,17 @@ export class AdminRiskService {
     return result;
   }
 
-  private integer(value: string | undefined, fallback: number, min: number, max: number, label: string) {
+  private integer(
+    value: string | undefined,
+    fallback: number,
+    min: number,
+    max: number,
+    label: string,
+  ) {
     if (!value?.trim()) return fallback;
     const parsed = Number(value);
-    if (!Number.isInteger(parsed) || parsed < min || parsed > max) throw new BadRequestException(`${label}不正确`);
+    if (!Number.isInteger(parsed) || parsed < min || parsed > max)
+      throw new BadRequestException(`${label}不正确`);
     return parsed;
   }
 

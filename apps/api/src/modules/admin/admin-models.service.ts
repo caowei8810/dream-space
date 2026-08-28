@@ -215,15 +215,40 @@ export class AdminModelsService {
       ...this.readCapabilities(item.capabilities),
     }));
   }
-  async resolve(code: string): Promise<{
+  async resolve(
+    code: string,
+    routingKey = code,
+  ): Promise<{
     model: DatabaseAdminModelRecord;
     version: DatabaseAdminModelRecord["configVersions"][number];
+    route: DatabaseAdminModelRecord["routes"][number];
   }> {
     const item = await this.repository.findPublished(code);
     if (!item) throw new BadRequestException("模型当前不可用");
     const version = item.configVersions.find((v) => v.status === "PUBLISHED");
     if (!version) throw new BadRequestException("模型配置当前不可用");
-    return { model: item, version };
+    const routes = item.routes.filter(
+      (route) =>
+        route.enabled &&
+        route.weight > 0 &&
+        route.health === "healthy" &&
+        route.provider.status === "ACTIVE",
+    );
+    if (!routes.length) throw new BadRequestException("模型路由当前不可用");
+    const priority = Math.min(...routes.map((route) => route.priority));
+    const candidates = routes.filter((route) => route.priority === priority);
+    const totalWeight = candidates.reduce((sum, route) => sum + route.weight, 0);
+    let slot =
+      Array.from(routingKey).reduce(
+        (hash, character) => (hash * 31 + character.codePointAt(0)!) >>> 0,
+        0,
+      ) % totalWeight;
+    const route =
+      candidates.find((candidate) => {
+        slot -= candidate.weight;
+        return slot < 0;
+      }) ?? candidates[candidates.length - 1]!;
+    return { model: item, version, route };
   }
   private map(item: DatabaseAdminModelRecord): AdminModelRecord {
     const caps = this.readCapabilities(item.capabilities);

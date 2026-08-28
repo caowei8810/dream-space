@@ -16,11 +16,16 @@ export interface BillingQuote {
   promotionCode: string | null;
 }
 
-export function calculateBillingQuote(imageCount: number, promotion?: BillingPromotionInput, standardUnitCents = standardImageUnitCents): BillingQuote {
+export function calculateBillingQuote(
+  imageCount: number,
+  promotion?: BillingPromotionInput,
+  standardUnitCents = standardImageUnitCents,
+): BillingQuote {
   if (!Number.isInteger(imageCount) || imageCount < 1 || imageCount > 8) {
     throw new RangeError("imageCount must be an integer between 1 and 8");
   }
-  if (!Number.isInteger(standardUnitCents) || standardUnitCents <= 0) throw new RangeError("standardUnitCents must be positive");
+  if (!Number.isInteger(standardUnitCents) || standardUnitCents <= 0)
+    throw new RangeError("standardUnitCents must be positive");
   const standardTotalCents = standardUnitCents * imageCount;
   const discountBps = promotion?.discountBps ?? 0;
   if (!Number.isInteger(discountBps) || discountBps < 0 || discountBps > 10_000) {

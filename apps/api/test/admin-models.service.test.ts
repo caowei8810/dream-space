@@ -149,6 +149,53 @@ describe("AdminModelsService", () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
+  it("selects a healthy route deterministically from the highest priority tier", async () => {
+    const { repository, service } = createService();
+    const provider = (id: string) => ({ id, status: "ACTIVE" });
+    repository.findPublished.mockResolvedValue({
+      code: "image-live",
+      configVersions: [{ id: "version-1", status: "PUBLISHED" }],
+      routes: [
+        {
+          id: "disabled",
+          enabled: true,
+          health: "healthy",
+          priority: 0,
+          weight: 0,
+          provider: provider("p0"),
+        },
+        {
+          id: "primary-a",
+          enabled: true,
+          health: "healthy",
+          priority: 1,
+          weight: 70,
+          provider: provider("p1"),
+        },
+        {
+          id: "primary-b",
+          enabled: true,
+          health: "healthy",
+          priority: 1,
+          weight: 30,
+          provider: provider("p2"),
+        },
+        {
+          id: "fallback",
+          enabled: true,
+          health: "healthy",
+          priority: 2,
+          weight: 100,
+          provider: provider("p3"),
+        },
+      ],
+    });
+    const first = await service.resolve("image-live", "user-1:request-1");
+    const replay = await service.resolve("image-live", "user-1:request-1");
+    expect(replay.route.id).toBe(first.route.id);
+    expect(["primary-a", "primary-b"]).toContain(first.route.id);
+  });
+
   it("requires a secret reference before enabling a live provider", async () => {
     const { repository, service } = createService();
     repository.findProvider.mockResolvedValue({

@@ -26,6 +26,7 @@ export interface GenerationTaskSnapshot {
   ratio: GenerationRatio;
   resolution: GenerationResolution;
   imageCount: number;
+  referenceImageUrls?: string[];
   totalCost: number;
   entitlementReserved?: number;
   cashReservedCents?: number;
@@ -69,7 +70,10 @@ export interface GenerationStore {
     stage: ModerationStage,
     decision: ModerationDecision,
   ): Promise<"recorded" | "ignored">;
-  holdForReview(taskId: string, results?: StoredGenerationResult[]): Promise<"reviewing" | "ignored">;
+  holdForReview(
+    taskId: string,
+    results?: StoredGenerationResult[],
+  ): Promise<"reviewing" | "ignored">;
   succeed(taskId: string, results: StoredGenerationResult[]): Promise<"succeeded" | "ignored">;
   fail(
     taskId: string,
@@ -252,7 +256,11 @@ export class DeterministicMockProvider implements GenerationProvider {
 export class GenerationOutputPipeline {
   constructor(private readonly storage: ObjectStorage) {}
 
-  async persist(task: GenerationTaskSnapshot, images: ProviderImage[], moderationStatus: "approved" | "pending" = "approved") {
+  async persist(
+    task: GenerationTaskSnapshot,
+    images: ProviderImage[],
+    moderationStatus: "approved" | "pending" = "approved",
+  ) {
     if (images.length !== task.imageCount) {
       throw new Error(`provider returned ${images.length} images for requested ${task.imageCount}`);
     }
@@ -275,7 +283,11 @@ export class GenerationOutputPipeline {
     );
   }
 
-  private async persistOne(task: GenerationTaskSnapshot, image: ProviderImage, moderationStatus: "approved" | "pending") {
+  private async persistOne(
+    task: GenerationTaskSnapshot,
+    image: ProviderImage,
+    moderationStatus: "approved" | "pending",
+  ) {
     const { width, height } = resolveOutputDimensions(task.ratio, task.resolution);
     const resultId = randomUUID();
     const objectKey = `results/${task.id}/${resultId}.webp`;
@@ -362,10 +374,11 @@ export class GenerationProcessor {
         images.map((image) => this.moderator.moderateOutput(task, image)),
       );
       const rejectedOutput = outputDecisions.find((decision) => decision.status === "rejected");
-      const outputDecision: ModerationDecision = rejectedOutput ?? outputDecisions.find((decision) => decision.status === "review") ?? {
-        status: "approved",
-        codes: [],
-      };
+      const outputDecision: ModerationDecision = rejectedOutput ??
+        outputDecisions.find((decision) => decision.status === "review") ?? {
+          status: "approved",
+          codes: [],
+        };
       await this.store.recordModeration(task.id, "output", outputDecision);
       if (outputDecision.status === "review") {
         stored = await this.output.persist(task, images, "pending");
@@ -403,7 +416,10 @@ export class GenerationProcessor {
               deadLetter: {
                 attempts: attempt.number,
                 payload: {
-                  provider: "mock",
+                  provider:
+                    typeof task.modelConfigSnapshot?.providerCode === "string"
+                      ? task.modelConfigSnapshot.providerCode
+                      : "mock",
                   retryable: true,
                   providerMessage: providerError.message,
                 },

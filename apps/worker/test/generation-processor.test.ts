@@ -224,7 +224,10 @@ describe("GenerationProcessor", () => {
     const { processor, provider, store } = createProcessor();
     vi.mocked(store.start).mockResolvedValue({ ...task, prompt: "测试提示词 [mock-review-input]" });
 
-    await expect(processor.process({ taskId: task.id })).resolves.toEqual({ taskId: task.id, status: "reviewing" });
+    await expect(processor.process({ taskId: task.id })).resolves.toEqual({
+      taskId: task.id,
+      status: "reviewing",
+    });
     expect(provider.generate).not.toHaveBeenCalled();
     expect(store.holdForReview).toHaveBeenCalledWith(task.id);
     expect(store.fail).not.toHaveBeenCalled();
@@ -232,10 +235,22 @@ describe("GenerationProcessor", () => {
 
   it("persists output objects as pending when output moderation requires review", async () => {
     const { processor, provider, store, objects } = createProcessor();
-    vi.mocked(provider.generate).mockResolvedValue([{ index: 0, data: Buffer.concat([sourceImage, Buffer.from("MOCK_MODERATION_REVIEW_OUTPUT")]), mimeType: "image/webp" }]);
+    vi.mocked(provider.generate).mockResolvedValue([
+      {
+        index: 0,
+        data: Buffer.concat([sourceImage, Buffer.from("MOCK_MODERATION_REVIEW_OUTPUT")]),
+        mimeType: "image/webp",
+      },
+    ]);
 
-    await expect(processor.process({ taskId: task.id })).resolves.toEqual({ taskId: task.id, status: "reviewing" });
-    expect(store.holdForReview).toHaveBeenCalledWith(task.id, expect.arrayContaining([expect.objectContaining({ moderationStatus: "pending" })]));
+    await expect(processor.process({ taskId: task.id })).resolves.toEqual({
+      taskId: task.id,
+      status: "reviewing",
+    });
+    expect(store.holdForReview).toHaveBeenCalledWith(
+      task.id,
+      expect.arrayContaining([expect.objectContaining({ moderationStatus: "pending" })]),
+    );
     expect(objects.size).toBe(2);
     expect(store.succeed).not.toHaveBeenCalled();
   });
