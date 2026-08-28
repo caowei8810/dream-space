@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Headers,
   HttpCode,
   Inject,
   Param,
@@ -13,6 +14,7 @@ import {
 import { GenerationResultAssetsService } from "../generation/generation-result-assets.service";
 import { AdminInspirationsService } from "./admin-inspirations.service";
 import { AdminPermissionGuard, RequireAdminPermission } from "./admin-permission.guard";
+import { AdminAuthService } from "./admin-auth.service";
 
 @Controller("admin/inspirations")
 @UseGuards(AdminPermissionGuard)
@@ -21,6 +23,7 @@ export class AdminInspirationsController {
   constructor(
     @Inject(AdminInspirationsService) private readonly service: AdminInspirationsService,
     @Inject(GenerationResultAssetsService) private readonly assets: GenerationResultAssetsService,
+    @Inject(AdminAuthService) private readonly auth: AdminAuthService,
   ) {}
 
   @Get()
@@ -42,8 +45,13 @@ export class AdminInspirationsController {
   @Post(":id/unpublish")
   @HttpCode(200)
   @RequireAdminPermission("inspirations:publish")
-  unpublish(@Param("id") id: string) {
-    return this.service.unpublish(id);
+  async unpublish(
+    @Param("id") id: string,
+    @Headers("cookie") cookie: string | undefined,
+    @Headers("x-request-id") requestId: string | undefined,
+  ) {
+    const actor = await this.auth.requirePermission(cookie, "inspirations:publish");
+    return this.service.unpublish(id, actor.id, requestId);
   }
 }
 
@@ -54,6 +62,7 @@ export class AdminInspirationCandidatesController {
   constructor(
     @Inject(AdminInspirationsService) private readonly service: AdminInspirationsService,
     @Inject(GenerationResultAssetsService) private readonly assets: GenerationResultAssetsService,
+    @Inject(AdminAuthService) private readonly auth: AdminAuthService,
   ) {}
 
   @Get()
@@ -84,8 +93,13 @@ export class AdminInspirationCandidatesController {
   @Post(":resultId/publish")
   @HttpCode(200)
   @RequireAdminPermission("inspirations:publish")
-  publish(@Param("resultId") resultId: string) {
-    return this.service.publishCandidate(resultId);
+  async publish(
+    @Param("resultId") resultId: string,
+    @Headers("cookie") cookie: string | undefined,
+    @Headers("x-request-id") requestId: string | undefined,
+  ) {
+    const actor = await this.auth.requirePermission(cookie, "inspirations:publish");
+    return this.service.publishCandidate(resultId, actor.id, requestId);
   }
 
   @Get(":resultId")

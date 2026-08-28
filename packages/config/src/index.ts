@@ -6,6 +6,10 @@ const booleanString = z
   .enum(["true", "false"])
   .default("true")
   .transform((value) => value === "true");
+const disabledBooleanString = z
+  .enum(["true", "false"])
+  .default("false")
+  .transform((value) => value === "true");
 
 const objectStorageEnv = {
   LOCAL_STORAGE_DIR: z.string().min(1).default("../../.local/storage"),
@@ -40,11 +44,36 @@ function requireObjectStorageCredentials(
 }
 
 function requireLivePaymentSecret(
-  value: { NODE_ENV: "development" | "test" | "production"; EXTERNAL_SERVICES_MODE: "mock" | "live"; PAYMENT_WEBHOOK_SECRET: string },
+  value: {
+    NODE_ENV: "development" | "test" | "production";
+    EXTERNAL_SERVICES_MODE: "mock" | "live";
+    PAYMENT_WEBHOOK_SECRET: string;
+  },
   context: z.RefinementCtx,
 ) {
-  if (value.NODE_ENV === "production" && value.EXTERNAL_SERVICES_MODE === "live" && value.PAYMENT_WEBHOOK_SECRET.length < 32) {
-    context.addIssue({ code: "custom", path: ["PAYMENT_WEBHOOK_SECRET"], message: "A 32-character payment webhook secret is required in live mode" });
+  if (
+    value.NODE_ENV === "production" &&
+    value.EXTERNAL_SERVICES_MODE === "live" &&
+    value.PAYMENT_WEBHOOK_SECRET.length < 32
+  ) {
+    context.addIssue({
+      code: "custom",
+      path: ["PAYMENT_WEBHOOK_SECRET"],
+      message: "A 32-character payment webhook secret is required in live mode",
+    });
+  }
+}
+
+function requireProductionMetricsToken(
+  value: { NODE_ENV: "development" | "test" | "production"; METRICS_TOKEN: string },
+  context: z.RefinementCtx,
+) {
+  if (value.NODE_ENV === "production" && value.METRICS_TOKEN.length < 32) {
+    context.addIssue({
+      code: "custom",
+      path: ["METRICS_TOKEN"],
+      message: "A 32-character metrics token is required in production",
+    });
   }
 }
 
@@ -64,9 +93,11 @@ const apiEnvSchema = z
     OBJECT_STORAGE_MODE: objectStorageMode,
     EXTERNAL_SERVICES_MODE: externalServicesMode,
     PAYMENT_WEBHOOK_SECRET: z.string().default(""),
+    METRICS_TOKEN: z.string().default(""),
   })
   .superRefine(requireObjectStorageCredentials)
-  .superRefine(requireLivePaymentSecret);
+  .superRefine(requireLivePaymentSecret)
+  .superRefine(requireProductionMetricsToken);
 
 const workerEnvSchema = z
   .object({
@@ -86,6 +117,14 @@ const workerEnvSchema = z
       .min(10_000)
       .max(24 * 60 * 60 * 1000)
       .default(60 * 60 * 1000),
+    PRIVACY_CLEANUP_ENABLED: disabledBooleanString,
+    PRIVACY_CLEANUP_INTERVAL_MS: z.coerce
+      .number()
+      .int()
+      .min(60_000)
+      .max(7 * 24 * 60 * 60 * 1000)
+      .default(24 * 60 * 60 * 1000),
+    PRIVACY_RETENTION_DAYS: z.coerce.number().int().min(1).max(3650).default(30),
   })
   .superRefine(requireObjectStorageCredentials);
 

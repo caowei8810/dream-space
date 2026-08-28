@@ -76,7 +76,10 @@ printf '%s\n' "[admin-smoke] isolated login and session passed"
 
 dashboard=$(curl -fsS -b "$ADMIN_COOKIE_JAR" "$API_URL/admin/dashboard/summary")
 [ "$(printf '%s' "$dashboard" | jq -er '.window.timezone')" = "Asia/Shanghai" ]
-[ "$(printf '%s' "$dashboard" | jq -er '.revenue.available')" = "false" ]
+[ "$(printf '%s' "$dashboard" | jq -er '.revenue.available')" = "true" ]
+orders=$(curl -fsS -b "$ADMIN_COOKIE_JAR" "$API_URL/admin/billing/orders?page=1&pageSize=20")
+[ "$(printf '%s' "$orders" | jq -er '.page')" = "1" ]
+[ "$(printf '%s' "$orders" | jq -er '.items | type')" = "array" ]
 roles=$(curl -fsS -b "$ADMIN_COOKIE_JAR" "$API_URL/admin/roles")
 owner_role_id=$(printf '%s' "$roles" | jq -er '.items[] | select(.code == "owner") | .id')
 [ -n "$owner_role_id" ]
@@ -194,7 +197,15 @@ printf '%s\n' "[admin-smoke] quota reconciliation visibility passed"
 candidates=$(curl -fsS -b "$ADMIN_COOKIE_JAR" \
   "$API_URL/admin/inspiration-candidates?page=1&pageSize=100")
 [ "$(printf '%s' "$candidates" | jq -er '.items | type')" = "array" ]
-candidate_result_id=$(printf '%s' "$candidates" | jq -r '.items[0].resultId // empty')
+candidate_result_id=""
+for result_id in $(printf '%s' "$candidates" | jq -r '.items[].resultId'); do
+  candidate_asset_status=$(curl -sS -b "$ADMIN_COOKIE_JAR" -o /dev/null -w '%{http_code}' \
+    "$API_URL/admin/inspiration-candidates/$result_id/content")
+  if [ "$candidate_asset_status" = "200" ] || [ "$candidate_asset_status" = "302" ]; then
+    candidate_result_id="$result_id"
+    break
+  fi
+done
 if [ -z "$candidate_result_id" ]; then
   candidate_result_id=$(printf '%s' "$task" | jq -er '.results[0].id')
   echo "没有可用于发布冒烟的审核通过用户图片，已验证候选池接口。"

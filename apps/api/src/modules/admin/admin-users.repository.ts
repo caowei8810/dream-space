@@ -25,6 +25,7 @@ const databaseStatus = {
   active: "ACTIVE",
   restricted: "RESTRICTED",
   banned: "BANNED",
+  deleted: "DELETED",
 } as const;
 
 const includeCounts = (now: Date) =>
@@ -69,7 +70,7 @@ export class AdminUsersRepository {
 
   async changeStatus(input: {
     id: string;
-    status: "ACTIVE" | "RESTRICTED" | "BANNED";
+    status: "ACTIVE" | "RESTRICTED" | "BANNED" | "DELETED";
     reason: string;
     actorId: string;
     requestId: string;

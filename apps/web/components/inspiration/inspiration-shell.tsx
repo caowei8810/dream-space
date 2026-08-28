@@ -10,6 +10,7 @@ import {
   LogIn,
   LogOut,
   ScrollText,
+  ShieldCheck,
   Settings,
   Sparkles,
   SunMoon,
@@ -76,6 +77,7 @@ export function InspirationShell({
           notification: "通知",
           settings: "设置",
           legal: "平台协议",
+          privacy: "隐私与数据",
           changelog: "更新日志",
           appearance: "外观",
           watermark: "AI 水印",
@@ -93,6 +95,7 @@ export function InspirationShell({
           notification: "Notifications",
           settings: "Settings",
           legal: "Platform terms",
+          privacy: "Privacy and data",
           changelog: "Changelog",
           appearance: "Appearance",
           watermark: "AI watermark",
@@ -162,6 +165,17 @@ export function InspirationShell({
             {text.legal}
             <ChevronRight className="menu-end" aria-hidden="true" />
           </button>
+          {session?.authenticated ? (
+            <Link
+              className="menu-row"
+              href="/account/privacy"
+              onClick={() => setAccountOpen(false)}
+            >
+              <ShieldCheck aria-hidden="true" />
+              {text.privacy}
+              <ChevronRight className="menu-end" aria-hidden="true" />
+            </Link>
+          ) : null}
           <button className="menu-row" type="button">
             <ScrollText aria-hidden="true" />
             {text.changelog}

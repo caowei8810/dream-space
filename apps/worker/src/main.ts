@@ -1,7 +1,11 @@
 import { parseWorkerEnv } from "@dream-space/config";
 import type { GenerationQueueJob } from "@dream-space/contracts";
 import { createDatabaseClient, type DatabaseClient } from "@dream-space/db";
-import { createObjectStorage, type S3ObjectStorageOptions } from "@dream-space/storage";
+import {
+  createObjectStorage,
+  type ObjectStorage,
+  type S3ObjectStorageOptions,
+} from "@dream-space/storage";
 import { Worker } from "bullmq";
 import IORedis from "ioredis";
 import {
@@ -13,10 +17,12 @@ import { PrismaGenerationStore } from "./generation/prisma-generation-store";
 import { DeterministicMockContentModerator } from "./moderation/content-moderator";
 import { GENERATION_QUEUE } from "./queues/names";
 import { QuotaReconciliationService } from "./reconciliation/quota-reconciliation";
+import { cleanupDeletedUploads } from "./privacy/privacy-retention";
 
 interface GenerationWorkerRuntime {
   connection: IORedis;
   database: DatabaseClient;
+  storage: ObjectStorage;
   worker: Worker<GenerationQueueJob>;
 }
 
@@ -79,12 +85,12 @@ export function createGenerationWorker(
     console.log("Dream Space Worker ready on queue " + GENERATION_QUEUE);
   });
 
-  return { connection, database, worker };
+  return { connection, database, storage, worker };
 }
 
 async function bootstrap() {
   const env = parseWorkerEnv(process.env);
-  const { connection, database, worker } = createGenerationWorker(
+  const { connection, database, storage, worker } = createGenerationWorker(
     env.REDIS_URL,
     env.DATABASE_URL,
     env.MOCK_GENERATION_DELAY_MS,
@@ -124,9 +130,28 @@ async function bootstrap() {
     );
     reconciliationTimer.unref();
   }
+  let privacyCleanupTimer: NodeJS.Timeout | undefined;
+  if (env.PRIVACY_CLEANUP_ENABLED) {
+    const runPrivacyCleanup = async () => {
+      const summary = await cleanupDeletedUploads(database, storage, env.PRIVACY_RETENTION_DAYS);
+      console.log(
+        `Privacy cleanup: candidates=${summary.candidates} deleted=${summary.deleted} failed=${summary.failed}`,
+      );
+    };
+    await runPrivacyCleanup();
+    privacyCleanupTimer = setInterval(
+      () =>
+        void runPrivacyCleanup().catch((error: unknown) =>
+          console.error("Privacy cleanup failed", error),
+        ),
+      env.PRIVACY_CLEANUP_INTERVAL_MS,
+    );
+    privacyCleanupTimer.unref();
+  }
 
   const shutdown = async () => {
     if (reconciliationTimer) clearInterval(reconciliationTimer);
+    if (privacyCleanupTimer) clearInterval(privacyCleanupTimer);
     await worker.close();
     await connection.quit();
     await database.$disconnect();

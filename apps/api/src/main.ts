@@ -1,5 +1,7 @@
 import "reflect-metadata";
 import { randomUUID } from "node:crypto";
+import { rateLimitIdentity, validRequestId } from "./security";
+import { logRequest, recordRequest, safeRequestPath } from "./observability";
 import { parseApiEnv } from "@dream-space/config";
 import Redis from "ioredis";
 import { NestFactory } from "@nestjs/core";
@@ -8,6 +10,7 @@ import { AppModule } from "./app.module";
 interface HttpRequest {
   method: string;
   ip?: string;
+  url?: string;
   headers: Record<string, string | string[] | undefined>;
 }
 
@@ -15,6 +18,7 @@ interface HttpResponse {
   setHeader(name: string, value: string): void;
   statusCode: number;
   end(body?: string): void;
+  on(event: "finish", listener: () => void): void;
 }
 
 type Next = () => void;
@@ -32,16 +36,19 @@ async function bootstrap() {
   await redis.connect().catch(() => undefined);
 
   app.use(async (request: HttpRequest, response: HttpResponse, next: Next) => {
+    const startedAt = Date.now();
     const requestIdHeader = headerValue(request, "x-request-id");
-    const requestId = requestIdHeader && /^[a-zA-Z0-9._:-]{1,128}$/.test(requestIdHeader)
-      ? requestIdHeader
-      : randomUUID();
+    const requestId = validRequestId(requestIdHeader) ?? randomUUID();
     response.setHeader("X-Request-Id", requestId);
     response.setHeader("X-Content-Type-Options", "nosniff");
     response.setHeader("X-Frame-Options", "DENY");
     response.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
     response.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
     response.setHeader("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'");
+    response.on("finish", () => {
+      recordRequest(request.method.toUpperCase(), response.statusCode);
+      logRequest({ requestId, method: request.method.toUpperCase(), path: safeRequestPath(request.url ?? headerValue(request, ":path") ?? "/"), statusCode: response.statusCode, durationMs: Date.now() - startedAt });
+    });
     if (env.NODE_ENV === "production") {
       response.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
     }
@@ -57,7 +64,7 @@ async function bootstrap() {
     if (isMutation) {
       const identity = headerValue(request, "authorization") ?? headerValue(request, "cookie") ?? request.ip ?? "unknown";
       const bucket = Math.floor(Date.now() / (env.RATE_LIMIT_WINDOW_SECONDS * 1000));
-      const key = `rate:${bucket}:${request.method}:${identity.slice(0, 160)}`;
+      const key = `rate:${bucket}:${request.method}:${rateLimitIdentity(identity)}`;
       try {
         if (redis.status === "ready") {
           const count = await redis.incr(key);

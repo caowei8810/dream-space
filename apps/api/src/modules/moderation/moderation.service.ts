@@ -14,6 +14,7 @@ import {
 } from "@dream-space/contracts";
 import { ModerationRepository } from "./moderation.repository";
 import { GenerationQueue } from "../generation/generation.queue";
+import { randomUUID } from "node:crypto";
 
 @Injectable()
 export class ModerationService {
@@ -22,12 +23,21 @@ export class ModerationService {
     @Inject(GenerationQueue) private readonly queue: GenerationQueue,
   ) {}
 
-  async listReviews(raw: { page?: string; pageSize?: string; status?: string }): Promise<AdminModerationReviewListResponse> {
+  async listReviews(raw: {
+    page?: string;
+    pageSize?: string;
+    status?: string;
+  }): Promise<AdminModerationReviewListResponse> {
     const page = this.integer(raw.page, 1, 1, 1_000_000, "页码");
     const pageSize = this.integer(raw.pageSize, 20, 1, 100, "每页数量");
     const status = raw.status?.trim().toLowerCase();
-    if (status && !moderationReviewStatuses.includes(status as never)) throw new BadRequestException("审核状态不正确");
-    const result = await this.repository.listReviews({ page, pageSize, status: status?.toUpperCase() as never });
+    if (status && !moderationReviewStatuses.includes(status as never))
+      throw new BadRequestException("审核状态不正确");
+    const result = await this.repository.listReviews({
+      page,
+      pageSize,
+      status: status?.toUpperCase() as never,
+    });
     return {
       items: result.items.map((item) => ({
         id: item.id,
@@ -52,16 +62,32 @@ export class ModerationService {
     };
   }
 
-  async claimReview(id: string, actor: AdminUser) {
-    const result = await this.repository.claimReview(this.id(id), actor.id);
+  async claimReview(id: string, actor: AdminUser, requestId?: string) {
+    const result = await this.repository.claimReview(
+      this.id(id),
+      actor.id,
+      this.requestId(requestId),
+    );
     if (!result) throw new ConflictException("审核已被其他管理员领取或已处理");
     return result;
   }
 
-  async decideReview(id: string, input: AdminModerationDecisionInput, actor: AdminUser) {
+  async decideReview(
+    id: string,
+    input: AdminModerationDecisionInput,
+    actor: AdminUser,
+    requestId?: string,
+  ) {
     const note = this.reason(input?.note, "审核说明");
-    if (input?.decision !== "approved" && input?.decision !== "rejected") throw new BadRequestException("审核决定不正确");
-    const result = await this.repository.decideReview(this.id(id), actor.id, input.decision.toUpperCase() as "APPROVED" | "REJECTED", note);
+    if (input?.decision !== "approved" && input?.decision !== "rejected")
+      throw new BadRequestException("审核决定不正确");
+    const result = await this.repository.decideReview(
+      this.id(id),
+      actor.id,
+      input.decision.toUpperCase() as "APPROVED" | "REJECTED",
+      note,
+      this.requestId(requestId),
+    );
     if (!result) throw new ConflictException("只能处理自己领取中的审核");
     if (result.shouldEnqueue) await this.queue.enqueue(result.taskId);
     return result;
@@ -91,22 +117,53 @@ export class ModerationService {
     return resultId;
   }
 
-  async decideAppeal(id: string, input: AdminModerationDecisionInput, actor: AdminUser) {
+  async decideAppeal(
+    id: string,
+    input: AdminModerationDecisionInput,
+    actor: AdminUser,
+    requestId?: string,
+  ) {
     const note = this.reason(input?.note, "申诉说明");
-    if (input?.decision !== "approved" && input?.decision !== "rejected") throw new BadRequestException("申诉决定不正确");
-    const result = await this.repository.decideAppeal(this.id(id), actor.id, input.decision === "approved" ? "ACCEPTED" : "REJECTED", note);
+    if (input?.decision !== "approved" && input?.decision !== "rejected")
+      throw new BadRequestException("申诉决定不正确");
+    const result = await this.repository.decideAppeal(
+      this.id(id),
+      actor.id,
+      input.decision === "approved" ? "ACCEPTED" : "REJECTED",
+      note,
+      this.requestId(requestId),
+    );
     if (!result) throw new ConflictException("申诉不存在或已处理");
     return this.mapAppeal(result);
   }
 
-  private mapAppeal(item: { id: string; taskId: string | null; resultId: string | null; reason: string; status: string; decisionNote: string | null; createdAt: Date; decidedAt: Date | null }) {
-    return { id: item.id, taskId: item.taskId, resultId: item.resultId, reason: item.reason, status: item.status.toLowerCase() as "open" | "accepted" | "rejected", decisionNote: item.decisionNote, createdAt: item.createdAt.toISOString(), decidedAt: item.decidedAt?.toISOString() ?? null };
+  private mapAppeal(item: {
+    id: string;
+    taskId: string | null;
+    resultId: string | null;
+    reason: string;
+    status: string;
+    decisionNote: string | null;
+    createdAt: Date;
+    decidedAt: Date | null;
+  }) {
+    return {
+      id: item.id,
+      taskId: item.taskId,
+      resultId: item.resultId,
+      reason: item.reason,
+      status: item.status.toLowerCase() as "open" | "accepted" | "rejected",
+      decisionNote: item.decisionNote,
+      createdAt: item.createdAt.toISOString(),
+      decidedAt: item.decidedAt?.toISOString() ?? null,
+    };
   }
 
   private reason(value: unknown, label: string) {
     if (typeof value !== "string") throw new BadRequestException(`${label}不正确`);
     const result = value.replace(/\s+/g, " ").trim();
-    if (result.length < 2 || result.length > 500) throw new BadRequestException(`${label}长度应为 2-500 个字符`);
+    if (result.length < 2 || result.length > 500)
+      throw new BadRequestException(`${label}长度应为 2-500 个字符`);
     return result;
   }
 
@@ -116,10 +173,23 @@ export class ModerationService {
     return result;
   }
 
-  private integer(value: string | undefined, fallback: number, min: number, max: number, label: string) {
+  private requestId(value?: string) {
+    return typeof value === "string" && value.trim() && value.length <= 128
+      ? value.trim()
+      : randomUUID();
+  }
+
+  private integer(
+    value: string | undefined,
+    fallback: number,
+    min: number,
+    max: number,
+    label: string,
+  ) {
     if (!value?.trim()) return fallback;
     const parsed = Number(value);
-    if (!Number.isInteger(parsed) || parsed < min || parsed > max) throw new BadRequestException(`${label}不正确`);
+    if (!Number.isInteger(parsed) || parsed < min || parsed > max)
+      throw new BadRequestException(`${label}不正确`);
     return parsed;
   }
 }

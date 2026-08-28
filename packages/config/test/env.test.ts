@@ -10,6 +10,8 @@ describe("environment configuration", () => {
     expect(parseWorkerEnv({}).OBJECT_STORAGE_MODE).toBe("local");
     expect(parseWorkerEnv({}).QUOTA_RECONCILIATION_ENABLED).toBe(true);
     expect(parseWorkerEnv({}).QUOTA_RECONCILIATION_INTERVAL_MS).toBe(3_600_000);
+    expect(parseWorkerEnv({}).PRIVACY_CLEANUP_ENABLED).toBe(false);
+    expect(parseWorkerEnv({}).PRIVACY_RETENTION_DAYS).toBe(30);
   });
 
   it("accepts an explicit S3 object storage mode and signed URL TTL", () => {
@@ -30,7 +32,10 @@ describe("environment configuration", () => {
   });
 
   it("accepts live mode only when explicitly configured", () => {
-    expect(parseApiEnv({ EXTERNAL_SERVICES_MODE: "live", PAYMENT_WEBHOOK_SECRET: "x".repeat(32) }).EXTERNAL_SERVICES_MODE).toBe("live");
+    expect(
+      parseApiEnv({ EXTERNAL_SERVICES_MODE: "live", PAYMENT_WEBHOOK_SECRET: "x".repeat(32) })
+        .EXTERNAL_SERVICES_MODE,
+    ).toBe("live");
     expect(() => parseApiEnv({ EXTERNAL_SERVICES_MODE: "invalid" })).toThrow();
   });
 
@@ -45,5 +50,12 @@ describe("environment configuration", () => {
       QUOTA_RECONCILIATION_INTERVAL_MS: 60_000,
     });
     expect(() => parseWorkerEnv({ QUOTA_RECONCILIATION_INTERVAL_MS: "1000" })).toThrow();
+  });
+
+  it("requires a metrics token in production", () => {
+    expect(() => parseApiEnv({ NODE_ENV: "production" })).toThrow();
+    expect(
+      parseApiEnv({ NODE_ENV: "production", METRICS_TOKEN: "x".repeat(32) }).METRICS_TOKEN,
+    ).toHaveLength(32);
   });
 });

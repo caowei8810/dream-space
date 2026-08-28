@@ -8,6 +8,7 @@ import { GenerationService } from "../src/modules/generation/generation.service"
 import type { UploadsService } from "../src/modules/uploads/uploads.service";
 import type { RiskService } from "../src/modules/risk/risk.service";
 import type { BillingService } from "../src/modules/billing/billing.service";
+import type { AdminModelsService } from "../src/modules/admin/admin-models.service";
 
 const input: CreateGenerationTaskRequest = {
   idempotencyKey: "request-12345678",
@@ -117,6 +118,28 @@ describe("GenerationService", () => {
     const service = new GenerationService(repository, queue, uploads, risk, billing as unknown as BillingService);
     await service.createTask("user-1", { ...input, promotionCode: "half" });
     expect(repository.createTask).toHaveBeenCalledWith(expect.objectContaining({ billingRuleVersion: 3, billingPromotionCode: "HALF", billingUnitCents: 5, billingTotalCents: 10 }));
+  });
+
+  it("validates model capabilities and stores an immutable model snapshot", async () => {
+    const { queue, repository, uploads, risk } = createService();
+    const model = {
+      code: "image-4.7", name: "通用模型", providerModelId: "provider-model", capabilities: { ratios: ["1:1"], resolutions: ["2K"], maxImageCount: 2 },
+      provider: { code: "mock" },
+    };
+    const version = { id: "version-2", version: 2, config: { temperature: 0.4 } };
+    const models = { resolve: vi.fn().mockResolvedValue({ model, version }), readCapabilities: vi.fn((value) => value), options: vi.fn().mockResolvedValue([]) };
+    const service = new GenerationService(repository, queue, uploads, risk, undefined, models as unknown as AdminModelsService);
+    await service.createTask("user-1", input);
+    expect(repository.createTask).toHaveBeenCalledWith(expect.objectContaining({ modelConfigVersionId: "version-2", modelConfigSnapshot: { modelCode: "image-4.7", modelName: "通用模型", providerCode: "mock", providerModelId: "provider-model", version: 2, config: { temperature: 0.4 } } }));
+    await expect(service.createTask("user-1", { ...input, imageCount: 3 })).rejects.toThrow("当前模型单次最多生成 2 张");
+    await expect(service.createTask("user-1", { ...input, ratio: "16:9" })).rejects.toThrow("当前模型不支持所选画面比例");
+  });
+
+  it("does not restore hard-coded models after operations disables every model", async () => {
+    const { queue, repository, uploads, risk } = createService();
+    const models = { options: vi.fn().mockResolvedValue([]) };
+    const service = new GenerationService(repository, queue, uploads, risk, undefined, models as unknown as AdminModelsService);
+    await expect(service.getRuntimeOptions()).resolves.toMatchObject({ models: [] });
   });
 
   it("returns API-driven generation options", () => {

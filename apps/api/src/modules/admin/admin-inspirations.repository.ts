@@ -146,6 +146,7 @@ export class AdminInspirationsRepository {
   async publishCandidate(
     resultId: string,
     input: { title: string; category: InspirationCategory; sortOrder: number },
+    audit?: { actorId: string; reason: string; requestId: string },
   ) {
     return this.database.$transaction(async (transaction) => {
       const result = await transaction.generationResult.findFirstOrThrow({
@@ -162,7 +163,7 @@ export class AdminInspirationsRepository {
         include: { task: { include: { user: true } } },
       });
       const slug = `user-result-${result.id}`;
-      return transaction.inspiration.create({
+      const inspiration = await transaction.inspiration.create({
         data: {
           slug,
           title: input.title,
@@ -188,6 +189,24 @@ export class AdminInspirationsRepository {
           sourceResultId: result.id,
         },
       });
+      if (audit)
+        await transaction.adminAuditLog.create({
+          data: {
+            actorAdminUserId: audit.actorId,
+            action: "inspiration.publish",
+            resourceType: "Inspiration",
+            resourceId: inspiration.id,
+            reason: audit.reason,
+            requestId: audit.requestId,
+            before: { sourceResultId: result.id, status: null },
+            after: {
+              sourceResultId: result.id,
+              status: inspiration.status,
+              slug: inspiration.slug,
+            },
+          },
+        });
+      return inspiration;
     });
   }
 
@@ -198,10 +217,33 @@ export class AdminInspirationsRepository {
     });
   }
 
-  unpublish(id: string): Promise<InspirationModel> {
-    return this.database.inspiration.update({
-      where: { id },
-      data: { status: DatabaseInspirationStatus.ARCHIVED, publishedAt: null },
+  unpublish(
+    id: string,
+    audit?: { actorId: string; reason: string; requestId: string },
+  ): Promise<InspirationModel> {
+    return this.database.$transaction(async (transaction) => {
+      const before = await transaction.inspiration.findUniqueOrThrow({ where: { id } });
+      const inspiration = await transaction.inspiration.update({
+        where: { id },
+        data: { status: DatabaseInspirationStatus.ARCHIVED, publishedAt: null },
+      });
+      if (audit)
+        await transaction.adminAuditLog.create({
+          data: {
+            actorAdminUserId: audit.actorId,
+            action: "inspiration.unpublish",
+            resourceType: "Inspiration",
+            resourceId: inspiration.id,
+            reason: audit.reason,
+            requestId: audit.requestId,
+            before: {
+              status: before.status,
+              publishedAt: before.publishedAt?.toISOString() ?? null,
+            },
+            after: { status: inspiration.status, publishedAt: null },
+          },
+        });
+      return inspiration;
     });
   }
 }

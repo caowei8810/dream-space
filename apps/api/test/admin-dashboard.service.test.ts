@@ -15,6 +15,7 @@ describe("admin dashboard service", () => {
         userCounts: { active: 8, restricted: 1, banned: 1 },
         totalUsers: 10,
         newUsers: 2,
+        revenue: { grossCents: 12_900, refundCents: 2_900 },
       }),
     };
     const service = new AdminDashboardService(repository as never);
@@ -27,7 +28,11 @@ describe("admin dashboard service", () => {
     );
     expect(result.generation).toMatchObject({ successRate: 75, averageLatencyMs: 1234 });
     expect(result.users).toMatchObject({ total: 10, newToday: 2 });
-    expect(result.revenue).toMatchObject({ available: false, grossCents: 0, refundCents: 0 });
+    expect(result.revenue).toMatchObject({
+      available: true,
+      grossCents: 12_900,
+      refundCents: 2_900,
+    });
   });
 
   it("returns zero success rate and no latency when there are no tasks", async () => {
@@ -43,6 +48,7 @@ describe("admin dashboard service", () => {
         userCounts: { active: 0, restricted: 0, banned: 0 },
         totalUsers: 0,
         newUsers: 0,
+        revenue: { grossCents: 0, refundCents: 0 },
       }),
     };
     const service = new AdminDashboardService(repository as never);

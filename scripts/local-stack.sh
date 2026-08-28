@@ -48,10 +48,18 @@ start_app() {
 stop_process_tree() {
   pid="$1"
   children=$(pgrep -P "$pid" 2>/dev/null || true)
+  kill "$pid" >/dev/null 2>&1 || true
   for child in $children; do
     stop_process_tree "$child"
   done
-  kill "$pid" >/dev/null 2>&1 || true
+  attempts=0
+  while kill -0 "$pid" >/dev/null 2>&1 && [ "$attempts" -lt 20 ]; do
+    attempts=$((attempts + 1))
+    sleep 0.1
+  done
+  if kill -0 "$pid" >/dev/null 2>&1; then
+    kill -9 "$pid" >/dev/null 2>&1 || true
+  fi
 }
 
 stop_app() {
@@ -61,6 +69,30 @@ stop_app() {
     stop_process_tree "$(cat "$pid_file")"
   fi
   rm -f "$pid_file"
+  stop_orphaned_app "$name"
+}
+
+stop_orphaned_app() {
+  name="$1"
+  case "$name" in
+    api|worker)
+      pattern="$ROOT_DIR/apps/$name/node_modules/.bin/../tsx/dist/cli.mjs watch src/main.ts"
+      ;;
+    web|admin)
+      pattern="$ROOT_DIR/apps/$name/node_modules/.bin/../next/dist/bin/next dev"
+      ;;
+    *)
+      return
+      ;;
+  esac
+  for child in $(pgrep -f "$pattern" 2>/dev/null || true); do
+    parent=$(ps -o ppid= -p "$child" 2>/dev/null | tr -d ' ')
+    if [ -n "$parent" ] && [ "$parent" -gt 1 ]; then
+      stop_process_tree "$parent"
+    else
+      stop_process_tree "$child"
+    fi
+  done
 }
 
 prepare_database() {
@@ -100,8 +132,12 @@ status_app() {
   name="$1"
   url="$2"
   pid_file="$RUNTIME_DIR/$name.pid"
-  if is_running "$pid_file" && curl -fsS "$url" >/dev/null 2>&1; then
-    echo "$name ready: $url"
+  if curl -fsS "$url" >/dev/null 2>&1; then
+    if is_running "$pid_file"; then
+      echo "$name ready: $url"
+    else
+      echo "$name ready (external dev session): $url"
+    fi
     return
   fi
   echo "$name unavailable: $url" >&2
@@ -112,6 +148,11 @@ status_worker() {
   pid_file="$RUNTIME_DIR/worker.pid"
   if is_running "$pid_file"; then
     echo "worker running: pid=$(cat "$pid_file")"
+    return
+  fi
+  pattern="$ROOT_DIR/apps/worker/node_modules/.bin/../tsx/dist/cli.mjs watch src/main.ts"
+  if pgrep -f "$pattern" >/dev/null 2>&1; then
+    echo "worker running (external dev session)"
     return
   fi
   echo "worker unavailable" >&2

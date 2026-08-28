@@ -25,7 +25,7 @@ interface UserRecord {
   phone: string;
   createdAt: Date;
   updatedAt: Date;
-  status: "ACTIVE" | "RESTRICTED" | "BANNED";
+  status: "ACTIVE" | "RESTRICTED" | "BANNED" | "DELETED";
 }
 
 @Injectable()
@@ -77,7 +77,7 @@ export class AuthRepository {
         create: { phone: input.phone },
         update: {},
       });
-      if (user.status === "BANNED") return null;
+      if (user.status === "BANNED" || user.status === "DELETED") return null;
       await transaction.agreementAcceptance.upsert({
         where: {
           userId_version: { userId: user.id, version: input.agreementVersion },
@@ -109,7 +109,7 @@ export class AuthRepository {
 
   async findSession(tokenHash: string): Promise<UserRecord | null> {
     const session = await this.database.userSession.findFirst({
-      where: { tokenHash, expiresAt: { gt: new Date() }, user: { status: { not: "BANNED" } } },
+      where: { tokenHash, expiresAt: { gt: new Date() }, user: { status: { notIn: ["BANNED", "DELETED"] } } },
       include: { user: true },
     });
     if (!session) return null;

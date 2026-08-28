@@ -83,6 +83,19 @@ enum UserStatus {
   ACTIVE
   RESTRICTED
   BANNED
+  DELETED
+}
+
+enum PrivacyRequestType {
+  DELETE
+  EXPORT
+}
+
+enum PrivacyRequestStatus {
+  REQUESTED
+  PROCESSING
+  COMPLETED
+  REJECTED
 }
 
 enum RiskRuleMatchType {
@@ -128,6 +141,24 @@ enum GenerationRatio {
 enum GenerationResolution {
   K2 @map("2K")
   K4 @map("4K")
+}
+
+enum ProviderStatus {
+  DRAFT
+  ACTIVE
+  DISABLED
+}
+
+enum ModelStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum ModelConfigVersionStatus {
+  DRAFT
+  PUBLISHED
+  ROLLED_BACK
 }
 
 enum ModerationStatus {
@@ -274,6 +305,7 @@ model User {
   orders                 BillingOrder[]
   entitlements           UserEntitlement[]
   entitlementLedger      EntitlementLedgerEntry[]
+  privacyRequests        PrivacyRequest[]
 
   @@index([status, updatedAt])
   @@index([createdAt])
@@ -453,6 +485,7 @@ model AdminUser {
   auditEvents     AdminAuditLog[]  @relation("AdminAuditActor")
   claimedReviews  ModerationReview[] @relation("ModerationReviewAssignee")
   decidedAppeals  ModerationAppeal[] @relation("ModerationAppealDecider")
+  processedPrivacyRequests PrivacyRequest[] @relation("PrivacyRequestProcessor")
 
   @@index([status, updatedAt])
   @@index([displayName])
@@ -634,6 +667,7 @@ model GenerationTask {
   billingTotalCents      Int?
   entitlementReserved    Int                 @default(0)
   cashReservedCents      Int                 @default(0)
+  modelConfigSnapshot    Json?
   idempotencyKey         String
   queueJobId             String?
   attempts               Int                   @default(0)
@@ -657,10 +691,83 @@ model GenerationTask {
   riskHits               RiskHit[]
   moderationReviews      ModerationReview[]
   appeals                ModerationAppeal[]
+  modelConfigVersion     ModelConfigVersion? @relation(fields: [modelConfigVersionId], references: [id], onDelete: SetNull)
+  modelConfigVersionId   String?
 
   @@unique([userId, idempotencyKey])
   @@index([sessionId, createdAt])
   @@index([userId, status, createdAt])
+  @@index([modelConfigVersionId])
+}
+
+model Provider {
+  id          String         @id @default(cuid())
+  code        String         @unique
+  name        String
+  status      ProviderStatus @default(DRAFT)
+  baseUrl     String?
+  secretRef   String?
+  timeoutMs   Int            @default(30000)
+  retryLimit  Int            @default(2)
+  health      String         @default("unknown")
+  lastCheckedAt DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  models      Model[]
+  routes      ModelRoute[]
+}
+
+model Model {
+  id             String         @id @default(cuid())
+  code           String         @unique
+  name           String
+  providerId     String
+  providerModelId String
+  status         ModelStatus    @default(DRAFT)
+  visible        Boolean        @default(false)
+  capabilities   Json
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  provider       Provider       @relation(fields: [providerId], references: [id], onDelete: Restrict)
+  routes         ModelRoute[]
+  configVersions ModelConfigVersion[]
+  @@index([status, visible])
+  @@index([providerId, status])
+}
+
+model ModelRoute {
+  id          String   @id @default(cuid())
+  modelId     String
+  providerId  String
+  weight      Int      @default(100)
+  priority    Int      @default(0)
+  enabled     Boolean  @default(false)
+  health      String   @default("unknown")
+  lastCheckedAt DateTime?
+  model       Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  provider    Provider @relation(fields: [providerId], references: [id], onDelete: Restrict)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([modelId, providerId])
+  @@index([enabled, priority])
+}
+
+model ModelConfigVersion {
+  id          String                    @id @default(cuid())
+  modelId     String
+  version     Int
+  status      ModelConfigVersionStatus  @default(DRAFT)
+  config      Json
+  reason      String
+  publishedAt DateTime?
+  createdAt   DateTime                  @default(now())
+  updatedAt   DateTime                  @updatedAt
+  model       Model                     @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  tasks       GenerationTask[]
+
+  @@unique([modelId, version])
+  @@index([modelId, status])
 }
 
 model GenerationDeadLetter {
@@ -767,6 +874,23 @@ model ReferenceUpload {
   user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
+}
+
+model PrivacyRequest {
+  id             String               @id @default(cuid())
+  userId         String
+  type           PrivacyRequestType
+  status         PrivacyRequestStatus  @default(REQUESTED)
+  reason         String               @db.Text
+  requestedAt    DateTime              @default(now())
+  processedAt    DateTime?
+  processedById  String?
+  decisionNote   String?              @db.Text
+  user           User                 @relation(fields: [userId], references: [id], onDelete: Restrict)
+  processedBy    AdminUser?           @relation("PrivacyRequestProcessor", fields: [processedById], references: [id], onDelete: SetNull)
+
+  @@index([userId, type, status])
+  @@index([status, requestedAt])
 }
 
 model GenerationTaskEvent {

@@ -48,10 +48,10 @@ export class AdminDashboardService {
         newToday: result.newUsers,
       },
       revenue: {
-        available: false,
-        grossCents: 0,
-        refundCents: 0,
-        note: "计费与订单账务将在 P2-4/P2-5 接入，当前不生成模拟收入。",
+        available: true,
+        grossCents: result.revenue.grossCents,
+        refundCents: result.revenue.refundCents,
+        note: "按今日支付完成时间统计实收，退款按完成时间统计。",
       },
       generatedAt: now.toISOString(),
     };

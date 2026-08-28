@@ -1,5 +1,19 @@
 import type { AdminModerationDecisionInput, AppealCreateInput } from "@dream-space/contracts";
-import { BadRequestException, Body, Controller, Get, Headers, Inject, Param, Post, Query, Res, StreamableFile, UnauthorizedException, UseGuards } from "@nestjs/common";
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Headers,
+  Inject,
+  Param,
+  Post,
+  Query,
+  Res,
+  StreamableFile,
+  UnauthorizedException,
+  UseGuards,
+} from "@nestjs/common";
 import { AuthService } from "../auth/auth.service";
 import { readSessionToken } from "../auth/session-cookie";
 import { AdminAuthService } from "../admin/admin-auth.service";
@@ -23,7 +37,10 @@ export class ModerationController {
   }
 
   @Post("appeals")
-  async createAppeal(@Headers("cookie") cookie: string | undefined, @Body() input: AppealCreateInput) {
+  async createAppeal(
+    @Headers("cookie") cookie: string | undefined,
+    @Body() input: AppealCreateInput,
+  ) {
     const session = await this.auth.getSession(readSessionToken(cookie));
     if (!session.authenticated) throw new UnauthorizedException("请先登录");
     return this.service.createAppeal(session.user.id, input);
@@ -41,29 +58,54 @@ export class AdminModerationController {
 
   @Get("reviews")
   @RequireAdminPermission("moderation:read")
-  listReviews(@Query("page") page?: string, @Query("pageSize") pageSize?: string, @Query("status") status?: string) {
+  listReviews(
+    @Query("page") page?: string,
+    @Query("pageSize") pageSize?: string,
+    @Query("status") status?: string,
+  ) {
     return this.service.listReviews({ page, pageSize, status });
   }
 
   @Post("reviews/:id/claim")
   @RequireAdminPermission("moderation:write")
-  claim(@Param("id") id: string, @Headers("cookie") cookie: string | undefined) {
-    return this.withActor(cookie, "moderation:write", (actor) => this.service.claimReview(id, actor));
+  claim(
+    @Param("id") id: string,
+    @Headers("cookie") cookie: string | undefined,
+    @Headers("x-request-id") requestId: string | undefined,
+  ) {
+    return this.withActor(cookie, "moderation:write", (actor) =>
+      this.service.claimReview(id, actor, requestId),
+    );
   }
 
   @Post("reviews/:id/decision")
   @RequireAdminPermission("moderation:write")
-  decide(@Param("id") id: string, @Body() input: AdminModerationDecisionInput, @Headers("cookie") cookie: string | undefined) {
-    return this.withActor(cookie, "moderation:write", (actor) => this.service.decideReview(id, input, actor));
+  decide(
+    @Param("id") id: string,
+    @Body() input: AdminModerationDecisionInput,
+    @Headers("cookie") cookie: string | undefined,
+    @Headers("x-request-id") requestId: string | undefined,
+  ) {
+    return this.withActor(cookie, "moderation:write", (actor) =>
+      this.service.decideReview(id, input, actor, requestId),
+    );
   }
 
   @Get("reviews/:id/assets/:variant")
   @RequireAdminPermission("moderation:read")
-  async asset(@Param("id") id: string, @Param("variant") variant: string, @Res({ passthrough: true }) response: AssetResponse) {
-    if (variant !== "content" && variant !== "thumbnail") throw new BadRequestException("审核资产类型不正确");
+  async asset(
+    @Param("id") id: string,
+    @Param("variant") variant: string,
+    @Res({ passthrough: true }) response: AssetResponse,
+  ) {
+    if (variant !== "content" && variant !== "thumbnail")
+      throw new BadRequestException("审核资产类型不正确");
     const resultId = await this.service.reviewResultId(id);
     const asset = await this.assets.readModeration(resultId, variant);
-    if (asset.redirectUrl) { response.redirect(302, asset.redirectUrl); return; }
+    if (asset.redirectUrl) {
+      response.redirect(302, asset.redirectUrl);
+      return;
+    }
     if (!asset.data) return;
     response.setHeader("Content-Type", asset.mimeType);
     response.setHeader("Content-Length", String(asset.data.byteLength));
@@ -74,8 +116,15 @@ export class AdminModerationController {
 
   @Post("appeals/:id/decision")
   @RequireAdminPermission("moderation:write")
-  decideAppeal(@Param("id") id: string, @Body() input: AdminModerationDecisionInput, @Headers("cookie") cookie: string | undefined) {
-    return this.withActor(cookie, "moderation:write", (actor) => this.service.decideAppeal(id, input, actor));
+  decideAppeal(
+    @Param("id") id: string,
+    @Body() input: AdminModerationDecisionInput,
+    @Headers("cookie") cookie: string | undefined,
+    @Headers("x-request-id") requestId: string | undefined,
+  ) {
+    return this.withActor(cookie, "moderation:write", (actor) =>
+      this.service.decideAppeal(id, input, actor, requestId),
+    );
   }
 
   @Get("appeals")
@@ -84,7 +133,11 @@ export class AdminModerationController {
     return this.service.listAdminAppeals();
   }
 
-  private withActor(cookie: string | undefined, permission: "moderation:write", callback: (actor: Awaited<ReturnType<AdminAuthService["requirePermission"]>>) => unknown) {
+  private withActor(
+    cookie: string | undefined,
+    permission: "moderation:write",
+    callback: (actor: Awaited<ReturnType<AdminAuthService["requirePermission"]>>) => unknown,
+  ) {
     return this.auth.requirePermission(cookie, permission).then(callback);
   }
 }

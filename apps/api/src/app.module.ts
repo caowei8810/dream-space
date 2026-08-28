@@ -8,6 +8,7 @@ import { AdminModule } from "./modules/admin/admin.module";
 import { UploadsModule } from "./modules/uploads/uploads.module";
 import { ModerationModule } from "./modules/moderation/moderation.module";
 import { BillingModule } from "./modules/billing/billing.module";
+import { PrivacyModule } from "./modules/privacy/privacy.module";
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { BillingModule } from "./modules/billing/billing.module";
     AdminModule,
     ModerationModule,
     BillingModule,
+    PrivacyModule,
   ],
   controllers: [HealthController],
 })

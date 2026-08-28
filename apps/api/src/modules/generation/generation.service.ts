@@ -47,6 +47,7 @@ import { GenerationRepository } from "./generation.repository";
 import { UploadsService } from "../uploads/uploads.service";
 import { RiskService } from "../risk/risk.service";
 import { BillingService } from "../billing/billing.service";
+import { AdminModelsService } from "../admin/admin-models.service";
 
 const allowedReferenceUrl = /^(https?:\/\/|\/)/;
 
@@ -62,6 +63,7 @@ export class GenerationService {
     @Inject(UploadsService) private readonly uploads: UploadsService,
     @Inject(RiskService) private readonly risk: RiskService,
     @Optional() @Inject(BillingService) private readonly billing?: BillingService,
+    @Optional() @Inject(AdminModelsService) private readonly models?: AdminModelsService,
   ) {}
 
   async createTask(
@@ -69,6 +71,19 @@ export class GenerationService {
     rawInput: CreateGenerationTaskRequest,
   ): Promise<CreateGenerationTaskResponse> {
     const input = this.validateCreateInput(rawInput);
+    const resolvedModel = this.models ? await this.models.resolve(input.model) : null;
+    if (resolvedModel) {
+      const capabilities = this.models!.readCapabilities(resolvedModel.model.capabilities);
+      if (!capabilities.ratios.includes(input.ratio)) {
+        throw new BadRequestException("当前模型不支持所选画面比例");
+      }
+      if (!capabilities.resolutions.includes(input.resolution)) {
+        throw new BadRequestException("当前模型不支持所选清晰度");
+      }
+      if (input.imageCount > capabilities.maxImageCount) {
+        throw new BadRequestException(`当前模型单次最多生成 ${capabilities.maxImageCount} 张`);
+      }
+    }
     await this.risk.inspectPrompt(userId, input.prompt, `generation:${input.idempotencyKey}`);
     await this.uploads.assertOwnedReferenceUrls(userId, input.referenceImageUrls);
     const unitCost = calculateGenerationCost(1, input.resolution);
@@ -83,6 +98,15 @@ export class GenerationService {
       billingPromotionCode: quote?.promotionCode ?? null,
       billingUnitCents: quote?.finalUnitCents ?? null,
       billingTotalCents: quote?.finalTotalCents ?? null,
+      modelConfigVersionId: resolvedModel?.version.id ?? null,
+      modelConfigSnapshot: resolvedModel ? {
+        modelCode: resolvedModel.model.code,
+        modelName: resolvedModel.model.name,
+        providerCode: resolvedModel.model.provider.code,
+        providerModelId: resolvedModel.model.providerModelId,
+        version: resolvedModel.version.version,
+        config: resolvedModel.version.config,
+      } : null,
       sessionTitle: createGenerationSessionTitle(input.prompt),
     });
     if (!result) throw new NotFoundException("生成会话不存在");
@@ -137,8 +161,16 @@ export class GenerationService {
   }
 
   getOptions(): GenerationOptionsResponse {
+    return this.optionsWithModels([], true);
+  }
+
+  async getRuntimeOptions(): Promise<GenerationOptionsResponse> {
+    return this.optionsWithModels(this.models ? await this.models.options() : []);
+  }
+
+  private optionsWithModels(configuredModels: Awaited<ReturnType<AdminModelsService["options"]>>, allowFallback = false) {
     return {
-      models: [
+      models: configuredModels.length || !allowFallback ? configuredModels : [
         { id: "image-4.7", labelZh: "通用模型", labelEn: "General model" },
         { id: "image-realistic", labelZh: "写实模型", labelEn: "Realistic model" },
         { id: "image-anime", labelZh: "动漫模型", labelEn: "Anime model" },
@@ -185,6 +217,7 @@ export class GenerationService {
     rawDraft: UpdateGenerationSessionDraftRequest,
   ) {
     const draft = this.validateSessionDraft(rawDraft);
+    if (this.models) await this.models.resolve(draft.model);
     await this.uploads.assertOwnedReferenceUrls(userId, draft.referenceImageUrls);
     const session = await this.repository.updateSessionDraft(userId, sessionId, draft);
     if (!session) throw new NotFoundException("生成会话不存在");
@@ -315,9 +348,7 @@ export class GenerationService {
     const prompt = typeof input.prompt === "string" ? input.prompt : "";
     const model = typeof input.model === "string" ? input.model.trim() : "";
     if (prompt.length > 4000) throw new BadRequestException("提示词长度应为 0-4000 个字符");
-    if (!this.getOptions().models.some((item) => item.id === model)) {
-      throw new BadRequestException("模型参数不正确");
-    }
+    if (!model || model.length > 64) throw new BadRequestException("模型参数不正确");
     if (!generationRatios.includes(input.ratio)) throw new BadRequestException("画面比例不正确");
     if (!generationResolutions.includes(input.resolution)) {
       throw new BadRequestException("清晰度参数不正确");

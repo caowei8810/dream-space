@@ -81,7 +81,6 @@ export class InspirationsRepository {
     const records = await this.database.inspiration.findMany({
       where: {
         status: InspirationStatus.PUBLISHED,
-        sourceResultId: { not: null },
         ...(category ? { category: databaseCategoryByApiCategory[category] } : {}),
         ...(query
           ? {

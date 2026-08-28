@@ -27,6 +27,8 @@ interface CreateTaskInput extends CreateGenerationTaskRequest {
   billingTotalCents?: number | null;
   entitlementReserved?: number;
   cashReservedCents?: number;
+  modelConfigVersionId?: string | null;
+  modelConfigSnapshot?: Prisma.InputJsonValue | null;
 }
 
 type DatabaseTaskStatus =
@@ -220,6 +222,8 @@ export class GenerationRepository {
             billingTotalCents: input.billingTotalCents ?? null,
             entitlementReserved: paidAllocation.entitlementReserved,
             cashReservedCents: paidAllocation.cashReservedCents,
+            modelConfigVersionId: input.modelConfigVersionId ?? null,
+            modelConfigSnapshot: input.modelConfigSnapshot ?? undefined,
             idempotencyKey: input.idempotencyKey,
             events: {
               create: { type: "task.queued", status: "QUEUED", payload: {} },

@@ -69,7 +69,7 @@ export class GenerationController {
   @Get("options")
   async getOptions(@Headers("cookie") cookie: string | undefined) {
     await this.requireUserId(cookie);
-    return this.service.getOptions();
+    return this.service.getRuntimeOptions();
   }
 
   @Get("sessions")

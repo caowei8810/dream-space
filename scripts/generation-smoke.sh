@@ -49,6 +49,18 @@ login "$TEST_PHONE" "$COOKIE_JAR"
 quota_before=$(curl -fsS -b "$COOKIE_JAR" "$API_URL/generation/quota")
 available_before=$(printf '%s' "$quota_before" | jq -er '.available')
 used_before=$(printf '%s' "$quota_before" | jq -er '.used')
+# Keep the smoke repeatable after a prior run has consumed the shared demo quota.
+# An explicit phone remains authoritative for CI and debugging.
+if [ -z "${DREAMSPACE_GENERATION_PHONE:-}" ] && [ "$available_before" -lt 2 ]; then
+  suffix=$(($(date +%s) % 1000000))
+  TEST_PHONE="13800$(printf '%06d' "$suffix")"
+  OTHER_PHONE="13900$(printf '%06d' "$(( (suffix + 1) % 1000000 ))")"
+  rm -f "$COOKIE_JAR" "$OTHER_COOKIE_JAR"
+  login "$TEST_PHONE" "$COOKIE_JAR"
+  quota_before=$(curl -fsS -b "$COOKIE_JAR" "$API_URL/generation/quota")
+  available_before=$(printf '%s' "$quota_before" | jq -er '.available')
+  used_before=$(printf '%s' "$quota_before" | jq -er '.used')
+fi
 options=$(curl -fsS -b "$COOKIE_JAR" "$API_URL/generation/options")
 [ "$(printf '%s' "$options" | jq -er '.externalServicesMode')" = "mock" ]
 [ "$(printf '%s' "$options" | jq -er '.models | length')" -ge 3 ]
