@@ -11,12 +11,24 @@ export class AdminAuditService {
     const pageSize = this.integer(query.pageSize, 50, 1, 100);
     const from = this.date(query.from);
     const to = this.date(query.to);
-    if (query.from && !from || query.to && !to) throw new BadRequestException("审计时间范围不正确");
-    const result = await this.repository.list({ page, pageSize, action: this.text(query.action, 100), resourceType: this.text(query.resourceType, 100), actor: this.text(query.actor, 100), requestId: this.text(query.requestId, 128), from, to });
+    if ((query.from && !from) || (query.to && !to))
+      throw new BadRequestException("审计时间范围不正确");
+    const result = await this.repository.list({
+      page,
+      pageSize,
+      action: this.text(query.action, 100),
+      resourceType: this.text(query.resourceType, 100),
+      actor: this.text(query.actor, 100),
+      requestId: this.text(query.requestId, 128),
+      from,
+      to,
+    });
     return {
       items: result.items.map((item) => ({
         id: item.id,
-        actor: item.actor ? { displayName: item.actor.displayName, employeeNo: item.actor.employeeNo } : null,
+        actor: item.actor
+          ? { displayName: item.actor.displayName, employeeNo: item.actor.employeeNo }
+          : null,
         action: item.action,
         resourceType: item.resourceType,
         resourceId: item.resourceId,
@@ -35,7 +47,8 @@ export class AdminAuditService {
   private integer(value: string | undefined, fallback: number, min: number, max: number) {
     if (value === undefined || value === "") return fallback;
     const number = Number(value);
-    if (!Number.isInteger(number) || number < min || number > max) throw new BadRequestException("分页参数不正确");
+    if (!Number.isInteger(number) || number < min || number > max)
+      throw new BadRequestException("分页参数不正确");
     return number;
   }
   private date(value: string | undefined) {

@@ -128,7 +128,11 @@ export class RiskRepository {
     });
   }
 
-  async listHits(input: { page: number; pageSize: number; status?: "OPEN" | "RESOLVED" | "IGNORED" }): Promise<{ items: RiskHitRecord[]; total: number }> {
+  async listHits(input: {
+    page: number;
+    pageSize: number;
+    status?: "OPEN" | "RESOLVED" | "IGNORED";
+  }): Promise<{ items: RiskHitRecord[]; total: number }> {
     const where = input.status ? { status: input.status } : {};
     const [items, total] = await this.database.$transaction([
       this.database.riskHit.findMany({

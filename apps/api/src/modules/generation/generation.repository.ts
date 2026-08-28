@@ -32,7 +32,13 @@ interface CreateTaskInput extends CreateGenerationTaskRequest {
 }
 
 type DatabaseTaskStatus =
-  "QUEUED" | "GENERATING" | "REVIEWING" | "SUCCEEDED" | "PARTIALLY_SUCCEEDED" | "FAILED" | "CANCELLED";
+  | "QUEUED"
+  | "GENERATING"
+  | "REVIEWING"
+  | "SUCCEEDED"
+  | "PARTIALLY_SUCCEEDED"
+  | "FAILED"
+  | "CANCELLED";
 
 interface QuotaRecord {
   userId: string;
@@ -470,47 +476,143 @@ export class GenerationRepository {
   }
 
   private async reservePaidBilling(transaction: Prisma.TransactionClient, input: CreateTaskInput) {
-    if (process.env.EXTERNAL_SERVICES_MODE !== "live" || input.billingTotalCents == null || input.billingUnitCents == null) {
+    if (
+      process.env.EXTERNAL_SERVICES_MODE !== "live" ||
+      input.billingTotalCents == null ||
+      input.billingUnitCents == null
+    ) {
       return { status: "skipped" as const, entitlementReserved: 0, cashReservedCents: 0 };
     }
-    const candidates = await transaction.userEntitlement.findMany({ where: { userId: input.userId, status: "ACTIVE", expiresAt: { gt: new Date() }, available: { gt: 0 } }, orderBy: { expiresAt: "asc" } });
+    const candidates = await transaction.userEntitlement.findMany({
+      where: {
+        userId: input.userId,
+        status: "ACTIVE",
+        expiresAt: { gt: new Date() },
+        available: { gt: 0 },
+      },
+      orderBy: { expiresAt: "asc" },
+    });
     const total = candidates.reduce((sum, item) => sum + item.available, 0);
     const entitlementCount = Math.min(total, input.imageCount);
     const cashAmount = (input.imageCount - entitlementCount) * input.billingUnitCents;
-    const account = await transaction.cashAccount.upsert({ where: { userId: input.userId }, create: { userId: input.userId }, update: {} });
-    if (entitlementCount < input.imageCount && account.available < cashAmount) return { status: "insufficient" as const };
+    const account = await transaction.cashAccount.upsert({
+      where: { userId: input.userId },
+      create: { userId: input.userId },
+      update: {},
+    });
+    if (entitlementCount < input.imageCount && account.available < cashAmount)
+      return { status: "insufficient" as const };
     let remaining = entitlementCount;
     for (const entitlement of candidates) {
       if (remaining <= 0) break;
       const take = Math.min(remaining, entitlement.available);
-      const changed = await transaction.userEntitlement.updateMany({ where: { id: entitlement.id, status: "ACTIVE", available: { gte: take } }, data: { available: { decrement: take }, reserved: { increment: take } } });
+      const changed = await transaction.userEntitlement.updateMany({
+        where: { id: entitlement.id, status: "ACTIVE", available: { gte: take } },
+        data: { available: { decrement: take }, reserved: { increment: take } },
+      });
       if (changed.count !== 1) throw new Error("BILLING_RESERVATION_RACE");
-      const next = await transaction.userEntitlement.findUniqueOrThrow({ where: { id: entitlement.id } });
-      await transaction.entitlementLedgerEntry.create({ data: { userId: input.userId, entitlementId: entitlement.id, type: "RESERVE", amount: take, balanceAfter: next.available, idempotencyKey: `task-entitlement-reserve:${input.userId}:${input.idempotencyKey}:${entitlement.id}` } });
+      const next = await transaction.userEntitlement.findUniqueOrThrow({
+        where: { id: entitlement.id },
+      });
+      await transaction.entitlementLedgerEntry.create({
+        data: {
+          userId: input.userId,
+          entitlementId: entitlement.id,
+          type: "RESERVE",
+          amount: take,
+          balanceAfter: next.available,
+          idempotencyKey: `task-entitlement-reserve:${input.userId}:${input.idempotencyKey}:${entitlement.id}`,
+        },
+      });
       remaining -= take;
     }
     if (cashAmount > 0) {
-      const changed = await transaction.cashAccount.updateMany({ where: { userId: input.userId, available: { gte: cashAmount } }, data: { available: { decrement: cashAmount }, reserved: { increment: cashAmount } } });
+      const changed = await transaction.cashAccount.updateMany({
+        where: { userId: input.userId, available: { gte: cashAmount } },
+        data: { available: { decrement: cashAmount }, reserved: { increment: cashAmount } },
+      });
       if (changed.count !== 1) throw new Error("BILLING_RESERVATION_RACE");
-      const next = await transaction.cashAccount.findUniqueOrThrow({ where: { userId: input.userId } });
-      await transaction.cashLedgerEntry.create({ data: { userId: input.userId, type: "RESERVE", amount: cashAmount, balanceAfter: next.available, idempotencyKey: `task-cash-reserve:${input.userId}:${input.idempotencyKey}` } });
+      const next = await transaction.cashAccount.findUniqueOrThrow({
+        where: { userId: input.userId },
+      });
+      await transaction.cashLedgerEntry.create({
+        data: {
+          userId: input.userId,
+          type: "RESERVE",
+          amount: cashAmount,
+          balanceAfter: next.available,
+          idempotencyKey: `task-cash-reserve:${input.userId}:${input.idempotencyKey}`,
+        },
+      });
     }
-    return { status: "reserved" as const, entitlementReserved: entitlementCount, cashReservedCents: cashAmount };
+    return {
+      status: "reserved" as const,
+      entitlementReserved: entitlementCount,
+      cashReservedCents: cashAmount,
+    };
   }
 
-  private async settlePaidBilling(transaction: Prisma.TransactionClient, task: { id: string; userId: string; cashReservedCents: number; entitlementReserved: number }, mode: "release" | "consume") {
+  private async settlePaidBilling(
+    transaction: Prisma.TransactionClient,
+    task: { id: string; userId: string; cashReservedCents: number; entitlementReserved: number },
+    mode: "release" | "consume",
+  ) {
     if (task.cashReservedCents > 0) {
-      const changed = await transaction.cashAccount.updateMany({ where: { userId: task.userId, reserved: { gte: task.cashReservedCents } }, data: mode === "release" ? { reserved: { decrement: task.cashReservedCents }, available: { increment: task.cashReservedCents } } : { reserved: { decrement: task.cashReservedCents } } });
+      const changed = await transaction.cashAccount.updateMany({
+        where: { userId: task.userId, reserved: { gte: task.cashReservedCents } },
+        data:
+          mode === "release"
+            ? {
+                reserved: { decrement: task.cashReservedCents },
+                available: { increment: task.cashReservedCents },
+              }
+            : { reserved: { decrement: task.cashReservedCents } },
+      });
       if (changed.count !== 1) throw new Error("CASH_SETTLEMENT_STATE_INVALID");
-      const account = await transaction.cashAccount.findUniqueOrThrow({ where: { userId: task.userId } });
-      await transaction.cashLedgerEntry.upsert({ where: { idempotencyKey: `task-cash-${mode}:${task.id}` }, create: { userId: task.userId, taskId: task.id, type: mode === "release" ? "RELEASE" : "CONSUME", amount: task.cashReservedCents, balanceAfter: account.available, idempotencyKey: `task-cash-${mode}:${task.id}` }, update: {} });
+      const account = await transaction.cashAccount.findUniqueOrThrow({
+        where: { userId: task.userId },
+      });
+      await transaction.cashLedgerEntry.upsert({
+        where: { idempotencyKey: `task-cash-${mode}:${task.id}` },
+        create: {
+          userId: task.userId,
+          taskId: task.id,
+          type: mode === "release" ? "RELEASE" : "CONSUME",
+          amount: task.cashReservedCents,
+          balanceAfter: account.available,
+          idempotencyKey: `task-cash-${mode}:${task.id}`,
+        },
+        update: {},
+      });
     }
-    const entries = await transaction.entitlementLedgerEntry.findMany({ where: { taskId: task.id, type: "RESERVE" } });
+    const entries = await transaction.entitlementLedgerEntry.findMany({
+      where: { taskId: task.id, type: "RESERVE" },
+    });
     for (const entry of entries) {
-      const changed = await transaction.userEntitlement.updateMany({ where: { id: entry.entitlementId, reserved: { gte: entry.amount } }, data: mode === "release" ? { reserved: { decrement: entry.amount }, available: { increment: entry.amount } } : { reserved: { decrement: entry.amount } } });
+      const changed = await transaction.userEntitlement.updateMany({
+        where: { id: entry.entitlementId, reserved: { gte: entry.amount } },
+        data:
+          mode === "release"
+            ? { reserved: { decrement: entry.amount }, available: { increment: entry.amount } }
+            : { reserved: { decrement: entry.amount } },
+      });
       if (changed.count !== 1) throw new Error("ENTITLEMENT_SETTLEMENT_STATE_INVALID");
-      const next = await transaction.userEntitlement.findUniqueOrThrow({ where: { id: entry.entitlementId } });
-      await transaction.entitlementLedgerEntry.upsert({ where: { idempotencyKey: `task-entitlement-${mode}:${task.id}:${entry.entitlementId}` }, create: { userId: task.userId, entitlementId: entry.entitlementId, taskId: task.id, type: mode === "release" ? "RELEASE" : "CONSUME", amount: entry.amount, balanceAfter: next.available, idempotencyKey: `task-entitlement-${mode}:${task.id}:${entry.entitlementId}` }, update: {} });
+      const next = await transaction.userEntitlement.findUniqueOrThrow({
+        where: { id: entry.entitlementId },
+      });
+      await transaction.entitlementLedgerEntry.upsert({
+        where: { idempotencyKey: `task-entitlement-${mode}:${task.id}:${entry.entitlementId}` },
+        create: {
+          userId: task.userId,
+          entitlementId: entry.entitlementId,
+          taskId: task.id,
+          type: mode === "release" ? "RELEASE" : "CONSUME",
+          amount: entry.amount,
+          balanceAfter: next.available,
+          idempotencyKey: `task-entitlement-${mode}:${task.id}:${entry.entitlementId}`,
+        },
+        update: {},
+      });
     }
   }
 

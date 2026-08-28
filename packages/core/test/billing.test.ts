@@ -16,6 +16,8 @@ describe("billing quote", () => {
 
   it("rejects invalid image counts and discounts", () => {
     expect(() => calculateBillingQuote(0)).toThrow(RangeError);
-    expect(() => calculateBillingQuote(1, { code: "BAD", discountBps: 10001, priority: 0 })).toThrow(RangeError);
+    expect(() =>
+      calculateBillingQuote(1, { code: "BAD", discountBps: 10001, priority: 0 }),
+    ).toThrow(RangeError);
   });
 });

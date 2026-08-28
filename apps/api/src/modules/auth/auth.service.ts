@@ -130,7 +130,11 @@ export class AuthService {
     if (!session.authenticated) throw new UnauthorizedException("请先登录");
     if (session.user.status !== "active") {
       throw new ForbiddenException(
-        session.user.status === "banned" ? "当前账号已被封禁" : session.user.status === "deleted" ? "当前账号已删除" : "当前账号暂不能发起生成",
+        session.user.status === "banned"
+          ? "当前账号已被封禁"
+          : session.user.status === "deleted"
+            ? "当前账号已删除"
+            : "当前账号暂不能发起生成",
       );
     }
     return session.user;

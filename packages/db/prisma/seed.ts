@@ -24,21 +24,75 @@ async function main() {
     const demoProvider = await database.provider.upsert({
       where: { code: "mock" },
       update: { name: "本地模拟供应商", status: "ACTIVE", timeoutMs: 30000, retryLimit: 2 },
-      create: { code: "mock", name: "本地模拟供应商", status: "ACTIVE", timeoutMs: 30000, retryLimit: 2 },
+      create: {
+        code: "mock",
+        name: "本地模拟供应商",
+        status: "ACTIVE",
+        timeoutMs: 30000,
+        retryLimit: 2,
+      },
     });
     for (const model of [
       { code: "image-4.7", name: "通用模型", providerModelId: "image-4.7", visible: true },
-      { code: "image-realistic", name: "写实模型", providerModelId: "image-realistic", visible: true },
+      {
+        code: "image-realistic",
+        name: "写实模型",
+        providerModelId: "image-realistic",
+        visible: true,
+      },
       { code: "image-anime", name: "动漫模型", providerModelId: "image-anime", visible: true },
     ]) {
       const record = await database.model.upsert({
         where: { code: model.code },
-        update: { name: model.name, providerId: demoProvider.id, providerModelId: model.providerModelId, status: "PUBLISHED", visible: model.visible, capabilities: { ratios: ["smart", "21:9", "16:9", "3:2", "4:3", "1:1", "3:4", "2:3", "9:16"], resolutions: ["2K", "4K"], maxImageCount: 8 } },
-        create: { ...model, providerId: demoProvider.id, status: "PUBLISHED", capabilities: { ratios: ["smart", "21:9", "16:9", "3:2", "4:3", "1:1", "3:4", "2:3", "9:16"], resolutions: ["2K", "4K"], maxImageCount: 8 } },
+        update: {
+          name: model.name,
+          providerId: demoProvider.id,
+          providerModelId: model.providerModelId,
+          status: "PUBLISHED",
+          visible: model.visible,
+          capabilities: {
+            ratios: ["smart", "21:9", "16:9", "3:2", "4:3", "1:1", "3:4", "2:3", "9:16"],
+            resolutions: ["2K", "4K"],
+            maxImageCount: 8,
+          },
+        },
+        create: {
+          ...model,
+          providerId: demoProvider.id,
+          status: "PUBLISHED",
+          capabilities: {
+            ratios: ["smart", "21:9", "16:9", "3:2", "4:3", "1:1", "3:4", "2:3", "9:16"],
+            resolutions: ["2K", "4K"],
+            maxImageCount: 8,
+          },
+        },
       });
-      const existing = await database.modelConfigVersion.findFirst({ where: { modelId: record.id, status: "PUBLISHED" } });
-      if (!existing) await database.modelConfigVersion.create({ data: { modelId: record.id, version: 1, status: "PUBLISHED", config: { temperature: 0.7 }, reason: "初始化模型配置", publishedAt: new Date() } });
-      await database.modelRoute.upsert({ where: { modelId_providerId: { modelId: record.id, providerId: demoProvider.id } }, update: { enabled: true, health: "healthy" }, create: { modelId: record.id, providerId: demoProvider.id, enabled: true, health: "healthy", weight: 100, priority: 0 } });
+      const existing = await database.modelConfigVersion.findFirst({
+        where: { modelId: record.id, status: "PUBLISHED" },
+      });
+      if (!existing)
+        await database.modelConfigVersion.create({
+          data: {
+            modelId: record.id,
+            version: 1,
+            status: "PUBLISHED",
+            config: { temperature: 0.7 },
+            reason: "初始化模型配置",
+            publishedAt: new Date(),
+          },
+        });
+      await database.modelRoute.upsert({
+        where: { modelId_providerId: { modelId: record.id, providerId: demoProvider.id } },
+        update: { enabled: true, health: "healthy" },
+        create: {
+          modelId: record.id,
+          providerId: demoProvider.id,
+          enabled: true,
+          health: "healthy",
+          weight: 100,
+          priority: 0,
+        },
+      });
     }
     const permissionNames: Record<(typeof adminPermissions)[number], string> = {
       "dashboard:read": "查看运营总览",

@@ -7,8 +7,10 @@ describe("HealthController", () => {
   const originalMetricsToken = process.env.METRICS_TOKEN;
 
   afterEach(() => {
-    if (originalNodeEnv === undefined) delete process.env.NODE_ENV; else process.env.NODE_ENV = originalNodeEnv;
-    if (originalMetricsToken === undefined) delete process.env.METRICS_TOKEN; else process.env.METRICS_TOKEN = originalMetricsToken;
+    if (originalNodeEnv === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = originalNodeEnv;
+    if (originalMetricsToken === undefined) delete process.env.METRICS_TOKEN;
+    else process.env.METRICS_TOKEN = originalMetricsToken;
   });
 
   it("reports the API as healthy", () => {
@@ -26,15 +28,30 @@ describe("HealthController", () => {
   });
 
   it("keeps liveness independent from the database", () => {
-    expect(new HealthController({ $queryRaw: async () => { throw new Error("offline"); } } as never).getLiveness().status).toBe("ok");
+    expect(
+      new HealthController({
+        $queryRaw: async () => {
+          throw new Error("offline");
+        },
+      } as never).getLiveness().status,
+    ).toBe("ok");
   });
 
   it("returns service unavailable when readiness dependencies fail", async () => {
-    await expect(new HealthController({ $queryRaw: async () => { throw new Error("offline"); } } as never).getReadiness()).rejects.toMatchObject({ status: 503 });
+    await expect(
+      new HealthController({
+        $queryRaw: async () => {
+          throw new Error("offline");
+        },
+      } as never).getReadiness(),
+    ).rejects.toMatchObject({ status: 503 });
   });
 
   it("exposes aggregate HTTP metrics without request contents", () => {
-    expect(new HealthController(database).getMetrics()).toMatchObject({ service: "api", http: { total: expect.any(Number), errors: expect.any(Number) } });
+    expect(new HealthController(database).getMetrics()).toMatchObject({
+      service: "api",
+      http: { total: expect.any(Number), errors: expect.any(Number) },
+    });
   });
 
   it("protects metrics with the production token", () => {

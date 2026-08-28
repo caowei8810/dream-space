@@ -11,18 +11,16 @@ function createService() {
     listReviews: vi.fn().mockResolvedValue({ items: [], total: 0 }),
     claimReview: vi.fn().mockResolvedValue({ id: "review-1" }),
     decideReview: vi.fn().mockResolvedValue({ id: "review-1" }),
-    createAppeal: vi
-      .fn()
-      .mockResolvedValue({
-        id: "appeal-1",
-        taskId: "task-1",
-        resultId: null,
-        reason: "希望复核",
-        status: "OPEN",
-        decisionNote: null,
-        createdAt: new Date(),
-        decidedAt: null,
-      }),
+    createAppeal: vi.fn().mockResolvedValue({
+      id: "appeal-1",
+      taskId: "task-1",
+      resultId: null,
+      reason: "希望复核",
+      status: "OPEN",
+      decisionNote: null,
+      createdAt: new Date(),
+      decidedAt: null,
+    }),
     listUserAppeals: vi.fn().mockResolvedValue([]),
     listAppeals: vi.fn().mockResolvedValue([]),
     reviewResultId: vi.fn(),

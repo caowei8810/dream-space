@@ -19,10 +19,21 @@ export function recordRequest(method: string, statusCode: number) {
 }
 
 export function requestMetricSnapshot(): RequestMetricSnapshot {
-  return { total: metrics.total, errors: metrics.errors, byMethod: { ...metrics.byMethod }, byStatusClass: { ...metrics.byStatusClass } };
+  return {
+    total: metrics.total,
+    errors: metrics.errors,
+    byMethod: { ...metrics.byMethod },
+    byStatusClass: { ...metrics.byStatusClass },
+  };
 }
 
-export function logRequest(input: { requestId: string; method: string; path: string; statusCode: number; durationMs: number }) {
+export function logRequest(input: {
+  requestId: string;
+  method: string;
+  path: string;
+  statusCode: number;
+  durationMs: number;
+}) {
   logger.log(JSON.stringify({ event: "http.request", ...input }));
 }
 

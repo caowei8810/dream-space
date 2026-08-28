@@ -109,7 +109,11 @@ export class AuthRepository {
 
   async findSession(tokenHash: string): Promise<UserRecord | null> {
     const session = await this.database.userSession.findFirst({
-      where: { tokenHash, expiresAt: { gt: new Date() }, user: { status: { notIn: ["BANNED", "DELETED"] } } },
+      where: {
+        tokenHash,
+        expiresAt: { gt: new Date() },
+        user: { status: { notIn: ["BANNED", "DELETED"] } },
+      },
       include: { user: true },
     });
     if (!session) return null;

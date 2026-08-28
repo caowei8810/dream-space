@@ -47,7 +47,13 @@ async function bootstrap() {
     response.setHeader("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'");
     response.on("finish", () => {
       recordRequest(request.method.toUpperCase(), response.statusCode);
-      logRequest({ requestId, method: request.method.toUpperCase(), path: safeRequestPath(request.url ?? headerValue(request, ":path") ?? "/"), statusCode: response.statusCode, durationMs: Date.now() - startedAt });
+      logRequest({
+        requestId,
+        method: request.method.toUpperCase(),
+        path: safeRequestPath(request.url ?? headerValue(request, ":path") ?? "/"),
+        statusCode: response.statusCode,
+        durationMs: Date.now() - startedAt,
+      });
     });
     if (env.NODE_ENV === "production") {
       response.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
@@ -62,7 +68,11 @@ async function bootstrap() {
     }
 
     if (isMutation) {
-      const identity = headerValue(request, "authorization") ?? headerValue(request, "cookie") ?? request.ip ?? "unknown";
+      const identity =
+        headerValue(request, "authorization") ??
+        headerValue(request, "cookie") ??
+        request.ip ??
+        "unknown";
       const bucket = Math.floor(Date.now() / (env.RATE_LIMIT_WINDOW_SECONDS * 1000));
       const key = `rate:${bucket}:${request.method}:${rateLimitIdentity(identity)}`;
       try {
@@ -70,7 +80,10 @@ async function bootstrap() {
           const count = await redis.incr(key);
           if (count === 1) await redis.expire(key, env.RATE_LIMIT_WINDOW_SECONDS);
           response.setHeader("X-RateLimit-Limit", String(env.RATE_LIMIT_MAX_REQUESTS));
-          response.setHeader("X-RateLimit-Remaining", String(Math.max(0, env.RATE_LIMIT_MAX_REQUESTS - count)));
+          response.setHeader(
+            "X-RateLimit-Remaining",
+            String(Math.max(0, env.RATE_LIMIT_MAX_REQUESTS - count)),
+          );
           if (count > env.RATE_LIMIT_MAX_REQUESTS) {
             response.statusCode = 429;
             response.setHeader("Retry-After", String(env.RATE_LIMIT_WINDOW_SECONDS));
