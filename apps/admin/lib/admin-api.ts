@@ -21,6 +21,7 @@ import type {
   AdminBillingRuleCreateInput,
   AdminBillingPromotionCreateInput,
   AdminBillingRuleListResponse,
+  AdminBillingOrderListResponse,
   AdminPlanCreateInput,
   AdminPlanListResponse,
   AdminModerationReviewListResponse,
@@ -32,10 +33,23 @@ import type {
   AdminInspirationListResponse,
   AdminInspirationRecord,
   AdminAuditLogListResponse,
+  AdminModelCreateInput,
+  AdminModelRecord,
+  AdminModelListResponse,
+  AdminModelVersionInput,
+  AdminProviderUpdateInput,
+  AdminProviderCreateInput,
+  AdminProviderRecord,
+  AdminProviderHealthCheckResult,
+  AdminModelRouteUpdateInput,
+  AdminPrivacyRequestListResponse,
+  AdminPrivacyCleanupInput,
+  AdminPrivacyCleanupResponse,
   AdminLoginRequest,
   AdminSessionResponse,
   SendCodeRequest,
   SendCodeResponse,
+  RefundCreateInput,
 } from "@dream-space/contracts";
 
 export const adminApiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
@@ -124,9 +138,20 @@ export const adminApi = {
   logout: () => request<void>("/admin/auth/logout", { method: "POST" }),
   dashboardSummary: () => request<AdminDashboardSummary>("/admin/dashboard/summary"),
   roles: () => request<AdminRoleListResponse>("/admin/roles"),
-  auditLogs: (filters: { action?: string; resourceType?: string; actor?: string; requestId?: string; page?: number; pageSize?: number } = {}) => {
+  auditLogs: (
+    filters: {
+      action?: string;
+      resourceType?: string;
+      actor?: string;
+      requestId?: string;
+      page?: number;
+      pageSize?: number;
+    } = {},
+  ) => {
     const search = new URLSearchParams();
-    Object.entries(filters).forEach(([key, value]) => { if (value !== undefined && value !== "") search.set(key, String(value)); });
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== "") search.set(key, String(value));
+    });
     return request<AdminAuditLogListResponse>(`/admin/audit/logs?${search.toString()}`);
   },
   role: (id: string) => request<AdminRoleRecord>(`/admin/roles/${id}`),
@@ -201,7 +226,9 @@ export const adminApi = {
     Object.entries(filters).forEach(([key, value]) => {
       if (value !== undefined && value !== "") search.set(key, String(value));
     });
-    return request<AdminModerationReviewListResponse>(`/admin/moderation/reviews?${search.toString()}`);
+    return request<AdminModerationReviewListResponse>(
+      `/admin/moderation/reviews?${search.toString()}`,
+    );
   },
   claimModerationReview: (id: string) =>
     request(`/admin/moderation/reviews/${id}/claim`, { method: "POST" }),
@@ -212,7 +239,10 @@ export const adminApi = {
     }),
   moderationAppeals: () => request<AdminModerationAppealListResponse>("/admin/moderation/appeals"),
   decideModerationAppeal: (id: string, input: AdminModerationDecisionInput) =>
-    request(`/admin/moderation/appeals/${id}/decision`, { method: "POST", body: JSON.stringify(input) }),
+    request(`/admin/moderation/appeals/${id}/decision`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
   adminAccounts: (filters: AdminAccountFilters) => {
     const search = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => {
@@ -227,12 +257,86 @@ export const adminApi = {
       body: JSON.stringify(input),
     }),
   billingRules: () => request<AdminBillingRuleListResponse>("/admin/billing/rules"),
-  createBillingRule: (input: AdminBillingRuleCreateInput) => request("/admin/billing/rules", { method: "POST", body: JSON.stringify(input) }),
-  publishBillingRule: (id: string, reason: string) => request(`/admin/billing/rules/${id}/publish`, { method: "POST", body: JSON.stringify({ reason }) }),
-  createBillingPromotion: (input: AdminBillingPromotionCreateInput) => request("/admin/billing/promotions", { method: "POST", body: JSON.stringify(input) }),
+  billingOrders: (filters: {
+    page?: number;
+    pageSize?: number;
+    status?: string;
+    query?: string;
+  }) => {
+    const search = new URLSearchParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== "") search.set(key, String(value));
+    });
+    return request<AdminBillingOrderListResponse>(`/admin/billing/orders?${search.toString()}`);
+  },
+  refundBillingOrder: (id: string, input: Omit<RefundCreateInput, "orderId">) =>
+    request(`/admin/billing/orders/${id}/refund`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  models: () => request<AdminModelListResponse>("/admin/models"),
+  createProvider: (input: AdminProviderCreateInput) =>
+    request("/admin/models/providers", { method: "POST", body: JSON.stringify(input) }),
+  updateProvider: (id: string, input: AdminProviderUpdateInput) =>
+    request<AdminProviderRecord>(`/admin/models/providers/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
+  checkProviderHealth: (id: string, reason: string) =>
+    request<AdminProviderHealthCheckResult>(`/admin/models/providers/${id}/health-check`, {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    }),
+  updateModelRoute: (modelId: string, providerId: string, input: AdminModelRouteUpdateInput) =>
+    request<AdminModelRecord>(`/admin/models/${modelId}/routes/${providerId}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
+  createModel: (input: AdminModelCreateInput) =>
+    request("/admin/models", { method: "POST", body: JSON.stringify(input) }),
+  createModelVersion: (id: string, input: AdminModelVersionInput) =>
+    request(`/admin/models/${id}/versions`, { method: "POST", body: JSON.stringify(input) }),
+  publishModel: (id: string, version: number, reason: string) =>
+    request(`/admin/models/${id}/publish?version=${version}`, {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    }),
+  rollbackModel: (id: string, reason: string) =>
+    request(`/admin/models/${id}/rollback`, { method: "POST", body: JSON.stringify({ reason }) }),
+  privacyRequests: (filters: { page?: number; pageSize?: number } = {}) => {
+    const search = new URLSearchParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined) search.set(key, String(value));
+    });
+    return request<AdminPrivacyRequestListResponse>(`/admin/privacy/requests?${search.toString()}`);
+  },
+  completePrivacyRequest: (id: string, input: { reason: string; decisionNote?: string }) =>
+    request(`/admin/privacy/requests/${id}/complete`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  cleanupPrivacyUploads: (input: AdminPrivacyCleanupInput) =>
+    request<AdminPrivacyCleanupResponse>("/admin/privacy/requests/cleanup", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  createBillingRule: (input: AdminBillingRuleCreateInput) =>
+    request("/admin/billing/rules", { method: "POST", body: JSON.stringify(input) }),
+  publishBillingRule: (id: string, reason: string) =>
+    request(`/admin/billing/rules/${id}/publish`, {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    }),
+  createBillingPromotion: (input: AdminBillingPromotionCreateInput) =>
+    request("/admin/billing/promotions", { method: "POST", body: JSON.stringify(input) }),
   plans: () => request<AdminPlanListResponse>("/admin/billing/plans"),
-  createPlan: (input: AdminPlanCreateInput) => request("/admin/billing/plans", { method: "POST", body: JSON.stringify(input) }),
-  publishPlan: (id: string, reason: string) => request(`/admin/billing/plans/${id}/publish`, { method: "POST", body: JSON.stringify({ reason }) }),
+  createPlan: (input: AdminPlanCreateInput) =>
+    request("/admin/billing/plans", { method: "POST", body: JSON.stringify(input) }),
+  publishPlan: (id: string, reason: string) =>
+    request(`/admin/billing/plans/${id}/publish`, {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    }),
   updateAdminAccount: (id: string, input: AdminAccountUpdateInput) =>
     request<AdminAccountRecord>(`/admin/admin-users/${id}`, {
       method: "PATCH",

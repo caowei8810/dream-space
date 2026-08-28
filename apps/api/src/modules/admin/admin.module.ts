@@ -33,9 +33,12 @@ import { AdminBillingController } from "../billing/admin-billing.controller";
 import { AdminAuditController } from "./admin-audit.controller";
 import { AdminAuditRepository } from "./admin-audit.repository";
 import { AdminAuditService } from "./admin-audit.service";
+import { AdminModelsController } from "./admin-models.controller";
+import { ModelsModule } from "../models/models.module";
+import { AdminModelHealthService } from "./admin-model-health.service";
 
 @Module({
-  imports: [GenerationModule, RiskModule, BillingModule],
+  imports: [GenerationModule, RiskModule, BillingModule, ModelsModule],
   controllers: [
     AdminAuthController,
     AdminDashboardController,
@@ -48,6 +51,7 @@ import { AdminAuditService } from "./admin-audit.service";
     AdminRiskController,
     AdminBillingController,
     AdminAuditController,
+    AdminModelsController,
   ],
   providers: [
     AdminAuthRepository,
@@ -68,7 +72,8 @@ import { AdminAuditService } from "./admin-audit.service";
     AdminRiskService,
     AdminAuditRepository,
     AdminAuditService,
+    AdminModelHealthService,
   ],
-  exports: [AdminAuthService],
+  exports: [AdminAuthService, AdminPermissionGuard],
 })
 export class AdminModule {}

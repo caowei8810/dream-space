@@ -53,6 +53,7 @@ export class PrismaGenerationStore implements GenerationStore {
         status: "generating" as const,
         prompt: task.prompt,
         model: task.model,
+        modelConfigSnapshot: task.modelConfigSnapshot && typeof task.modelConfigSnapshot === "object" && !Array.isArray(task.modelConfigSnapshot) ? task.modelConfigSnapshot as Record<string, unknown> : null,
         ratio: decodeGenerationRatio(task.ratio),
         resolution: decodeGenerationResolution(task.resolution),
         imageCount: task.imageCount,

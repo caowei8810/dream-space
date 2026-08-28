@@ -41,7 +41,7 @@ export class AuthService {
     }
     const phone = this.normalizePhone(input.phone);
     const existingUser = await this.repository.findUserByPhone(phone);
-    if (existingUser?.status === "BANNED") {
+    if (existingUser?.status === "BANNED" || existingUser?.status === "DELETED") {
       throw new ForbiddenException("当前账号已被封禁");
     }
     const reusable = await this.repository.findReusableChallenge(phone);
@@ -130,7 +130,7 @@ export class AuthService {
     if (!session.authenticated) throw new UnauthorizedException("请先登录");
     if (session.user.status !== "active") {
       throw new ForbiddenException(
-        session.user.status === "banned" ? "当前账号已被封禁" : "当前账号暂不能发起生成",
+        session.user.status === "banned" ? "当前账号已被封禁" : session.user.status === "deleted" ? "当前账号已删除" : "当前账号暂不能发起生成",
       );
     }
     return session.user;
@@ -156,7 +156,7 @@ export class AuthService {
   private mapUser(user: {
     id: string;
     phone: string;
-    status: "ACTIVE" | "RESTRICTED" | "BANNED";
+    status: "ACTIVE" | "RESTRICTED" | "BANNED" | "DELETED";
     createdAt: Date;
   }): AuthUser {
     return {

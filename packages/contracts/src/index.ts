@@ -7,6 +7,13 @@ export interface HealthResponse {
   timestamp: string;
 }
 
+export interface ReadinessResponse {
+  service: ServiceName;
+  status: "ready";
+  timestamp: string;
+  dependencies: { database: "ok" };
+}
+
 export const inspirationCategories = [
   { id: "portrait", labelZh: "人像", labelEn: "Portrait" },
   { id: "photography", labelZh: "摄影", labelEn: "Photography" },
@@ -56,7 +63,7 @@ export interface AuthUser {
   createdAt: string;
 }
 
-export const userStatuses = ["active", "restricted", "banned"] as const;
+export const userStatuses = ["active", "restricted", "banned", "deleted"] as const;
 export type UserStatus = (typeof userStatuses)[number];
 
 export interface AdminUserRecord {
@@ -82,6 +89,54 @@ export interface AdminUserListResponse {
 
 export interface AdminUserStatusInput {
   reason: string;
+}
+
+export const privacyRequestStatuses = ["requested", "processing", "completed", "rejected"] as const;
+export type PrivacyRequestStatus = (typeof privacyRequestStatuses)[number];
+export interface PrivacyRequestRecord {
+  id: string;
+  userId: string;
+  type: "delete" | "export";
+  status: PrivacyRequestStatus;
+  reason: string;
+  requestedAt: string;
+  processedAt: string | null;
+  decisionNote: string | null;
+}
+export interface PrivacyRequestCreateInput {
+  reason: string;
+  type?: "delete" | "export";
+}
+export interface PrivacyRequestDecisionInput {
+  decisionNote?: string;
+}
+export interface PrivacyRequestListResponse {
+  items: PrivacyRequestRecord[];
+  total: number;
+}
+export interface AdminPrivacyRequestRecord extends PrivacyRequestRecord {
+  phoneMasked: string;
+}
+export interface AdminPrivacyRequestListResponse {
+  items: AdminPrivacyRequestRecord[];
+  total: number;
+  page: number;
+  pageSize: number;
+  pageCount: number;
+}
+export interface AdminPrivacyCleanupInput {
+  retentionDays: number;
+  dryRun?: boolean;
+  reason: string;
+}
+export interface AdminPrivacyCleanupResponse {
+  dryRun: boolean;
+  retentionDays: number;
+  cutoff: string;
+  candidates: number;
+  deleted: number;
+  failed: number;
+  failures: Array<{ objectKey: string; message: string }>;
 }
 
 export const riskRuleMatchTypes = ["keyword", "regex"] as const;
@@ -287,8 +342,125 @@ export const adminPermissions = [
   "plans:write",
   "plans:publish",
   "refunds:create",
+  "models:read",
+  "models:write",
+  "models:publish",
+  "privacy:read",
+  "privacy:write",
 ] as const;
 export type AdminPermission = (typeof adminPermissions)[number];
+
+export const modelStatuses = ["draft", "published", "archived"] as const;
+export type ModelStatus = (typeof modelStatuses)[number];
+export const modelConfigStatuses = ["draft", "published", "rolled_back"] as const;
+export type ModelConfigStatus = (typeof modelConfigStatuses)[number];
+
+export interface AdminModelRecord {
+  id: string;
+  code: string;
+  name: string;
+  providerId: string;
+  providerCode: string;
+  providerName: string;
+  providerBaseUrl: string | null;
+  providerHasSecretRef: boolean;
+  providerTimeoutMs: number;
+  providerRetryLimit: number;
+  providerModelId: string;
+  status: ModelStatus;
+  visible: boolean;
+  capabilities: { ratios: string[]; resolutions: string[]; maxImageCount: number };
+  currentVersion: number | null;
+  latestVersion: number | null;
+  routeHealth: string;
+  routes: AdminModelRouteRecord[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminModelRouteRecord {
+  id: string;
+  providerId: string;
+  providerCode: string;
+  enabled: boolean;
+  weight: number;
+  priority: number;
+  health: string;
+  lastCheckedAt: string | null;
+}
+
+export interface AdminModelListResponse {
+  items: AdminModelRecord[];
+  total: number;
+  providers: AdminProviderRecord[];
+}
+
+export interface AdminProviderRecord {
+  id: string;
+  code: string;
+  name: string;
+  status: "draft" | "active" | "disabled";
+  baseUrl: string | null;
+  hasSecretRef: boolean;
+  timeoutMs: number;
+  retryLimit: number;
+  modelCount: number;
+  health: "unknown" | "healthy" | "unhealthy";
+  lastCheckedAt: string | null;
+  updatedAt: string;
+}
+
+export interface AdminProviderCreateInput extends AdminProviderUpdateInput {
+  code: string;
+  name: string;
+}
+
+export interface AdminModelCreateInput {
+  code: string;
+  name: string;
+  providerId: string;
+  providerModelId: string;
+  capabilities: { ratios: string[]; resolutions: string[]; maxImageCount: number };
+  reason: string;
+}
+
+export interface AdminProviderUpdateInput {
+  name?: string;
+  baseUrl: string;
+  secretRef?: string | null;
+  timeoutMs: number;
+  retryLimit: number;
+  status?: "active" | "disabled";
+  reason: string;
+}
+
+export interface AdminModelRouteUpdateInput {
+  enabled: boolean;
+  weight: number;
+  priority: number;
+  reason: string;
+}
+
+export interface AdminProviderHealthCheckResult {
+  health: "healthy" | "unhealthy";
+  message: string;
+  checkedAt: string;
+  latencyMs: number;
+}
+
+export interface AdminModelVersionInput {
+  config: Record<string, unknown>;
+  reason: string;
+}
+
+export interface GenerationModelOption {
+  id: string;
+  labelZh: string;
+  labelEn: string;
+  ratios?: string[];
+  resolutions?: string[];
+  maxImageCount?: number;
+}
 
 export interface AdminAuditLogRecord {
   id: string;
@@ -328,9 +500,9 @@ export interface AdminDashboardSummary {
     newToday: number;
   };
   revenue: {
-    available: false;
-    grossCents: 0;
-    refundCents: 0;
+    available: boolean;
+    grossCents: number;
+    refundCents: number;
     note: string;
   };
   generatedAt: string;
@@ -499,12 +671,6 @@ export interface CreateGenerationTaskRequest {
   promotionCode?: string;
 }
 
-export interface GenerationModelOption {
-  id: string;
-  labelZh: string;
-  labelEn: string;
-}
-
 export interface GenerationOptionsResponse {
   models: GenerationModelOption[];
   ratios: readonly GenerationRatio[];
@@ -643,7 +809,9 @@ export interface PlanRecord {
   concurrencyLimit: number | null;
 }
 
-export interface PlanListResponse { items: PlanRecord[]; }
+export interface PlanListResponse {
+  items: PlanRecord[];
+}
 
 export interface OrderCreateInput {
   planVersionId: string;
@@ -662,7 +830,25 @@ export interface OrderRecord {
   paidAt: string | null;
 }
 
-export interface OrderListResponse { items: OrderRecord[]; }
+export interface OrderListResponse {
+  items: OrderRecord[];
+}
+
+export interface AdminBillingOrderRecord extends OrderRecord {
+  userId: string;
+  userPhoneMasked: string;
+  entitlementAvailable: number | null;
+  entitlementReserved: number | null;
+  canRefund: boolean;
+}
+
+export interface AdminBillingOrderListResponse {
+  items: AdminBillingOrderRecord[];
+  total: number;
+  page: number;
+  pageSize: number;
+  pageCount: number;
+}
 
 export interface PaymentCallbackInput {
   provider: string;
@@ -702,7 +888,10 @@ export interface AdminPlanRecord extends PlanRecord {
   status: "draft" | "published" | "archived";
 }
 
-export interface AdminPlanListResponse { items: AdminPlanRecord[]; total: number; }
+export interface AdminPlanListResponse {
+  items: AdminPlanRecord[];
+  total: number;
+}
 
 export interface AdminBillingRuleRecord {
   id: string;

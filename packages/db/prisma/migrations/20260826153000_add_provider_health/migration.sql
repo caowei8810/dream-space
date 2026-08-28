@@ -1,0 +1,3 @@
+ALTER TABLE "Provider"
+ADD COLUMN "health" TEXT NOT NULL DEFAULT 'unknown',
+ADD COLUMN "lastCheckedAt" TIMESTAMP(3);

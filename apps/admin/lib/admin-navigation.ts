@@ -9,6 +9,7 @@ import {
   FileClock,
   UserRound,
   UserRoundCog,
+  UserRoundX,
   type LucideIcon,
 } from "lucide-react";
 
@@ -36,6 +37,13 @@ export const adminNavigationItems: readonly AdminNavigationItem[] = [
     icon: UserRound,
   },
   {
+    href: "/privacy",
+    label: "隐私请求",
+    section: "业务运营",
+    permission: "privacy:read",
+    icon: UserRoundX,
+  },
+  {
     href: "/tasks",
     label: "生成任务",
     section: "业务运营",
@@ -58,10 +66,17 @@ export const adminNavigationItems: readonly AdminNavigationItem[] = [
   },
   {
     href: "/billing",
-    label: "计费规则",
+    label: "计费与订单",
     section: "业务运营",
     permission: "billing:read",
     icon: Receipt,
+  },
+  {
+    href: "/models",
+    label: "模型配置",
+    section: "业务运营",
+    permission: "models:read",
+    icon: ShieldCheck,
   },
   {
     href: "/inspirations",

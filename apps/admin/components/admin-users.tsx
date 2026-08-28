@@ -30,7 +30,7 @@ const emptyResponse: AdminUserListResponse = {
   pageCount: 0,
 };
 
-const statusLabels = { active: "正常", restricted: "限制生成", banned: "已封禁" } as const;
+const statusLabels = { active: "正常", restricted: "限制生成", banned: "已封禁", deleted: "已删除" } as const;
 
 function dateLabel(value: string | null) {
   if (!value) return "-";

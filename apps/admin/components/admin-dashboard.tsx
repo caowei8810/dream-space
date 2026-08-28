@@ -34,6 +34,14 @@ function updatedAt(value: string) {
   }).format(new Date(value));
 }
 
+function currency(value: number) {
+  return new Intl.NumberFormat("zh-CN", {
+    style: "currency",
+    currency: "CNY",
+    minimumFractionDigits: 2,
+  }).format(value / 100);
+}
+
 export function AdminDashboard() {
   const [data, setData] = useState<AdminDashboardSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -183,7 +191,13 @@ export function AdminDashboard() {
         </div>
         <div>
           <p className="admin-page-kicker">收入</p>
-          <strong className="admin-data-pending">待计费引擎接入</strong>
+          <strong className="admin-data-pending">
+            净收入 {currency(data.revenue.grossCents - data.revenue.refundCents)}
+          </strong>
+          <div className="admin-revenue-breakdown">
+            <span>实收 {currency(data.revenue.grossCents)}</span>
+            <span>退款 {currency(data.revenue.refundCents)}</span>
+          </div>
           <small>{data.revenue.note}</small>
         </div>
       </section>

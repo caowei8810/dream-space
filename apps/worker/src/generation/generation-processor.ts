@@ -22,6 +22,7 @@ export interface GenerationTaskSnapshot {
   status: "generating";
   prompt: string;
   model: string;
+  modelConfigSnapshot?: Record<string, unknown> | null;
   ratio: GenerationRatio;
   resolution: GenerationResolution;
   imageCount: number;

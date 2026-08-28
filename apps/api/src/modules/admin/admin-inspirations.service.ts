@@ -21,6 +21,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { AdminInspirationsRepository, type CandidateRecord } from "./admin-inspirations.repository";
+import { randomUUID } from "node:crypto";
 
 interface RawQuery {
   status?: string;
@@ -107,12 +108,19 @@ export class AdminInspirationsService {
     return this.mapCandidate(item);
   }
 
-  async publishCandidate(resultId: string) {
+  async publishCandidate(resultId: string, actorId?: string, requestId?: string) {
     const candidate = await this.repository.findCandidate(this.id(resultId));
     if (!candidate) throw new NotFoundException("没有找到可精选的审核通过图片");
     const input = this.defaultPublishInput(candidate.task.prompt);
     try {
-      return this.mapInspiration(await this.repository.publishCandidate(this.id(resultId), input));
+      const item = actorId
+        ? await this.repository.publishCandidate(this.id(resultId), input, {
+            actorId,
+            reason: "精选发布用户作品",
+            requestId: this.requestId(requestId),
+          })
+        : await this.repository.publishCandidate(this.id(resultId), input);
+      return this.mapInspiration(item);
     } catch (error) {
       if ((error as { code?: string }).code === "P2002") {
         throw new ConflictException("该图片已经发布为灵感或 slug 已存在");
@@ -127,10 +135,17 @@ export class AdminInspirationsService {
     return this.mapInspiration(await this.repository.publish(this.id(id)));
   }
 
-  async unpublish(id: string) {
+  async unpublish(id: string, actorId?: string, requestId?: string) {
     const item = await this.repository.findById(this.id(id));
     if (!item) throw new NotFoundException("灵感不存在");
-    return this.mapInspiration(await this.repository.unpublish(this.id(id)));
+    const result = actorId
+      ? await this.repository.unpublish(this.id(id), {
+          actorId,
+          reason: "下架灵感内容",
+          requestId: this.requestId(requestId),
+        })
+      : await this.repository.unpublish(this.id(id));
+    return this.mapInspiration(result);
   }
 
   private defaultPublishInput(prompt: string) {
@@ -140,6 +155,12 @@ export class AdminInspirationsService {
       category: "photography" as const,
       sortOrder: 0,
     };
+  }
+
+  private requestId(value?: string) {
+    return typeof value === "string" && value.trim() && value.length <= 128
+      ? value.trim()
+      : randomUUID();
   }
 
   private mapCandidate(item: CandidateRecord): AdminInspirationCandidateRecord {
