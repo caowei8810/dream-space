@@ -1628,6 +1628,22 @@ button:disabled {
   object-fit: cover;
 }
 
+.admin-curation-image-fallback {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 7px;
+  color: var(--admin-muted);
+  font-size: 11px;
+}
+
+.admin-curation-image-fallback svg {
+  width: 22px;
+  height: 22px;
+}
+
 .admin-curation-badge {
   position: absolute;
   right: 8px;

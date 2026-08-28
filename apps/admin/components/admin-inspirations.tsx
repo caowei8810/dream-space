@@ -6,7 +6,7 @@ import {
   type AdminInspirationCandidateRecord,
   type AdminInspirationListResponse,
 } from "@dream-space/contracts";
-import { Archive, CircleAlert, Eye, RefreshCw, Search, Upload } from "lucide-react";
+import { Archive, CircleAlert, Eye, ImageOff, RefreshCw, Search, Upload } from "lucide-react";
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 import {
   AdminApiError,
@@ -47,6 +47,19 @@ function formatDate(value: string) {
 
 function categoryLabel(value: string) {
   return inspirationCategories.find((category) => category.id === value)?.labelZh ?? value;
+}
+
+function CurationImage({ src, alt }: { src: string; alt: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return (
+      <div className="admin-curation-image-fallback" role="img" aria-label={`${alt}暂不可用`}>
+        <ImageOff aria-hidden="true" />
+        <span>图片暂不可用</span>
+      </div>
+    );
+  }
+  return <img src={src} alt={alt} onError={() => setFailed(true)} />;
 }
 
 export function AdminInspirations() {
@@ -208,7 +221,10 @@ export function AdminInspirations() {
           {candidates.items.map((candidate) => (
             <article className="admin-curation-card" key={candidate.resultId}>
               <div className="admin-curation-image-wrap">
-                <img src={resolveAdminAssetUrl(candidate.thumbnailUrl)} alt="用户生成候选" />
+                <CurationImage
+                  src={resolveAdminAssetUrl(candidate.thumbnailUrl)}
+                  alt="用户生成候选"
+                />
                 <span className="admin-curation-badge">审核通过</span>
               </div>
               <div className="admin-curation-card-body">
@@ -268,7 +284,7 @@ export function AdminInspirations() {
           {published.items.map((item) => (
             <article className="admin-curation-card" key={item.id}>
               <div className="admin-curation-image-wrap">
-                <img src={resolveAdminAssetUrl(item.thumbnailUrl)} alt={item.title} />
+                <CurationImage src={resolveAdminAssetUrl(item.thumbnailUrl)} alt={item.title} />
                 <span className="admin-curation-badge">已发布</span>
               </div>
               <div className="admin-curation-card-body">
