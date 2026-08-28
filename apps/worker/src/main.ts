@@ -15,6 +15,11 @@ import {
 } from "./generation/generation-processor";
 import { PrismaGenerationStore } from "./generation/prisma-generation-store";
 import { DeterministicMockContentModerator } from "./moderation/content-moderator";
+import { OpenAIImageProvider } from "./providers/openai-image-provider";
+import {
+  OpenAIContentModerator,
+  type OpenAIContentModeratorOptions,
+} from "./providers/openai-content-moderator";
 import { GENERATION_QUEUE } from "./queues/names";
 import { QuotaReconciliationService } from "./reconciliation/quota-reconciliation";
 import { cleanupDeletedUploads } from "./privacy/privacy-retention";
@@ -31,6 +36,10 @@ interface GenerationWorkerStorageOptions {
   localRoot: string;
   mockAssetRoot: string;
   s3: S3ObjectStorageOptions;
+}
+
+interface GenerationWorkerLiveOptions {
+  moderation: OpenAIContentModeratorOptions;
 }
 
 const defaultStorageOptions: GenerationWorkerStorageOptions = {
@@ -53,10 +62,10 @@ export function createGenerationWorker(
   generationDelayMs: number,
   externalServicesMode: "mock" | "live" = "mock",
   storageOptions: GenerationWorkerStorageOptions = defaultStorageOptions,
+  liveOptions?: GenerationWorkerLiveOptions,
 ): GenerationWorkerRuntime {
-  if (externalServicesMode !== "mock") {
-    throw new Error("真实图片模型适配器尚未配置，请使用 EXTERNAL_SERVICES_MODE=mock");
-  }
+  if (externalServicesMode === "live" && !liveOptions)
+    throw new Error("真实内容审核适配器尚未配置");
   const connection = new IORedis(redisUrl, { maxRetriesPerRequest: null });
   const database = createDatabaseClient(databaseUrl);
   const storage = createObjectStorage({
@@ -66,9 +75,13 @@ export function createGenerationWorker(
   });
   const processor = new GenerationProcessor(
     new PrismaGenerationStore(database),
-    new DeterministicMockProvider(generationDelayMs, storageOptions.mockAssetRoot),
+    externalServicesMode === "live"
+      ? new OpenAIImageProvider()
+      : new DeterministicMockProvider(generationDelayMs, storageOptions.mockAssetRoot),
     new GenerationOutputPipeline(storage),
-    new DeterministicMockContentModerator(),
+    externalServicesMode === "live"
+      ? new OpenAIContentModerator(liveOptions!.moderation)
+      : new DeterministicMockContentModerator(),
   );
   const worker = new Worker<GenerationQueueJob>(
     GENERATION_QUEUE,
@@ -106,6 +119,14 @@ async function bootstrap() {
         accessKey: env.S3_ACCESS_KEY,
         secretKey: env.S3_SECRET_KEY,
         forcePathStyle: env.S3_FORCE_PATH_STYLE,
+      },
+    },
+    {
+      moderation: {
+        baseUrl: env.MODERATION_BASE_URL,
+        secretRef: env.MODERATION_SECRET_REF,
+        model: env.MODERATION_MODEL,
+        timeoutMs: env.MODERATION_TIMEOUT_MS,
       },
     },
   );

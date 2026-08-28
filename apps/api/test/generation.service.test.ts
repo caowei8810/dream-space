@@ -88,7 +88,13 @@ function createService() {
     assertOwnedReferenceUrls: vi.fn().mockResolvedValue(undefined),
   } as unknown as UploadsService;
   const risk = { inspectPrompt: vi.fn().mockResolvedValue(undefined) } as unknown as RiskService;
-  return { queue, repository, uploads, risk, service: new GenerationService(repository, queue, uploads, risk) };
+  return {
+    queue,
+    repository,
+    uploads,
+    risk,
+    service: new GenerationService(repository, queue, uploads, risk),
+  };
 }
 
 describe("GenerationService", () => {
@@ -114,31 +120,103 @@ describe("GenerationService", () => {
 
   it("stores the server billing snapshot on a generated task", async () => {
     const { queue, repository, uploads, risk } = createService();
-    const billing = { quote: vi.fn().mockResolvedValue({ promotionCode: "HALF", ruleVersion: 3, finalUnitCents: 5, finalTotalCents: 10 }) };
-    const service = new GenerationService(repository, queue, uploads, risk, billing as unknown as BillingService);
+    const billing = {
+      quote: vi.fn().mockResolvedValue({
+        promotionCode: "HALF",
+        ruleVersion: 3,
+        finalUnitCents: 5,
+        finalTotalCents: 10,
+      }),
+    };
+    const service = new GenerationService(
+      repository,
+      queue,
+      uploads,
+      risk,
+      billing as unknown as BillingService,
+    );
     await service.createTask("user-1", { ...input, promotionCode: "half" });
-    expect(repository.createTask).toHaveBeenCalledWith(expect.objectContaining({ billingRuleVersion: 3, billingPromotionCode: "HALF", billingUnitCents: 5, billingTotalCents: 10 }));
+    expect(repository.createTask).toHaveBeenCalledWith(
+      expect.objectContaining({
+        billingRuleVersion: 3,
+        billingPromotionCode: "HALF",
+        billingUnitCents: 5,
+        billingTotalCents: 10,
+      }),
+    );
   });
 
   it("validates model capabilities and stores an immutable model snapshot", async () => {
     const { queue, repository, uploads, risk } = createService();
     const model = {
-      code: "image-4.7", name: "通用模型", providerModelId: "provider-model", capabilities: { ratios: ["1:1"], resolutions: ["2K"], maxImageCount: 2 },
+      code: "image-4.7",
+      name: "通用模型",
+      providerModelId: "provider-model",
+      capabilities: { ratios: ["1:1"], resolutions: ["2K"], maxImageCount: 2 },
       provider: { code: "mock" },
     };
     const version = { id: "version-2", version: 2, config: { temperature: 0.4 } };
-    const models = { resolve: vi.fn().mockResolvedValue({ model, version }), readCapabilities: vi.fn((value) => value), options: vi.fn().mockResolvedValue([]) };
-    const service = new GenerationService(repository, queue, uploads, risk, undefined, models as unknown as AdminModelsService);
+    const route = {
+      provider: {
+        id: "provider-1",
+        code: "mock",
+        baseUrl: null,
+        secretRef: null,
+        timeoutMs: 30000,
+        retryLimit: 2,
+      },
+    };
+    const models = {
+      resolve: vi.fn().mockResolvedValue({ model, version, route }),
+      readCapabilities: vi.fn((value) => value),
+      options: vi.fn().mockResolvedValue([]),
+    };
+    const service = new GenerationService(
+      repository,
+      queue,
+      uploads,
+      risk,
+      undefined,
+      models as unknown as AdminModelsService,
+    );
     await service.createTask("user-1", input);
-    expect(repository.createTask).toHaveBeenCalledWith(expect.objectContaining({ modelConfigVersionId: "version-2", modelConfigSnapshot: { modelCode: "image-4.7", modelName: "通用模型", providerCode: "mock", providerModelId: "provider-model", version: 2, config: { temperature: 0.4 } } }));
-    await expect(service.createTask("user-1", { ...input, imageCount: 3 })).rejects.toThrow("当前模型单次最多生成 2 张");
-    await expect(service.createTask("user-1", { ...input, ratio: "16:9" })).rejects.toThrow("当前模型不支持所选画面比例");
+    expect(repository.createTask).toHaveBeenCalledWith(
+      expect.objectContaining({
+        modelConfigVersionId: "version-2",
+        modelConfigSnapshot: {
+          modelCode: "image-4.7",
+          modelName: "通用模型",
+          providerId: "provider-1",
+          providerCode: "mock",
+          providerBaseUrl: null,
+          providerSecretRef: null,
+          providerTimeoutMs: 30000,
+          providerRetryLimit: 2,
+          providerModelId: "provider-model",
+          version: 2,
+          config: { temperature: 0.4 },
+        },
+      }),
+    );
+    await expect(service.createTask("user-1", { ...input, imageCount: 3 })).rejects.toThrow(
+      "当前模型单次最多生成 2 张",
+    );
+    await expect(service.createTask("user-1", { ...input, ratio: "16:9" })).rejects.toThrow(
+      "当前模型不支持所选画面比例",
+    );
   });
 
   it("does not restore hard-coded models after operations disables every model", async () => {
     const { queue, repository, uploads, risk } = createService();
     const models = { options: vi.fn().mockResolvedValue([]) };
-    const service = new GenerationService(repository, queue, uploads, risk, undefined, models as unknown as AdminModelsService);
+    const service = new GenerationService(
+      repository,
+      queue,
+      uploads,
+      risk,
+      undefined,
+      models as unknown as AdminModelsService,
+    );
     await expect(service.getRuntimeOptions()).resolves.toMatchObject({ models: [] });
   });
 
