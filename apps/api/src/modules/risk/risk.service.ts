@@ -1,9 +1,4 @@
-import {
-  ConflictException,
-  ForbiddenException,
-  Inject,
-  Injectable,
-} from "@nestjs/common";
+import { ConflictException, ForbiddenException, Inject, Injectable } from "@nestjs/common";
 import { createHash } from "node:crypto";
 import { RiskRepository, type RiskRuleRuntimeRecord } from "./risk.repository";
 

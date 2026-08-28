@@ -1,5 +1,19 @@
-import type { AdminPermission, AdminRiskRuleCreateInput, AdminRiskRuleActionInput } from "@dream-space/contracts";
-import { Body, Controller, Get, Headers, Inject, Param, Post, Query, UseGuards } from "@nestjs/common";
+import type {
+  AdminPermission,
+  AdminRiskRuleCreateInput,
+  AdminRiskRuleActionInput,
+} from "@dream-space/contracts";
+import {
+  Body,
+  Controller,
+  Get,
+  Headers,
+  Inject,
+  Param,
+  Post,
+  Query,
+  UseGuards,
+} from "@nestjs/common";
 import { AdminAuthService } from "./admin-auth.service";
 import { AdminPermissionGuard, RequireAdminPermission } from "./admin-permission.guard";
 import { AdminRiskService } from "./admin-risk.service";
@@ -22,7 +36,11 @@ export class AdminRiskController {
 
   @Get("hits")
   @RequireAdminPermission("risk-rules:read")
-  listHits(@Query("page") page?: string, @Query("pageSize") pageSize?: string, @Query("status") status?: string) {
+  listHits(
+    @Query("page") page?: string,
+    @Query("pageSize") pageSize?: string,
+    @Query("status") status?: string,
+  ) {
     return this.service.listHits({ page, pageSize, status });
   }
 
@@ -33,7 +51,9 @@ export class AdminRiskController {
     @Headers("cookie") cookie: string | undefined,
     @Headers("x-request-id") requestId: string | undefined,
   ) {
-    return this.withActor(cookie, "risk-rules:write", (actor) => this.service.create(input, actor, requestId));
+    return this.withActor(cookie, "risk-rules:write", (actor) =>
+      this.service.create(input, actor, requestId),
+    );
   }
 
   @Post("rules/:id/publish")

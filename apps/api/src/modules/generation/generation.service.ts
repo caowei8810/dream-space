@@ -71,7 +71,9 @@ export class GenerationService {
     rawInput: CreateGenerationTaskRequest,
   ): Promise<CreateGenerationTaskResponse> {
     const input = this.validateCreateInput(rawInput);
-    const resolvedModel = this.models ? await this.models.resolve(input.model) : null;
+    const resolvedModel = this.models
+      ? await this.models.resolve(input.model, `${userId}:${input.idempotencyKey}`)
+      : null;
     if (resolvedModel) {
       const capabilities = this.models!.readCapabilities(resolvedModel.model.capabilities);
       if (!capabilities.ratios.includes(input.ratio)) {
@@ -88,7 +90,12 @@ export class GenerationService {
     await this.uploads.assertOwnedReferenceUrls(userId, input.referenceImageUrls);
     const unitCost = calculateGenerationCost(1, input.resolution);
     const totalCost = calculateGenerationCost(input.imageCount, input.resolution);
-    const quote = this.billing ? await this.billing.quote({ imageCount: input.imageCount, promotionCode: input.promotionCode }) : null;
+    const quote = this.billing
+      ? await this.billing.quote({
+          imageCount: input.imageCount,
+          promotionCode: input.promotionCode,
+        })
+      : null;
     const result = await this.repository.createTask({
       ...input,
       userId,
@@ -99,14 +106,21 @@ export class GenerationService {
       billingUnitCents: quote?.finalUnitCents ?? null,
       billingTotalCents: quote?.finalTotalCents ?? null,
       modelConfigVersionId: resolvedModel?.version.id ?? null,
-      modelConfigSnapshot: resolvedModel ? {
-        modelCode: resolvedModel.model.code,
-        modelName: resolvedModel.model.name,
-        providerCode: resolvedModel.model.provider.code,
-        providerModelId: resolvedModel.model.providerModelId,
-        version: resolvedModel.version.version,
-        config: resolvedModel.version.config,
-      } : null,
+      modelConfigSnapshot: resolvedModel
+        ? {
+            modelCode: resolvedModel.model.code,
+            modelName: resolvedModel.model.name,
+            providerId: resolvedModel.route.provider.id,
+            providerCode: resolvedModel.route.provider.code,
+            providerBaseUrl: resolvedModel.route.provider.baseUrl,
+            providerSecretRef: resolvedModel.route.provider.secretRef,
+            providerTimeoutMs: resolvedModel.route.provider.timeoutMs,
+            providerRetryLimit: resolvedModel.route.provider.retryLimit,
+            providerModelId: resolvedModel.model.providerModelId,
+            version: resolvedModel.version.version,
+            config: resolvedModel.version.config,
+          }
+        : null,
       sessionTitle: createGenerationSessionTitle(input.prompt),
     });
     if (!result) throw new NotFoundException("生成会话不存在");
@@ -127,7 +141,10 @@ export class GenerationService {
       });
     }
     if ("insufficientBilling" in result) {
-      throw new BadRequestException({ code: "INSUFFICIENT_BILLING_BALANCE", message: "套餐权益或现金余额不足，本次生成未入队" });
+      throw new BadRequestException({
+        code: "INSUFFICIENT_BILLING_BALANCE",
+        message: "套餐权益或现金余额不足，本次生成未入队",
+      });
     }
 
     if (result.task.status === "QUEUED" && !result.task.queueJobId) {
@@ -168,13 +185,19 @@ export class GenerationService {
     return this.optionsWithModels(this.models ? await this.models.options() : []);
   }
 
-  private optionsWithModels(configuredModels: Awaited<ReturnType<AdminModelsService["options"]>>, allowFallback = false) {
+  private optionsWithModels(
+    configuredModels: Awaited<ReturnType<AdminModelsService["options"]>>,
+    allowFallback = false,
+  ) {
     return {
-      models: configuredModels.length || !allowFallback ? configuredModels : [
-        { id: "image-4.7", labelZh: "通用模型", labelEn: "General model" },
-        { id: "image-realistic", labelZh: "写实模型", labelEn: "Realistic model" },
-        { id: "image-anime", labelZh: "动漫模型", labelEn: "Anime model" },
-      ],
+      models:
+        configuredModels.length || !allowFallback
+          ? configuredModels
+          : [
+              { id: "image-4.7", labelZh: "通用模型", labelEn: "General model" },
+              { id: "image-realistic", labelZh: "写实模型", labelEn: "Realistic model" },
+              { id: "image-anime", labelZh: "动漫模型", labelEn: "Anime model" },
+            ],
       ratios: generationRatios,
       resolutions: generationResolutions,
       imageCount: { min: 1, max: 8 },
@@ -300,7 +323,10 @@ export class GenerationService {
       typeof input.idempotencyKey === "string" ? input.idempotencyKey.trim() : "";
     const prompt = typeof input.prompt === "string" ? input.prompt.trim() : "";
     const model = typeof input.model === "string" ? input.model.trim() : "";
-    const promotionCode = typeof input.promotionCode === "string" ? input.promotionCode.trim().toUpperCase() : undefined;
+    const promotionCode =
+      typeof input.promotionCode === "string"
+        ? input.promotionCode.trim().toUpperCase()
+        : undefined;
     if (!/^[A-Za-z0-9:_-]{8,128}$/.test(idempotencyKey)) {
       throw new BadRequestException("幂等键格式不正确");
     }

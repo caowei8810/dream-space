@@ -1,7 +1,15 @@
 import type { DatabaseClient } from "@dream-space/db";
 import type { HealthResponse, ReadinessResponse } from "@dream-space/contracts";
 import { parseApiEnv } from "@dream-space/config";
-import { Controller, Get, Headers, HttpException, HttpStatus, Inject, UnauthorizedException } from "@nestjs/common";
+import {
+  Controller,
+  Get,
+  Headers,
+  HttpException,
+  HttpStatus,
+  Inject,
+  UnauthorizedException,
+} from "@nestjs/common";
 import { DATABASE_CLIENT } from "../database/database.module";
 import { requestMetricSnapshot } from "../../observability";
 
@@ -29,9 +37,22 @@ export class HealthController {
     try {
       await this.database.$queryRaw`SELECT 1`;
     } catch {
-      throw new HttpException({ service: "api", status: "not_ready", timestamp: new Date().toISOString(), dependencies: { database: "unavailable" } }, HttpStatus.SERVICE_UNAVAILABLE);
+      throw new HttpException(
+        {
+          service: "api",
+          status: "not_ready",
+          timestamp: new Date().toISOString(),
+          dependencies: { database: "unavailable" },
+        },
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
     }
-    return { service: "api", status: "ready", timestamp: new Date().toISOString(), dependencies: { database: "ok" } };
+    return {
+      service: "api",
+      status: "ready",
+      timestamp: new Date().toISOString(),
+      dependencies: { database: "ok" },
+    };
   }
 
   @Get("metrics")

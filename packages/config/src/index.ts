@@ -77,6 +77,31 @@ function requireProductionMetricsToken(
   }
 }
 
+function requireLiveModeration(
+  value: {
+    EXTERNAL_SERVICES_MODE: "mock" | "live";
+    MODERATION_BASE_URL: string;
+    MODERATION_SECRET_REF: string;
+  },
+  context: z.RefinementCtx,
+) {
+  if (value.EXTERNAL_SERVICES_MODE !== "live") return;
+  if (!value.MODERATION_BASE_URL) {
+    context.addIssue({
+      code: "custom",
+      path: ["MODERATION_BASE_URL"],
+      message: "Moderation base URL is required in live mode",
+    });
+  }
+  if (!/^env:\/\/[A-Z_][A-Z0-9_]*$/.test(value.MODERATION_SECRET_REF)) {
+    context.addIssue({
+      code: "custom",
+      path: ["MODERATION_SECRET_REF"],
+      message: "An env:// moderation secret reference is required in live mode",
+    });
+  }
+}
+
 const apiEnvSchema = z
   .object({
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
@@ -125,8 +150,13 @@ const workerEnvSchema = z
       .max(7 * 24 * 60 * 60 * 1000)
       .default(24 * 60 * 60 * 1000),
     PRIVACY_RETENTION_DAYS: z.coerce.number().int().min(1).max(3650).default(30),
+    MODERATION_BASE_URL: z.union([z.literal(""), z.url()]).default(""),
+    MODERATION_SECRET_REF: z.string().default(""),
+    MODERATION_MODEL: z.string().min(1).default("omni-moderation-latest"),
+    MODERATION_TIMEOUT_MS: z.coerce.number().int().min(1000).max(120000).default(30000),
   })
-  .superRefine(requireObjectStorageCredentials);
+  .superRefine(requireObjectStorageCredentials)
+  .superRefine(requireLiveModeration);
 
 export function parseApiEnv(input: NodeJS.ProcessEnv) {
   return apiEnvSchema.parse(input);

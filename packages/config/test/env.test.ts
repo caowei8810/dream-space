@@ -37,6 +37,14 @@ describe("environment configuration", () => {
         .EXTERNAL_SERVICES_MODE,
     ).toBe("live");
     expect(() => parseApiEnv({ EXTERNAL_SERVICES_MODE: "invalid" })).toThrow();
+    expect(() => parseWorkerEnv({ EXTERNAL_SERVICES_MODE: "live" })).toThrow();
+    expect(
+      parseWorkerEnv({
+        EXTERNAL_SERVICES_MODE: "live",
+        MODERATION_BASE_URL: "https://api.example.com/v1",
+        MODERATION_SECRET_REF: "env://MODERATION_API_KEY",
+      }).MODERATION_MODEL,
+    ).toBe("omni-moderation-latest");
   });
 
   it("validates the quota reconciliation schedule", () => {
