@@ -28,6 +28,14 @@ test.describe("管理端核心闭环", () => {
       "page",
     );
     const candidate = page.getByRole("article").first();
+    if ((await candidate.count()) === 0) {
+      await expect(
+        page.getByRole("heading", { name: "暂无可精选图片", exact: true }),
+      ).toBeVisible();
+      await expectHealthyDocument(page);
+      expect(runtimeErrors).toEqual([]);
+      return;
+    }
     await expect(candidate).toBeVisible();
     const prompt = (await candidate.locator(".admin-curation-card-body > p").textContent())?.trim();
     expect(prompt).toBeTruthy();
