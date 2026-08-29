@@ -63,8 +63,20 @@ export function AdminBilling() {
     setError("");
     try {
       if (view === "rules") setRules(await adminApi.billingRules());
-      else if (view === "orders") setOrders(await adminApi.billingOrders({ page, pageSize: 20, status, query }));
-      else { const [nextPlans, nextCodes] = await Promise.all([adminApi.plans(), adminApi.redemptionCodes({ page, pageSize: 50 })]); setPlans(nextPlans); setCodes(nextCodes); if (!planVersionId) setPlanVersionId(nextPlans.items.find((item) => item.status === "published")?.versionId ?? ""); }
+      else if (view === "orders")
+        setOrders(await adminApi.billingOrders({ page, pageSize: 20, status, query }));
+      else {
+        const [nextPlans, nextCodes] = await Promise.all([
+          adminApi.plans(),
+          adminApi.redemptionCodes({ page, pageSize: 50 }),
+        ]);
+        setPlans(nextPlans);
+        setCodes(nextCodes);
+        if (!planVersionId)
+          setPlanVersionId(
+            nextPlans.items.find((item) => item.status === "published")?.versionId ?? "",
+          );
+      }
     } catch (requestError) {
       setError(requestError instanceof AdminApiError ? requestError.message : "无法加载计费数据");
     } finally {
@@ -87,7 +99,22 @@ export function AdminBilling() {
       setSaving(false);
     }
   };
-  const createCodes = async () => { setSaving(true); setError(""); try { await adminApi.createRedemptionCodes({ planVersionId, quantity: Number(quantity), reason: "后台生成兑换码" }); await load(); } catch (requestError) { setError((requestError as Error).message); } finally { setSaving(false); } };
+  const createCodes = async () => {
+    setSaving(true);
+    setError("");
+    try {
+      await adminApi.createRedemptionCodes({
+        planVersionId,
+        quantity: Number(quantity),
+        reason: "后台生成兑换码",
+      });
+      await load();
+    } catch (requestError) {
+      setError((requestError as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  };
   const publish = async (id: string) => {
     setSaving(true);
     setError("");
@@ -151,7 +178,16 @@ export function AdminBilling() {
           <Scale aria-hidden="true" />
           计费规则
         </button>
-        <button type="button" role="tab" aria-selected={view === "codes"} className={view === "codes" ? "active" : ""} onClick={() => setView("codes")}><KeyRound aria-hidden="true" />兑换码</button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={view === "codes"}
+          className={view === "codes" ? "active" : ""}
+          onClick={() => setView("codes")}
+        >
+          <KeyRound aria-hidden="true" />
+          兑换码
+        </button>
         <button
           type="button"
           role="tab"
@@ -254,8 +290,104 @@ export function AdminBilling() {
         </>
       ) : view === "codes" ? (
         <>
-          {canWrite ? <section className="admin-form-strip"><label><span>关联套餐</span><select value={planVersionId} onChange={(event) => setPlanVersionId(event.target.value)}><option value="">请选择已发布套餐</option>{plans.items.filter((item) => item.status === "published").map((item) => <option key={item.versionId} value={item.versionId}>{item.name} · {item.imageCount} 点 · ¥{(item.priceCents / 100).toFixed(2)}</option>)}</select></label><label><span>生成数量</span><input type="number" min="1" max="500" value={quantity} onChange={(event) => setQuantity(event.target.value)} /></label><button className="admin-button primary" type="button" disabled={saving || !planVersionId} onClick={() => void createCodes()}><Plus aria-hidden="true" />生成兑换码</button></section> : null}
-          <section className="admin-table-region" aria-busy={loading} aria-label="兑换码列表">{loading ? <AdminState kind="loading" title="正在加载兑换码" /> : !codes.items.length ? <AdminState kind="empty" title="暂无兑换码" /> : <table className="admin-table"><thead><tr><th>兑换码</th><th>套餐</th><th>状态</th><th>创建时间</th><th>操作</th></tr></thead><tbody>{codes.items.map((item) => <tr key={item.id}><td><strong>{item.code}</strong></td><td>{item.planName}<small>{item.imageCount} 点 / {item.validDays} 天</small></td><td>{item.status === "active" ? "可兑换" : item.status === "redeemed" ? "已兑换" : "已禁用"}</td><td>{new Date(item.createdAt).toLocaleString("zh-CN")}</td><td>{canWrite && item.status === "active" ? <button className="admin-button danger" type="button" onClick={() => void adminApi.disableRedemptionCode(item.id, { reason: "后台禁用兑换码" }).then(load)}>禁用</button> : "-"}</td></tr>)}</tbody></table>}</section>
+          {canWrite ? (
+            <section className="admin-form-strip">
+              <label>
+                <span>关联套餐</span>
+                <select
+                  value={planVersionId}
+                  onChange={(event) => setPlanVersionId(event.target.value)}
+                >
+                  <option value="">请选择已发布套餐</option>
+                  {plans.items
+                    .filter((item) => item.status === "published")
+                    .map((item) => (
+                      <option key={item.versionId} value={item.versionId}>
+                        {item.name} · {item.imageCount} 点 · ¥{(item.priceCents / 100).toFixed(2)}
+                      </option>
+                    ))}
+                </select>
+              </label>
+              <label>
+                <span>生成数量</span>
+                <input
+                  type="number"
+                  min="1"
+                  max="500"
+                  value={quantity}
+                  onChange={(event) => setQuantity(event.target.value)}
+                />
+              </label>
+              <button
+                className="admin-button primary"
+                type="button"
+                disabled={saving || !planVersionId}
+                onClick={() => void createCodes()}
+              >
+                <Plus aria-hidden="true" />
+                生成兑换码
+              </button>
+            </section>
+          ) : null}
+          <section className="admin-table-region" aria-busy={loading} aria-label="兑换码列表">
+            {loading ? (
+              <AdminState kind="loading" title="正在加载兑换码" />
+            ) : !codes.items.length ? (
+              <AdminState kind="empty" title="暂无兑换码" />
+            ) : (
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>兑换码</th>
+                    <th>套餐</th>
+                    <th>状态</th>
+                    <th>创建时间</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {codes.items.map((item) => (
+                    <tr key={item.id}>
+                      <td>
+                        <strong>{item.code}</strong>
+                      </td>
+                      <td>
+                        {item.planName}
+                        <small>
+                          {item.imageCount} 点 / {item.validDays} 天
+                        </small>
+                      </td>
+                      <td>
+                        {item.status === "active"
+                          ? "可兑换"
+                          : item.status === "redeemed"
+                            ? "已兑换"
+                            : "已禁用"}
+                      </td>
+                      <td>{new Date(item.createdAt).toLocaleString("zh-CN")}</td>
+                      <td>
+                        {canWrite && item.status === "active" ? (
+                          <button
+                            className="admin-button danger"
+                            type="button"
+                            onClick={() =>
+                              void adminApi
+                                .disableRedemptionCode(item.id, { reason: "后台禁用兑换码" })
+                                .then(load)
+                            }
+                          >
+                            禁用
+                          </button>
+                        ) : (
+                          "-"
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </section>
         </>
       ) : (
         <>

@@ -62,7 +62,24 @@ function createService() {
     refundOrder: vi.fn().mockResolvedValue({ status: "completed", refund: { id: "refund-1" } }),
     createRedemptionCodes: vi.fn().mockResolvedValue({
       status: "created",
-      items: [{ code: "DS-AAAAA-BBBBB-CCCCC-DDDDD", record: { id: "code-1", code: "DS-AAAAA-BBBBB-CCCCC-DDDDD", planVersionId: "pv-1", status: "ACTIVE", redeemedAt: null, createdAt: new Date(), planVersion: { imageCount: 800, validDays: 365, plan: { name: "入门", code: "starter-800" } } } }],
+      items: [
+        {
+          code: "DS-AAAAA-BBBBB-CCCCC-DDDDD",
+          record: {
+            id: "code-1",
+            code: "DS-AAAAA-BBBBB-CCCCC-DDDDD",
+            planVersionId: "pv-1",
+            status: "ACTIVE",
+            redeemedAt: null,
+            createdAt: new Date(),
+            planVersion: {
+              imageCount: 800,
+              validDays: 365,
+              plan: { name: "入门", code: "starter-800" },
+            },
+          },
+        },
+      ],
     }),
     listRedemptionCodes: vi.fn().mockResolvedValue({ total: 0, items: [] }),
     disableRedemptionCode: vi.fn().mockResolvedValue(null),
@@ -173,9 +190,24 @@ describe("BillingService", () => {
 
   it("generates codes only for a selected published plan and masks admin listings", async () => {
     const { repository, service } = createService();
-    await expect(service.createRedemptionCodes({ planVersionId: "pv-1", quantity: 1, reason: "运营发放" }, "admin-1", "req-1")).resolves.toMatchObject({ quantity: 1, items: [{ code: "DS-AAAAA-BBBBB-CCCCC-DDDDD", planVersionId: "pv-1" }] });
-    expect(repository.createRedemptionCodes).toHaveBeenCalledWith("pv-1", 1, { actorId: "admin-1", reason: "运营发放", requestId: "req-1" });
-    await expect(service.createRedemptionCodes({ planVersionId: "", quantity: 0, reason: "x" }, "admin-1")).rejects.toThrow();
+    await expect(
+      service.createRedemptionCodes(
+        { planVersionId: "pv-1", quantity: 1, reason: "运营发放" },
+        "admin-1",
+        "req-1",
+      ),
+    ).resolves.toMatchObject({
+      quantity: 1,
+      items: [{ code: "DS-AAAAA-BBBBB-CCCCC-DDDDD", planVersionId: "pv-1" }],
+    });
+    expect(repository.createRedemptionCodes).toHaveBeenCalledWith("pv-1", 1, {
+      actorId: "admin-1",
+      reason: "运营发放",
+      requestId: "req-1",
+    });
+    await expect(
+      service.createRedemptionCodes({ planVersionId: "", quantity: 0, reason: "x" }, "admin-1"),
+    ).rejects.toThrow();
   });
 
   it("maps successful redemption and rejects invalid, redeemed, or disabled codes", async () => {
@@ -183,10 +215,26 @@ describe("BillingService", () => {
     vi.mocked(repository.redeemCode).mockResolvedValue({ status: "invalid" });
     await expect(service.redeemCode("user-1", { code: "bad" })).rejects.toThrow("兑换码无效");
     vi.mocked(repository.redeemCode).mockResolvedValue({ status: "disabled" });
-    await expect(service.redeemCode("user-1", { code: "disabled" })).rejects.toThrow("兑换码已禁用");
+    await expect(service.redeemCode("user-1", { code: "disabled" })).rejects.toThrow(
+      "兑换码已禁用",
+    );
     vi.mocked(repository.redeemCode).mockResolvedValue({ status: "redeemed" });
     await expect(service.redeemCode("user-1", { code: "used" })).rejects.toThrow("兑换码已兑换");
-    vi.mocked(repository.redeemCode).mockResolvedValue({ status: "success", current: { planVersion: { imageCount: 800, validDays: 365, plan: { name: "入门", code: "starter-800" } } }, entitlement: { available: 800, expiresAt: new Date("2027-08-29T00:00:00.000Z") } });
-    await expect(service.redeemCode("user-1", { code: "ok" })).resolves.toMatchObject({ planCode: "starter-800", imageCount: 800, available: 800 });
+    vi.mocked(repository.redeemCode).mockResolvedValue({
+      status: "success",
+      current: {
+        planVersion: {
+          imageCount: 800,
+          validDays: 365,
+          plan: { name: "入门", code: "starter-800" },
+        },
+      },
+      entitlement: { available: 800, expiresAt: new Date("2027-08-29T00:00:00.000Z") },
+    });
+    await expect(service.redeemCode("user-1", { code: "ok" })).resolves.toMatchObject({
+      planCode: "starter-800",
+      imageCount: 800,
+      available: 800,
+    });
   });
 });

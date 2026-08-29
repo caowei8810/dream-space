@@ -1,7 +1,4 @@
-import type {
-  BillingQuoteRequest,
-  RedemptionCodeRedeemInput,
-} from "@dream-space/contracts";
+import type { BillingQuoteRequest, RedemptionCodeRedeemInput } from "@dream-space/contracts";
 import {
   Body,
   Controller,
@@ -49,10 +46,12 @@ export class BillingController {
   }
 
   @Post("redemptions")
-  async redeem(@Headers("cookie") cookie: string | undefined, @Body() input: RedemptionCodeRedeemInput) {
+  async redeem(
+    @Headers("cookie") cookie: string | undefined,
+    @Body() input: RedemptionCodeRedeemInput,
+  ) {
     const session = await this.auth.getSession(readSessionToken(cookie));
     if (!session.authenticated) throw new UnauthorizedException("请先登录");
     return this.billing.redeemCode(session.user.id, input);
   }
-
 }

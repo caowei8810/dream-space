@@ -27,12 +27,43 @@ export class AdminModelHealthService {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), provider.timeoutMs);
     try {
-      const response = await fetch(`${url.toString().replace(/\/$/, "")}/models`, { headers: { Authorization: `Bearer ${secret}`, Accept: "application/json" }, signal: controller.signal, redirect: "error" });
-      if (!response.ok) throw new BadRequestException(response.status === 401 || response.status === 403 ? "密钥无效或没有模型读取权限" : `供应商返回 HTTP ${response.status}`);
+      const response = await fetch(`${url.toString().replace(/\/$/, "")}/models`, {
+        headers: { Authorization: `Bearer ${secret}`, Accept: "application/json" },
+        signal: controller.signal,
+        redirect: "error",
+      });
+      if (!response.ok)
+        throw new BadRequestException(
+          response.status === 401 || response.status === 403
+            ? "密钥无效或没有模型读取权限"
+            : `供应商返回 HTTP ${response.status}`,
+        );
       const payload: unknown = await response.json();
-      const rows = payload && typeof payload === "object" && Array.isArray((payload as { data?: unknown }).data) ? (payload as { data: unknown[] }).data : [];
-      return rows.map((row) => { const item = row as { id?: unknown; name?: unknown; owned_by?: unknown }; return { id: typeof item.id === "string" ? item.id : "", name: typeof item.name === "string" ? item.name : typeof item.id === "string" ? item.id : "", ownedBy: typeof item.owned_by === "string" ? item.owned_by : null }; }).filter((item) => item.id).slice(0, 500);
-    } finally { clearTimeout(timeout); }
+      const rows =
+        payload &&
+        typeof payload === "object" &&
+        Array.isArray((payload as { data?: unknown }).data)
+          ? (payload as { data: unknown[] }).data
+          : [];
+      return rows
+        .map((row) => {
+          const item = row as { id?: unknown; name?: unknown; owned_by?: unknown };
+          return {
+            id: typeof item.id === "string" ? item.id : "",
+            name:
+              typeof item.name === "string"
+                ? item.name
+                : typeof item.id === "string"
+                  ? item.id
+                  : "",
+            ownedBy: typeof item.owned_by === "string" ? item.owned_by : null,
+          };
+        })
+        .filter((item) => item.id)
+        .slice(0, 500);
+    } finally {
+      clearTimeout(timeout);
+    }
   }
   async probe(provider: ProviderProbeInput): Promise<ProviderProbeResult> {
     const startedAt = Date.now();
