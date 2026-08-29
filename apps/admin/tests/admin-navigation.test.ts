@@ -9,7 +9,7 @@ describe("admin navigation", () => {
     expect(requiredPermissionForPath("/inspirations")).toBe("inspirations:read");
     expect(requiredPermissionForPath("/admin-users")).toBe("admin-accounts:read");
     expect(requiredPermissionForPath("/roles/role-1")).toBe("roles:read");
-    expect(requiredPermissionForPath("/models")).toBe("models:read");
+    expect(requiredPermissionForPath("/models")).toBeUndefined();
     expect(requiredPermissionForPath("/privacy")).toBe("privacy:read");
   });
 

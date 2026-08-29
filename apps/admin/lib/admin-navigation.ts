@@ -72,13 +72,6 @@ export const adminNavigationItems: readonly AdminNavigationItem[] = [
     icon: Receipt,
   },
   {
-    href: "/models",
-    label: "模型配置",
-    section: "业务运营",
-    permission: "models:read",
-    icon: ShieldCheck,
-  },
-  {
     href: "/inspirations",
     label: "灵感精选",
     section: "内容运营",
