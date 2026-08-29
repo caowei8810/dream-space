@@ -86,6 +86,7 @@ interface TaskRecord {
   billingPromotionCode?: string | null;
   billingUnitCents?: number | null;
   billingTotalCents?: number | null;
+  modelConfigSnapshot?: unknown;
   entitlementReserved?: number;
   cashReservedCents?: number;
   attempts: number;

@@ -46,6 +46,7 @@ const task = {
   attempts: 0,
   idempotencyKey: input.idempotencyKey,
   queueJobId: null,
+  modelConfigSnapshot: null,
   errorCode: null,
   errorMessage: null,
   inputModerationStatus: "PENDING" as const,
@@ -114,7 +115,7 @@ describe("GenerationService", () => {
     expect(repository.createTask).toHaveBeenCalledWith(
       expect.objectContaining({ totalCost: 2, unitCost: 1, userId: "user-1" }),
     );
-    expect(queue.enqueue).toHaveBeenCalledWith(task.id);
+    expect(queue.enqueue).toHaveBeenCalledWith(task.id, 2);
     expect(repository.setQueueJobId).toHaveBeenCalledWith(task.id, task.id);
   });
 
@@ -277,7 +278,7 @@ describe("GenerationService", () => {
     await expect(service.createTask("user-1", input)).resolves.toMatchObject({
       task: { status: "queued" },
     });
-    expect(queue.enqueue).toHaveBeenCalledWith(task.id);
+    expect(queue.enqueue).toHaveBeenCalledWith(task.id, 2);
     expect(repository.failQueuedTask).not.toHaveBeenCalled();
   });
 

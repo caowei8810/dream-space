@@ -4,6 +4,13 @@ import { Injectable, type OnModuleDestroy } from "@nestjs/common";
 import { Queue } from "bullmq";
 import IORedis from "ioredis";
 
+export function queueAttemptsForRetryLimit(retryLimit: number) {
+  const normalizedRetryLimit = Number.isInteger(retryLimit)
+    ? Math.min(5, Math.max(0, retryLimit))
+    : 2;
+  return normalizedRetryLimit + 1;
+}
+
 @Injectable()
 export class GenerationQueue implements OnModuleDestroy {
   private readonly connection: IORedis;
@@ -17,13 +24,13 @@ export class GenerationQueue implements OnModuleDestroy {
     });
   }
 
-  async enqueue(taskId: string) {
+  async enqueue(taskId: string, retryLimit = 2) {
     const job = await this.queue.add(
       "generate",
       { taskId },
       {
         jobId: taskId,
-        attempts: 3,
+        attempts: queueAttemptsForRetryLimit(retryLimit),
         backoff: { type: "exponential", delay: 500 },
         removeOnComplete: 100,
         removeOnFail: 100,
