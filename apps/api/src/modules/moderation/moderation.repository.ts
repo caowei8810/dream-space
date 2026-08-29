@@ -88,7 +88,12 @@ export class ModerationRepository {
           errorMessage: taskStatus === "FAILED" ? note : null,
         },
       });
-      if (review.result) {
+      if (review.stage === "OUTPUT") {
+        await transaction.generationResult.updateMany({
+          where: { taskId: review.task.id, moderationStatus: "PENDING" },
+          data: { moderationStatus },
+        });
+      } else if (review.result) {
         await transaction.generationResult.update({
           where: { id: review.result.id },
           data: { moderationStatus },

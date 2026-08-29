@@ -14,6 +14,7 @@ import {
   Settings,
   Sparkles,
   SunMoon,
+  Ticket,
   UserRound,
   X,
 } from "lucide-react";
@@ -58,6 +59,7 @@ export function InspirationShell({
     };
   }, []);
 
+
   const handleLogout = async () => {
     setLoggingOut(true);
     try {
@@ -78,6 +80,7 @@ export function InspirationShell({
           settings: "设置",
           legal: "平台协议",
           privacy: "隐私与数据",
+          redeem: "兑换点数",
           changelog: "更新日志",
           appearance: "外观",
           watermark: "AI 水印",
@@ -96,6 +99,7 @@ export function InspirationShell({
           settings: "Settings",
           legal: "Platform terms",
           privacy: "Privacy and data",
+          redeem: "Redeem credits",
           changelog: "Changelog",
           appearance: "Appearance",
           watermark: "AI watermark",
@@ -173,6 +177,13 @@ export function InspirationShell({
             >
               <ShieldCheck aria-hidden="true" />
               {text.privacy}
+              <ChevronRight className="menu-end" aria-hidden="true" />
+            </Link>
+          ) : null}
+          {session?.authenticated ? (
+            <Link className="menu-row" href="/account/redeem" onClick={() => setAccountOpen(false)}>
+              <Ticket aria-hidden="true" />
+              {text.redeem}
               <ChevronRight className="menu-end" aria-hidden="true" />
             </Link>
           ) : null}

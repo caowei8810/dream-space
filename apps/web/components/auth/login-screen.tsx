@@ -37,8 +37,8 @@ export function LoginScreen() {
   const text =
     language === "zh"
       ? {
-          title: "登录造梦空间",
-          subtitle: "登录后继续你的图片创作。",
+          title: "注册 / 登录造梦空间",
+          subtitle: "首次验证手机号将自动创建账号。",
           phone: "手机号",
           code: "验证码",
           send: "获取验证码",
@@ -48,12 +48,12 @@ export function LoginScreen() {
           privacy: "隐私政策",
           and: "和",
           ai: "AI 功能使用协议",
-          submit: "登录并继续",
+          submit: "注册 / 登录并继续",
           close: "关闭登录",
         }
       : {
-          title: "Sign in to Dream Space",
-          subtitle: "Sign in to continue creating images.",
+          title: "Sign up / sign in to Dream Space",
+          subtitle: "Your account is created after the first phone verification.",
           phone: "Mobile number",
           code: "Verification code",
           send: "Get code",
@@ -63,7 +63,7 @@ export function LoginScreen() {
           privacy: "Privacy Policy",
           and: "and",
           ai: "AI Terms",
-          submit: "Sign in and continue",
+          submit: "Sign up / sign in and continue",
           close: "Close sign in",
         };
 

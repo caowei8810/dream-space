@@ -12,6 +12,11 @@ import type {
   PaymentCallbackInput,
   PlanListResponse,
   RefundCreateInput,
+  AdminRedemptionCodeBatchCreateInput,
+  AdminRedemptionCodeBatchCreateResponse,
+  AdminRedemptionCodeListResponse,
+  RedemptionCodeRedeemInput,
+  RedemptionCodeRedeemResponse,
 } from "@dream-space/contracts";
 import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
@@ -89,6 +94,7 @@ export class BillingService {
       items: plans.flatMap((plan) =>
         plan.versions.map((version) => ({
           id: plan.id,
+          versionId: version.id,
           code: plan.code,
           name: plan.name,
           description: plan.description,
@@ -115,6 +121,7 @@ export class BillingService {
     if (result.status === "missing") throw new NotFoundException("套餐不存在或未发布");
     return this.mapOrder(result.order);
   }
+
 
   async orders(userId: string): Promise<OrderListResponse> {
     const items = await this.repository.listUserOrders(userId);
@@ -172,6 +179,42 @@ export class BillingService {
         status: item.status.toLowerCase() as EntitlementRecord["status"],
       })),
     };
+  }
+
+  async createRedemptionCodes(input: AdminRedemptionCodeBatchCreateInput, actorId: string, requestId?: string): Promise<AdminRedemptionCodeBatchCreateResponse> {
+    this.reason(input?.reason);
+    if (!input?.planVersionId || !Number.isInteger(input.quantity) || input.quantity < 1 || input.quantity > 500) throw new BadRequestException("套餐和生成数量不正确");
+    const result = await this.repository.createRedemptionCodes(input.planVersionId, input.quantity, { actorId, reason: input.reason.trim(), requestId: this.requestId(requestId) });
+    if (result.status === "missing") throw new NotFoundException("套餐不存在或未发布");
+    return { quantity: result.items.length, items: result.items.map((item: any) => this.mapRedemption(item.record, item.code)) };
+  }
+
+  async adminRedemptionCodes(input: { page?: string; pageSize?: string }): Promise<AdminRedemptionCodeListResponse> {
+    const page = this.integer(input.page, 1, 1, 10000);
+    const pageSize = this.integer(input.pageSize, 50, 1, 100);
+    const result = await this.repository.listRedemptionCodes(page, pageSize);
+    return { total: result.total, items: result.items.map((item: any) => this.mapRedemption(item, `${item.code.slice(0, 7)}****${item.code.slice(-4)}`)) };
+  }
+
+  async disableRedemptionCode(id: string, reason: string, actorId: string, requestId?: string) {
+    this.reason(reason);
+    const result = await this.repository.disableRedemptionCode(id, { actorId, reason: reason.trim(), requestId: this.requestId(requestId) });
+    if (!result) throw new BadRequestException("兑换码不存在或已使用");
+    return this.mapRedemption(result, `${result.code.slice(0, 7)}****${result.code.slice(-4)}`);
+  }
+
+  async redeemCode(userId: string, input: RedemptionCodeRedeemInput): Promise<RedemptionCodeRedeemResponse> {
+    if (!input?.code?.trim()) throw new BadRequestException("请输入兑换码");
+    const result = await this.repository.redeemCode(userId, input.code);
+    if (result.status === "invalid") throw new BadRequestException("兑换码无效");
+    if (result.status === "disabled") throw new BadRequestException("兑换码已禁用");
+    if (result.status === "redeemed") throw new BadRequestException("兑换码已兑换");
+    if (!result.current || !result.entitlement) throw new BadRequestException("兑换失败");
+    return { planName: result.current.planVersion.plan.name, planCode: result.current.planVersion.plan.code, imageCount: result.current.planVersion.imageCount, validDays: result.current.planVersion.validDays, expiresAt: result.entitlement.expiresAt.toISOString(), available: result.entitlement.available };
+  }
+
+  private mapRedemption(item: any, code: string) {
+    return { id: item.id, code, planVersionId: item.planVersionId, planName: item.planVersion.plan.name, planCode: item.planVersion.plan.code, imageCount: item.planVersion.imageCount, validDays: item.planVersion.validDays, status: item.status.toLowerCase(), redeemedAt: item.redeemedAt?.toISOString() ?? null, createdAt: item.createdAt.toISOString() };
   }
 
   async paymentCallback(input: PaymentCallbackInput) {
@@ -438,6 +481,7 @@ export class BillingService {
   private mapPlan(
     plan: { id: string; code: string; name: string; description: string },
     version: {
+      id: string;
       version: number;
       priceCents: number;
       imageCount: number;
@@ -450,6 +494,7 @@ export class BillingService {
   ) {
     return {
       id: plan.id,
+      versionId: version.id,
       code: plan.code,
       name: plan.name,
       description: plan.description,

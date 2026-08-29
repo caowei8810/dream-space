@@ -250,6 +250,12 @@ enum RefundStatus {
   FAILED
 }
 
+enum RedemptionCodeStatus {
+  ACTIVE
+  REDEEMED
+  DISABLED
+}
+
 model Inspiration {
   id                String                @id @default(cuid())
   slug              String                @unique
@@ -306,6 +312,7 @@ model User {
   entitlements           UserEntitlement[]
   entitlementLedger      EntitlementLedgerEntry[]
   privacyRequests        PrivacyRequest[]
+  redemptionCodes        RedemptionCode[] @relation("RedemptionCodeRedeemer")
 
   @@index([status, updatedAt])
   @@index([createdAt])
@@ -373,9 +380,26 @@ model PlanVersion {
   plan                Plan         @relation(fields: [planId], references: [id], onDelete: Cascade)
   orders              BillingOrder[]
   entitlements        UserEntitlement[]
+  redemptionCodes     RedemptionCode[]
 
   @@unique([planId, version])
   @@index([planId, createdAt])
+}
+
+model RedemptionCode {
+  id             String               @id @default(cuid())
+  code           String               @unique
+  planVersionId  String
+  status         RedemptionCodeStatus  @default(ACTIVE)
+  redeemedById   String?
+  redeemedAt     DateTime?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  planVersion    PlanVersion          @relation(fields: [planVersionId], references: [id], onDelete: Restrict)
+  redeemedBy     User?                @relation("RedemptionCodeRedeemer", fields: [redeemedById], references: [id], onDelete: SetNull)
+
+  @@index([planVersionId, status])
+  @@index([redeemedById, redeemedAt])
 }
 
 model BillingOrder {

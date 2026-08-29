@@ -66,7 +66,7 @@ export const adminNavigationItems: readonly AdminNavigationItem[] = [
   },
   {
     href: "/billing",
-    label: "计费与订单",
+    label: "套餐与兑换码",
     section: "业务运营",
     permission: "billing:read",
     icon: Receipt,
