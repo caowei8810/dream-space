@@ -31,6 +31,12 @@ const defaultCapabilities = {
   maxImageCount: 4,
 };
 
+const providerPresets = [
+  { code: "openai", name: "OpenAI", baseUrl: "https://api.openai.com/v1" },
+  { code: "xai", name: "xAI / Grok", baseUrl: "https://api.x.ai/v1" },
+  { code: "compatible", name: "OpenAI 兼容服务", baseUrl: "" },
+] as const;
+
 export function AdminModels() {
   const { session } = useAdminSession();
   const canWrite = hasAdminPermission(session, "models:write");
@@ -82,6 +88,10 @@ export function AdminModels() {
   });
   const [discoveredModels, setDiscoveredModels] = useState<Array<{ id: string; name: string }>>([]);
   const [discoveringModels, setDiscoveringModels] = useState(false);
+  const realProviders = data.providers.filter((provider) => provider.code !== "mock");
+  const realModels = data.items.filter((model) =>
+    model.routes.some((route) => route.providerCode !== "mock"),
+  );
   const selectedRoute = routeModel?.routes.find((route) => route.providerId === routeProviderId);
   const selectedProvider = data.providers.find((provider) => provider.id === routeProviderId);
 
@@ -180,6 +190,12 @@ export function AdminModels() {
     setDiscoveringModels(true);
     try { const result = await adminApi.providerModels(form.providerId); setDiscoveredModels(result.items); setError(result.items.length ? null : "供应商没有返回可用模型"); } catch (caught) { setError(caught instanceof Error ? caught.message : "获取模型失败"); } finally { setDiscoveringModels(false); }
   };
+  const openModelsForProvider = (provider: AdminProviderRecord) => {
+    setForm((value) => ({ ...value, providerId: provider.id, providerModelId: "" }));
+    setDiscoveredModels([]);
+    setView("models");
+    setShowCreate(true);
+  };
   const createVersion = async (event: FormEvent) => {
     event.preventDefault();
     if (!versionModel) return;
@@ -239,6 +255,9 @@ export function AdminModels() {
           模型目录
         </button>
       </div>
+      <aside className="admin-form-help" aria-label="配置流程">
+        配置流程：先填写供应商 API 地址和密钥引用，保存后检查连接，再到“模型目录”获取并选择模型 ID。
+      </aside>
       {error ? (
         <div className="admin-form-error" role="alert">
           {error}
@@ -247,7 +266,7 @@ export function AdminModels() {
       {view === "providers" ? (
         <>
           <div className="admin-list-toolbar">
-            <span>共 {data.providers.length} 个供应商连接</span>
+            <span>共 {realProviders.length} 个真实供应商连接</span>
             {canWrite ? (
               <button
                 className="admin-button primary"
@@ -285,6 +304,28 @@ export function AdminModels() {
                   连接信息与模型目录独立维护。凭据仅保存引用，保存后不回显原值。
                 </p>
                 <form className="admin-form-grid two-columns" onSubmit={createProvider}>
+                  <label className="admin-form-full">
+                    <span>快速选择服务商</span>
+                    <select
+                      defaultValue=""
+                      onChange={(event) => {
+                        const preset = providerPresets.find((item) => item.code === event.target.value);
+                        if (preset) {
+                          setProviderCreateForm((value) => ({
+                            ...value,
+                            code: preset.code,
+                            name: preset.name,
+                            baseUrl: preset.baseUrl,
+                          }));
+                        }
+                      }}
+                    >
+                      <option value="">自定义或选择常用服务商</option>
+                      {providerPresets.map((preset) => (
+                        <option key={preset.code} value={preset.code}>{preset.name}</option>
+                      ))}
+                    </select>
+                  </label>
                   <label>
                     <span>供应商编码</span>
                     <input
@@ -323,7 +364,7 @@ export function AdminModels() {
                     />
                   </label>
                   <label className="admin-form-full">
-                    <span>Secret 引用</span>
+                    <span>API 密钥引用</span>
                     <input
                       required
                       value={providerCreateForm.secretRef ?? ""}
@@ -396,7 +437,7 @@ export function AdminModels() {
           <section className="admin-provider-grid" aria-busy={loading}>
             {loading ? (
               <AdminState kind="loading" title="正在加载供应商连接" />
-            ) : !data.providers.length ? (
+          ) : !realProviders.length ? (
               <AdminState
                 kind="empty"
                 title="暂无供应商连接"
@@ -405,7 +446,7 @@ export function AdminModels() {
                 }
               />
             ) : (
-              data.providers.map((item) => (
+              realProviders.map((item) => (
                 <article className="admin-provider-card" key={item.id}>
                   <div className="admin-provider-heading">
                     <span className="admin-provider-icon">
@@ -483,6 +524,16 @@ export function AdminModels() {
                           配置连接
                         </button>
                       ) : null}
+                      {item.code !== "mock" && item.status === "active" ? (
+                        <button
+                          className="admin-button secondary"
+                          type="button"
+                          onClick={() => openModelsForProvider(item)}
+                        >
+                          <Settings2 aria-hidden="true" />
+                          配置模型
+                        </button>
+                      ) : null}
                       <button
                         className="admin-button secondary"
                         type="button"
@@ -530,8 +581,8 @@ export function AdminModels() {
             <form className="admin-form-grid two-columns" onSubmit={saveProvider}>
               <div className="admin-form-full">
                 <p className="admin-form-help">
-                  凭据填写服务端环境变量引用，例如 env://OPENAI_API_KEY。保存后不会回显原值；
-                  当前仅支持 env:// 引用。
+                  API 密钥不会明文写入数据库，请填写服务端环境变量引用，例如
+                  env://OPENAI_API_KEY。保存后不会回显原值。
                 </p>
               </div>
               <label className="admin-form-full">
@@ -547,7 +598,7 @@ export function AdminModels() {
                 />
               </label>
               <label className="admin-form-full">
-                <span>Secret 引用</span>
+                <span>API 密钥引用</span>
                 <input
                   value={providerForm.secretRef}
                   onChange={(event) =>
@@ -703,7 +754,7 @@ export function AdminModels() {
                       }}
                     >
                       <option value="">请选择已配置供应商</option>
-                      {data.providers
+                      {realProviders
                         .filter((item) => item.status === "active")
                         .map((item) => (
                           <option key={item.id} value={item.id}>
@@ -814,7 +865,7 @@ export function AdminModels() {
           <section className="admin-table-region">
             {loading ? (
               <AdminState kind="loading" title="正在加载模型目录" />
-            ) : !data.items.length ? (
+            ) : !realModels.length ? (
               <AdminState
                 kind="empty"
                 title="暂无模型"
@@ -833,7 +884,7 @@ export function AdminModels() {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.items.map((item) => (
+                  {realModels.map((item) => (
                     <tr key={item.id}>
                       <td>
                         <strong>{item.name}</strong>
@@ -974,7 +1025,7 @@ export function AdminModels() {
                     }
                   }}
                 >
-                  {data.providers
+                  {realProviders
                     .filter((provider) => provider.status === "active")
                     .map((provider) => (
                       <option key={provider.id} value={provider.id}>
