@@ -117,6 +117,10 @@ restore_backup() {
     : "${S3_SECRET_KEY:?S3_SECRET_KEY is required for S3 restore}"
     : "${S3_BUCKET:?S3_BUCKET is required for S3 restore}"
     mc alias set dreamspace-restore "$S3_ENDPOINT" "$S3_ACCESS_KEY" "$S3_SECRET_KEY" >/dev/null
+    if mc ls --recursive "dreamspace-restore/$S3_BUCKET" 2>/dev/null | grep -q .; then
+      echo "S3 restore target must be empty: $S3_BUCKET" >&2
+      exit 2
+    fi
     mc mirror --overwrite "$object_dir" "dreamspace-restore/$S3_BUCKET"
   fi
   echo "backup restored: $backup_dir"
