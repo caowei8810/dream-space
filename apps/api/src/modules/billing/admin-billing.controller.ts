@@ -4,6 +4,7 @@ import type {
   AdminCashGrantInput,
   AdminPermission,
   AdminPlanCreateInput,
+  AdminRedemptionCodeBatchCreateInput,
   RefundCreateInput,
 } from "@dream-space/contracts";
 import {
@@ -139,6 +140,24 @@ export class AdminBillingController {
     return this.withActor(cookie, "plans:publish", (actor) =>
       this.service.publishPlan(id, input?.reason, actor.id, requestId),
     );
+  }
+
+  @Get("redemption-codes")
+  @RequireAdminPermission("plans:read")
+  redemptionCodes(@Query("page") page?: string, @Query("pageSize") pageSize?: string) {
+    return this.service.adminRedemptionCodes({ page, pageSize });
+  }
+
+  @Post("redemption-codes/batches")
+  @RequireAdminPermission("plans:write")
+  createRedemptionCodes(@Body() input: AdminRedemptionCodeBatchCreateInput, @Headers("cookie") cookie: string | undefined, @Headers("x-request-id") requestId?: string) {
+    return this.withActor(cookie, "plans:write", (actor) => this.service.createRedemptionCodes(input, actor.id, requestId));
+  }
+
+  @Post("redemption-codes/:id/disable")
+  @RequireAdminPermission("plans:write")
+  disableRedemptionCode(@Param("id") id: string, @Body() input: { reason: string }, @Headers("cookie") cookie: string | undefined, @Headers("x-request-id") requestId?: string) {
+    return this.withActor(cookie, "plans:write", (actor) => this.service.disableRedemptionCode(id, input?.reason, actor.id, requestId));
   }
 
   private withActor(

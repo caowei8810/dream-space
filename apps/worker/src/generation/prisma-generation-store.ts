@@ -91,7 +91,7 @@ export class PrismaGenerationStore implements GenerationStore {
             : { outputModerationStatus: status },
       });
       if (changed.count !== 1) return "ignored";
-      if (decision.status === "review") {
+      if (decision.status === "review" && stage === "input") {
         await transaction.moderationReview.create({
           data: {
             taskId,
@@ -142,6 +142,16 @@ export class PrismaGenerationStore implements GenerationStore {
             thumbnailByteSize: result.thumbnailByteSize,
             moderationStatus: "PENDING",
             isAiGenerated: true,
+          })),
+          skipDuplicates: true,
+        });
+        await transaction.moderationReview.createMany({
+          data: results.map((result) => ({
+            taskId,
+            resultId: result.id,
+            stage: "OUTPUT" as const,
+            reasonCode: "MANUAL_OUTPUT_REVIEW",
+            reason: "自动审核标记为可疑，等待人工审核",
           })),
           skipDuplicates: true,
         });

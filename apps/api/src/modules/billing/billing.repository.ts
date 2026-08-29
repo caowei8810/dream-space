@@ -1,6 +1,7 @@
 import { Prisma, type DatabaseClient } from "@dream-space/db";
 import { Inject, Injectable } from "@nestjs/common";
 import { DATABASE_CLIENT } from "../database/database.module";
+import { randomBytes } from "node:crypto";
 
 type OrderWithPlan = Prisma.BillingOrderGetPayload<{
   include: { planVersion: { include: { plan: true } } };
@@ -16,6 +17,62 @@ type AdminOrderWithDetails = Prisma.BillingOrderGetPayload<{
 @Injectable()
 export class BillingRepository {
   constructor(@Inject(DATABASE_CLIENT) private readonly database: DatabaseClient) {}
+
+  async createRedemptionCodes(planVersionId: string, quantity: number, audit?: { actorId: string; reason: string; requestId: string }): Promise<any> {
+    return this.database.$transaction(async (tx) => {
+      const version = await tx.planVersion.findFirst({ where: { id: planVersionId, plan: { status: "PUBLISHED" } }, include: { plan: true } });
+      if (!version) return { status: "missing" as const };
+      const items: Array<{ code: string; record: any }> = [];
+      for (let index = 0; index < quantity; index += 1) {
+        let created;
+        for (let attempt = 0; attempt < 5; attempt += 1) {
+          const code = `DS-${randomBytes(10).toString("hex").toUpperCase().match(/.{1,5}/g)!.join("-")}`;
+          try {
+            created = await tx.redemptionCode.create({ data: { code, planVersionId }, include: { planVersion: { include: { plan: true } } } });
+            items.push({ code, record: created });
+            break;
+          } catch (error) {
+            if (attempt === 4) throw error;
+          }
+        }
+      }
+      if (audit) await tx.adminAuditLog.create({ data: { actorAdminUserId: audit.actorId, action: "billing.redemption_codes.create", resourceType: "RedemptionCode", resourceId: planVersionId, reason: audit.reason, requestId: audit.requestId, before: Prisma.JsonNull, after: { quantity, planVersionId } } });
+      return { status: "created" as const, items, version };
+    });
+  }
+
+  async listRedemptionCodes(page: number, pageSize: number): Promise<any> {
+    const [items, total] = await this.database.$transaction([
+      this.database.redemptionCode.findMany({ skip: (page - 1) * pageSize, take: pageSize, orderBy: { createdAt: "desc" }, include: { planVersion: { include: { plan: true } } } }),
+      this.database.redemptionCode.count(),
+    ]);
+    return { items, total };
+  }
+
+  async disableRedemptionCode(id: string, audit?: { actorId: string; reason: string; requestId: string }): Promise<any> {
+    return this.database.$transaction(async (tx) => {
+      const item = await tx.redemptionCode.updateMany({ where: { id, status: "ACTIVE" }, data: { status: "DISABLED" } });
+      if (!item.count) return null;
+      if (audit) await tx.adminAuditLog.create({ data: { actorAdminUserId: audit.actorId, action: "billing.redemption_code.disable", resourceType: "RedemptionCode", resourceId: id, reason: audit.reason, requestId: audit.requestId, before: { status: "ACTIVE" }, after: { status: "DISABLED" } } });
+      return tx.redemptionCode.findUnique({ where: { id }, include: { planVersion: { include: { plan: true } } } });
+    });
+  }
+
+  async redeemCode(userId: string, rawCode: string): Promise<any> {
+    const code = rawCode.trim().toUpperCase();
+    return this.database.$transaction(async (tx) => {
+      const current = await tx.redemptionCode.findUnique({ where: { code }, include: { planVersion: { include: { plan: true } } } });
+      if (!current) return { status: "invalid" as const };
+      if (current.status !== "ACTIVE") return { status: current.status === "REDEEMED" ? "redeemed" as const : "disabled" as const };
+      const now = new Date();
+      const expiresAt = new Date(now.getTime() + current.planVersion.validDays * 86400000);
+      const claimed = await tx.redemptionCode.updateMany({ where: { id: current.id, status: "ACTIVE" }, data: { status: "REDEEMED", redeemedById: userId, redeemedAt: now } });
+      if (!claimed.count) return { status: "redeemed" as const };
+      const entitlement = await tx.userEntitlement.create({ data: { userId, planVersionId: current.planVersionId, available: current.planVersion.imageCount, expiresAt, status: "ACTIVE" } });
+      await tx.entitlementLedgerEntry.create({ data: { userId, entitlementId: entitlement.id, type: "GRANT", amount: current.planVersion.imageCount, balanceAfter: current.planVersion.imageCount, idempotencyKey: `redemption:${current.id}`, metadata: { redemptionCodeId: current.id } } });
+      return { status: "success" as const, current, entitlement };
+    });
+  }
 
   findPublishedRule(
     now: Date,
@@ -657,6 +714,7 @@ export class BillingRepository {
   ): Promise<{
     plan: { id: string; code: string; name: string; description: string; status: string };
     version: {
+      id: string;
       version: number;
       priceCents: number;
       imageCount: number;
@@ -718,6 +776,7 @@ export class BillingRepository {
     description: string;
     status: string;
     versions: Array<{
+      id: string;
       version: number;
       priceCents: number;
       imageCount: number;

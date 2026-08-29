@@ -799,6 +799,7 @@ export interface AdminCashGrantInput {
 
 export interface PlanRecord {
   id: string;
+  versionId: string;
   code: string;
   name: string;
   description: string;
@@ -875,6 +876,50 @@ export interface EntitlementRecord {
   reserved: number;
   expiresAt: string;
   status: "active" | "expired" | "exhausted" | "refunded";
+}
+
+export type RedemptionCodeStatus = "active" | "redeemed" | "disabled";
+
+export interface RedemptionCodeRecord {
+  id: string;
+  code: string;
+  planVersionId: string;
+  planName: string;
+  planCode: string;
+  imageCount: number;
+  validDays: number;
+  status: RedemptionCodeStatus;
+  redeemedAt: string | null;
+  createdAt: string;
+}
+
+export interface AdminRedemptionCodeBatchCreateInput {
+  planVersionId: string;
+  quantity: number;
+  reason: string;
+}
+
+export interface AdminRedemptionCodeBatchCreateResponse {
+  items: Array<RedemptionCodeRecord & { code: string }>;
+  quantity: number;
+}
+
+export interface AdminRedemptionCodeListResponse {
+  items: RedemptionCodeRecord[];
+  total: number;
+}
+
+export interface RedemptionCodeRedeemInput {
+  code: string;
+}
+
+export interface RedemptionCodeRedeemResponse {
+  planName: string;
+  planCode: string;
+  imageCount: number;
+  validDays: number;
+  expiresAt: string;
+  available: number;
 }
 
 export interface AdminPlanCreateInput {

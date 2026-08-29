@@ -8,7 +8,7 @@
 | 审核     | ModerationCase、ModerationDecision、ModerationRuleVersion、Appeal |
 | 模型     | Model、Provider、ModelCapability、ModelRoute、ModelConfigVersion  |
 | 计费     | BillingRule、Campaign、PriceQuote、ChargeReservation、Settlement  |
-| 套餐     | Plan、PlanVersion、Order、UserEntitlement、EntitlementLedger      |
+| 套餐     | Plan、PlanVersion、RedemptionCode、UserEntitlement、EntitlementLedger |
 | 现金账务 | WalletAccount、WalletLedger、Refund                               |
 | 内容     | GenerationTask、GenerationResult、InspirationCuration、Asset      |
 | 运营     | MetricSnapshot、Announcement                                      |
@@ -47,7 +47,7 @@
 | 模型 | `/admin/models`、`/admin/model-routes`、`/admin/model-config-versions`   |
 | 风控 | `/admin/risk-rules`、`/admin/risk-rules/test`、`/admin/risk-events`      |
 | 计费 | `/admin/billing/rules`、`/billing/quote`、`/admin/billing/ledger`        |
-| 套餐 | `/plans`、`/orders`、`/admin/plans`、`/admin/entitlements`               |
+| 套餐 | `/billing/plans`、`/billing/redemptions`、`/admin/billing/plans`、`/admin/billing/redemption-codes` |
 | 运营 | `/admin/dashboard/summary`、`/admin/analytics/*`、`/admin/announcements` |
 | 灵感 | `/admin/inspiration-candidates`、`/admin/inspirations/:resultId/publish` |
 | 系统 | `/admin/scheduled-jobs`、`/admin/audit-logs`、`/admin/system-configs`    |
