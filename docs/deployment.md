@@ -132,6 +132,16 @@ Internet
 
 每次恢复演练必须验证账户、额度流水、任务、结果元数据和对象字节一致，并记录实际 RPO、RTO 和未恢复项。
 
+仓库提供 `scripts/backup-restore.sh` 作为可审计的演练工具：
+
+```text
+backup-restore.sh backup /absolute/empty/backup-dir
+backup-restore.sh verify /absolute/backup-dir
+backup-restore.sh restore /absolute/backup-dir --confirm
+```
+
+工具使用 `pg_dump` 自定义格式保存数据库，复制配置的对象存储并生成 SHA-256 清单，同时从数据库导出未删除参考图和生成结果对象引用。校验会拒绝缺失对象或不安全对象键；恢复要求显式 `--confirm`，本地对象恢复目标必须为空。生产环境仍应由托管数据库快照/PITR、对象版本保护和密钥管理服务提供实际备份介质，脚本用于预发布隔离演练和恢复证据留存。
+
 ## 原型 GitHub Pages
 
 `.github/workflows/deploy-pages.yml` 仅将 `prototype/` 部署为静态设计参考。首次启用时在仓库 `Settings > Pages` 中选择 GitHub Actions；合并到 `main` 后由工作流发布。它没有正式 API、鉴权、数据库、私有对象或内容审核能力，不能作为商用部署方案。
