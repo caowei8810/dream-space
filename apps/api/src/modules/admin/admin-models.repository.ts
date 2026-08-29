@@ -79,9 +79,7 @@ export class AdminModelsRepository {
     });
   }
 
-  findProvider(
-    id: string,
-  ): Promise<{
+  findProvider(id: string): Promise<{
     id: string;
     code: string;
     status: string;
