@@ -150,14 +150,27 @@ export class AdminBillingController {
 
   @Post("redemption-codes/batches")
   @RequireAdminPermission("plans:write")
-  createRedemptionCodes(@Body() input: AdminRedemptionCodeBatchCreateInput, @Headers("cookie") cookie: string | undefined, @Headers("x-request-id") requestId?: string) {
-    return this.withActor(cookie, "plans:write", (actor) => this.service.createRedemptionCodes(input, actor.id, requestId));
+  createRedemptionCodes(
+    @Body() input: AdminRedemptionCodeBatchCreateInput,
+    @Headers("cookie") cookie: string | undefined,
+    @Headers("x-request-id") requestId?: string,
+  ) {
+    return this.withActor(cookie, "plans:write", (actor) =>
+      this.service.createRedemptionCodes(input, actor.id, requestId),
+    );
   }
 
   @Post("redemption-codes/:id/disable")
   @RequireAdminPermission("plans:write")
-  disableRedemptionCode(@Param("id") id: string, @Body() input: { reason: string }, @Headers("cookie") cookie: string | undefined, @Headers("x-request-id") requestId?: string) {
-    return this.withActor(cookie, "plans:write", (actor) => this.service.disableRedemptionCode(id, input?.reason, actor.id, requestId));
+  disableRedemptionCode(
+    @Param("id") id: string,
+    @Body() input: { reason: string },
+    @Headers("cookie") cookie: string | undefined,
+    @Headers("x-request-id") requestId?: string,
+  ) {
+    return this.withActor(cookie, "plans:write", (actor) =>
+      this.service.disableRedemptionCode(id, input?.reason, actor.id, requestId),
+    );
   }
 
   private withActor(

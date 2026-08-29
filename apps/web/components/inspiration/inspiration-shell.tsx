@@ -59,7 +59,6 @@ export function InspirationShell({
     };
   }, []);
 
-
   const handleLogout = async () => {
     setLoggingOut(true);
     try {

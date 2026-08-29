@@ -100,18 +100,41 @@ async function main() {
       });
     }
     for (const plan of [
-      { code: "starter-800", name: "入门点数包", description: "适合体验和轻量创作", priceCents: 1000, imageCount: 800 },
-      { code: "creator-1800", name: "创作者点数包", description: "更多点数，适合持续创作", priceCents: 2000, imageCount: 1800 },
+      {
+        code: "starter-800",
+        name: "入门点数包",
+        description: "适合体验和轻量创作",
+        priceCents: 1000,
+        imageCount: 800,
+      },
+      {
+        code: "creator-1800",
+        name: "创作者点数包",
+        description: "更多点数，适合持续创作",
+        priceCents: 2000,
+        imageCount: 1800,
+      },
     ]) {
       const record = await database.plan.upsert({
         where: { code: plan.code },
         update: { name: plan.name, description: plan.description, status: "PUBLISHED" },
-        create: { code: plan.code, name: plan.name, description: plan.description, status: "PUBLISHED" },
+        create: {
+          code: plan.code,
+          name: plan.name,
+          description: plan.description,
+          status: "PUBLISHED",
+        },
       });
       await database.planVersion.upsert({
         where: { planId_version: { planId: record.id, version: 1 } },
         update: { priceCents: plan.priceCents, imageCount: plan.imageCount, validDays: 365 },
-        create: { planId: record.id, version: 1, priceCents: plan.priceCents, imageCount: plan.imageCount, validDays: 365 },
+        create: {
+          planId: record.id,
+          version: 1,
+          priceCents: plan.priceCents,
+          imageCount: plan.imageCount,
+          validDays: 365,
+        },
       });
     }
     const permissionNames: Record<(typeof adminPermissions)[number], string> = {

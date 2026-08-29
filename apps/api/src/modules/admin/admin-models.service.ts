@@ -89,6 +89,11 @@ export class AdminModelsService {
     });
     return { ...result, checkedAt: result.checkedAt.toISOString() };
   }
+  async listProviderModels(id: string) {
+    const provider = await this.repository.findProviderForHealthCheck(this.id(id));
+    if (!provider) throw new NotFoundException("供应商不存在");
+    return { items: await this.healthService.listModels(provider) };
+  }
   async create(input: AdminModelCreateInput, actorId: string, requestId?: string) {
     const value = this.validate(input);
     const provider = await this.repository.findProvider(value.providerId);

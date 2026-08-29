@@ -451,6 +451,12 @@ export interface AdminProviderHealthCheckResult {
   latencyMs: number;
 }
 
+export interface AdminProviderModelOption {
+  id: string;
+  name: string;
+  ownedBy: string | null;
+}
+
 export interface AdminModelVersionInput {
   config: Record<string, unknown>;
   reason: string;

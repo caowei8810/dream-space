@@ -44,6 +44,7 @@ import type {
   AdminProviderCreateInput,
   AdminProviderRecord,
   AdminProviderHealthCheckResult,
+  AdminProviderModelOption,
   AdminModelRouteUpdateInput,
   AdminPrivacyRequestListResponse,
   AdminPrivacyCleanupInput,
@@ -274,13 +275,23 @@ export const adminApi = {
   },
   redemptionCodes: (filters: { page?: number; pageSize?: number } = {}) => {
     const search = new URLSearchParams();
-    Object.entries(filters).forEach(([key, value]) => { if (value !== undefined) search.set(key, String(value)); });
-    return request<AdminRedemptionCodeListResponse>(`/admin/billing/redemption-codes?${search.toString()}`);
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined) search.set(key, String(value));
+    });
+    return request<AdminRedemptionCodeListResponse>(
+      `/admin/billing/redemption-codes?${search.toString()}`,
+    );
   },
   createRedemptionCodes: (input: AdminRedemptionCodeBatchCreateInput) =>
-    request<AdminRedemptionCodeBatchCreateResponse>("/admin/billing/redemption-codes/batches", { method: "POST", body: JSON.stringify(input) }),
+    request<AdminRedemptionCodeBatchCreateResponse>("/admin/billing/redemption-codes/batches", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
   disableRedemptionCode: (id: string, input: { reason: string }) =>
-    request(`/admin/billing/redemption-codes/${id}/disable`, { method: "POST", body: JSON.stringify(input) }),
+    request(`/admin/billing/redemption-codes/${id}/disable`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
   refundBillingOrder: (id: string, input: Omit<RefundCreateInput, "orderId">) =>
     request(`/admin/billing/orders/${id}/refund`, {
       method: "POST",
@@ -299,6 +310,8 @@ export const adminApi = {
       method: "POST",
       body: JSON.stringify({ reason }),
     }),
+  providerModels: (id: string) =>
+    request<{ items: AdminProviderModelOption[] }>(`/admin/models/providers/${id}/models`),
   updateModelRoute: (modelId: string, providerId: string, input: AdminModelRouteUpdateInput) =>
     request<AdminModelRecord>(`/admin/models/${modelId}/routes/${providerId}`, {
       method: "PATCH",
