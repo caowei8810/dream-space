@@ -89,7 +89,7 @@ export class ModerationService {
       this.requestId(requestId),
     );
     if (!result) throw new ConflictException("只能处理自己领取中的审核");
-    if (result.shouldEnqueue) await this.queue.enqueue(result.taskId);
+    if (result.shouldEnqueue) await this.queue.enqueue(result.taskId, 2);
     return result;
   }
 

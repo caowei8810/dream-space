@@ -57,7 +57,7 @@ describe("ModerationService", () => {
       shouldEnqueue: true,
     });
     await service.decideReview("review-1", { decision: "approved", note: "复核通过" }, actor);
-    expect(queue.enqueue).toHaveBeenCalledWith("task-1");
+    expect(queue.enqueue).toHaveBeenCalledWith("task-1", 2);
   });
 
   it("requires an appeal target and normalizes the reason", async () => {

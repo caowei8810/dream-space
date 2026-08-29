@@ -150,7 +150,15 @@ export class GenerationService {
     if (result.task.status === "QUEUED" && !result.task.queueJobId) {
       let queueJobId: string;
       try {
-        queueJobId = await this.queue.enqueue(result.task.id);
+        const snapshot = result.task.modelConfigSnapshot;
+        const retryLimit =
+          snapshot && typeof snapshot === "object" && !Array.isArray(snapshot)
+            ? (snapshot as { providerRetryLimit?: unknown }).providerRetryLimit
+            : undefined;
+        queueJobId = await this.queue.enqueue(
+          result.task.id,
+          typeof retryLimit === "number" ? retryLimit : 2,
+        );
       } catch {
         await this.repository.failQueuedTask(
           result.task.id,
