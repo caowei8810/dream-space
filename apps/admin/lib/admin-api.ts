@@ -44,6 +44,7 @@ import type {
   AdminProviderCreateInput,
   AdminProviderRecord,
   AdminProviderHealthCheckResult,
+  AdminProviderModelOption,
   AdminModelRouteUpdateInput,
   AdminPrivacyRequestListResponse,
   AdminPrivacyCleanupInput,
@@ -299,6 +300,8 @@ export const adminApi = {
       method: "POST",
       body: JSON.stringify({ reason }),
     }),
+  providerModels: (id: string) =>
+    request<{ items: AdminProviderModelOption[] }>(`/admin/models/providers/${id}/models`),
   updateModelRoute: (modelId: string, providerId: string, input: AdminModelRouteUpdateInput) =>
     request<AdminModelRecord>(`/admin/models/${modelId}/routes/${providerId}`, {
       method: "PATCH",

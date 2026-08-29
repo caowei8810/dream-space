@@ -69,6 +69,11 @@ export class AdminModelsController {
       .requirePermission(cookie, "models:write")
       .then((actor) => this.service.healthCheck(id, actor.id, input?.reason, requestId));
   }
+  @Get("providers/:id/models")
+  @RequireAdminPermission("models:write")
+  listProviderModels(@Param("id") id: string) {
+    return this.service.listProviderModels(id);
+  }
   @Patch(":id/routes/:providerId")
   @RequireAdminPermission("models:write")
   updateRoute(

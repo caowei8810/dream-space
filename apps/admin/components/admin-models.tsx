@@ -80,6 +80,8 @@ export function AdminModels() {
     capabilities: defaultCapabilities,
     reason: "新增模型",
   });
+  const [discoveredModels, setDiscoveredModels] = useState<Array<{ id: string; name: string }>>([]);
+  const [discoveringModels, setDiscoveringModels] = useState(false);
   const selectedRoute = routeModel?.routes.find((route) => route.providerId === routeProviderId);
   const selectedProvider = data.providers.find((provider) => provider.id === routeProviderId);
 
@@ -172,6 +174,11 @@ export function AdminModels() {
       setShowCreate(false);
       setForm((value) => ({ ...value, code: "", name: "", providerModelId: "" }));
     }, "创建失败");
+  };
+  const discoverModels = async () => {
+    if (!form.providerId) return;
+    setDiscoveringModels(true);
+    try { const result = await adminApi.providerModels(form.providerId); setDiscoveredModels(result.items); setError(result.items.length ? null : "供应商没有返回可用模型"); } catch (caught) { setError(caught instanceof Error ? caught.message : "获取模型失败"); } finally { setDiscoveringModels(false); }
   };
   const createVersion = async (event: FormEvent) => {
     event.preventDefault();
@@ -692,6 +699,7 @@ export function AdminModels() {
                           ...form,
                           providerId: event.target.value,
                         });
+                        setDiscoveredModels([]);
                       }}
                     >
                       <option value="">请选择已配置供应商</option>
@@ -704,6 +712,10 @@ export function AdminModels() {
                         ))}
                     </select>
                   </label>
+                  <div className="admin-form-full admin-model-discovery">
+                    <button className="admin-button secondary" type="button" disabled={!form.providerId || discoveringModels} onClick={() => void discoverModels()}><RefreshCw className={discoveringModels ? "spin" : ""} aria-hidden="true" />{discoveringModels ? "获取中..." : "从供应商获取模型"}</button>
+                    {discoveredModels.length ? <select value={form.providerModelId} onChange={(event) => setForm({ ...form, providerModelId: event.target.value })}><option value="">从列表选择模型</option>{discoveredModels.map((model) => <option key={model.id} value={model.id}>{model.name === model.id ? model.id : `${model.name} (${model.id})`}</option>)}</select> : <small className="admin-form-help">选择供应商后获取模型列表，也可以直接填写模型 ID。</small>}
+                  </div>
                   <label>
                     <span>单次最大张数</span>
                     <input
