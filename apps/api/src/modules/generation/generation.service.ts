@@ -116,7 +116,7 @@ export class GenerationService {
             providerSecretRef: resolvedModel.route.provider.secretRef,
             providerTimeoutMs: resolvedModel.route.provider.timeoutMs,
             providerRetryLimit: resolvedModel.route.provider.retryLimit,
-            providerModelId: resolvedModel.model.providerModelId,
+            providerModelId: resolvedModel.route.providerModelId,
             version: resolvedModel.version.version,
             config: resolvedModel.version.config,
           }

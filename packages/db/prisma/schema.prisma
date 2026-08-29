@@ -739,6 +739,7 @@ model ModelRoute {
   id          String   @id @default(cuid())
   modelId     String
   providerId  String
+  providerModelId String
   weight      Int      @default(100)
   priority    Int      @default(0)
   enabled     Boolean  @default(false)

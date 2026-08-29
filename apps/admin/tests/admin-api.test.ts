@@ -152,6 +152,7 @@ describe("admin API client", () => {
     });
     await adminApi.createModelVersion("model-1", { config: { temperature: 0.7 }, reason: "测试" });
     await adminApi.updateModelRoute("model-1", "provider-1", {
+      providerModelId: "demo",
       enabled: true,
       weight: 100,
       priority: 0,

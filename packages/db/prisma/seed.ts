@@ -83,10 +83,15 @@ async function main() {
         });
       await database.modelRoute.upsert({
         where: { modelId_providerId: { modelId: record.id, providerId: demoProvider.id } },
-        update: { enabled: true, health: "healthy" },
+        update: {
+          providerModelId: record.providerModelId,
+          enabled: true,
+          health: "healthy",
+        },
         create: {
           modelId: record.id,
           providerId: demoProvider.id,
+          providerModelId: record.providerModelId,
           enabled: true,
           health: "healthy",
           weight: 100,
