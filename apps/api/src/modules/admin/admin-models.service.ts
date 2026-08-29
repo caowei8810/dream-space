@@ -150,13 +150,18 @@ export class AdminModelsService {
     if (!input || typeof input.enabled !== "boolean")
       throw new BadRequestException("路由状态不正确");
     const modelId = this.id(id);
-    const route = await this.repository.findRoute(modelId, providerId.trim());
-    if (!route) throw new NotFoundException("模型路由不存在");
-    if (input.enabled && route.health !== "healthy")
+    const provider = await this.repository.findProvider(providerId.trim());
+    if (!provider) throw new NotFoundException("供应商不存在");
+    if (provider.status !== "ACTIVE") throw new BadRequestException("供应商连接尚未启用");
+    if (input.enabled && provider.health !== "healthy")
       throw new BadRequestException("启用路由前请先检查供应商连接");
-    const item = await this.repository.updateRoute({
+    const providerModelId = input?.providerModelId?.trim();
+    if (!providerModelId || providerModelId.length > 200)
+      throw new BadRequestException("供应商模型 ID 不正确");
+    const item = await this.repository.upsertRoute({
       modelId,
       providerId: providerId.trim(),
+      providerModelId,
       enabled: input.enabled,
       weight,
       priority,
@@ -275,6 +280,8 @@ export class AdminModelsService {
         id: route.id,
         providerId: route.providerId,
         providerCode: route.provider.code,
+        providerName: route.provider.name,
+        providerModelId: route.providerModelId,
         enabled: route.enabled,
         weight: route.weight,
         priority: route.priority,

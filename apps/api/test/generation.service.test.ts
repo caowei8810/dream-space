@@ -158,6 +158,7 @@ describe("GenerationService", () => {
     };
     const version = { id: "version-2", version: 2, config: { temperature: 0.4 } };
     const route = {
+      providerModelId: "provider-model",
       provider: {
         id: "provider-1",
         code: "mock",

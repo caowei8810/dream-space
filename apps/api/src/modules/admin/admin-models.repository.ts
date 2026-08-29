@@ -79,12 +79,16 @@ export class AdminModelsRepository {
     });
   }
 
-  findProvider(
-    id: string,
-  ): Promise<{ id: string; code: string; status: string; secretRef: string | null } | null> {
+  findProvider(id: string): Promise<{
+    id: string;
+    code: string;
+    status: string;
+    secretRef: string | null;
+    health: string;
+  } | null> {
     return this.database.provider.findUnique({
       where: { id },
-      select: { id: true, code: true, status: true, secretRef: true },
+      select: { id: true, code: true, status: true, secretRef: true, health: true },
     });
   }
 
@@ -185,6 +189,7 @@ export class AdminModelsRepository {
         data: {
           modelId: model.id,
           providerId: provider.id,
+          providerModelId: input.providerModelId,
           enabled: false,
           health: provider.health,
           lastCheckedAt: provider.lastCheckedAt,
@@ -269,9 +274,10 @@ export class AdminModelsRepository {
     });
   }
 
-  async updateRoute(input: {
+  async upsertRoute(input: {
     modelId: string;
     providerId: string;
+    providerModelId: string;
     enabled: boolean;
     weight: number;
     priority: number;
@@ -280,15 +286,33 @@ export class AdminModelsRepository {
     requestId: string;
   }): Promise<AdminModelRecord | null> {
     return this.database.$transaction(async (tx) => {
+      const model = await tx.model.findUnique({
+        where: { id: input.modelId },
+        select: { id: true },
+      });
+      if (!model) return null;
       const route = await tx.modelRoute.findUnique({
         where: { modelId_providerId: { modelId: input.modelId, providerId: input.providerId } },
         include: { provider: true },
       });
-      if (!route) return null;
-      if (input.enabled && route.health !== "healthy") return null;
-      const updated = await tx.modelRoute.update({
-        where: { id: route.id },
-        data: {
+      const provider =
+        route?.provider ?? (await tx.provider.findUnique({ where: { id: input.providerId } }));
+      if (!provider) return null;
+      if (input.enabled && provider.health !== "healthy") return null;
+      const updated = await tx.modelRoute.upsert({
+        where: { modelId_providerId: { modelId: input.modelId, providerId: input.providerId } },
+        create: {
+          modelId: input.modelId,
+          providerId: input.providerId,
+          providerModelId: input.providerModelId,
+          enabled: input.enabled,
+          weight: input.weight,
+          priority: input.priority,
+          health: provider.health,
+          lastCheckedAt: provider.lastCheckedAt,
+        },
+        update: {
+          providerModelId: input.providerModelId,
           enabled: input.enabled,
           weight: input.weight,
           priority: input.priority,
@@ -299,16 +323,20 @@ export class AdminModelsRepository {
           actorAdminUserId: input.actorId,
           action: "model.route.update",
           resourceType: "ModelRoute",
-          resourceId: route.id,
+          resourceId: updated.id,
           reason: input.reason,
           requestId: input.requestId,
-          before: {
-            enabled: route.enabled,
-            weight: route.weight,
-            priority: route.priority,
-            health: route.health,
-          },
+          before: route
+            ? {
+                providerModelId: route.providerModelId,
+                enabled: route.enabled,
+                weight: route.weight,
+                priority: route.priority,
+                health: route.health,
+              }
+            : undefined,
           after: {
+            providerModelId: updated.providerModelId,
             enabled: updated.enabled,
             weight: updated.weight,
             priority: updated.priority,

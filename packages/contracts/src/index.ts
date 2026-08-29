@@ -382,6 +382,8 @@ export interface AdminModelRouteRecord {
   id: string;
   providerId: string;
   providerCode: string;
+  providerName: string;
+  providerModelId: string;
   enabled: boolean;
   weight: number;
   priority: number;
@@ -435,6 +437,7 @@ export interface AdminProviderUpdateInput {
 }
 
 export interface AdminModelRouteUpdateInput {
+  providerModelId: string;
   enabled: boolean;
   weight: number;
   priority: number;

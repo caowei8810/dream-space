@@ -47,6 +47,7 @@ export function AdminModels() {
   const [routeModel, setRouteModel] = useState<AdminModelRecord | null>(null);
   const [routeProviderId, setRouteProviderId] = useState("");
   const [routeForm, setRouteForm] = useState({
+    providerModelId: "",
     enabled: false,
     weight: 100,
     priority: 0,
@@ -80,6 +81,7 @@ export function AdminModels() {
     reason: "新增模型",
   });
   const selectedRoute = routeModel?.routes.find((route) => route.providerId === routeProviderId);
+  const selectedProvider = data.providers.find((provider) => provider.id === routeProviderId);
 
   const load = async () => {
     setLoading(true);
@@ -124,6 +126,7 @@ export function AdminModels() {
     setRouteModel(model);
     setRouteProviderId(route.providerId);
     setRouteForm({
+      providerModelId: route.providerModelId,
       enabled: route.enabled,
       weight: route.weight,
       priority: route.priority,
@@ -810,7 +813,7 @@ export function AdminModels() {
                 <thead>
                   <tr>
                     <th>模型</th>
-                    <th>供应商模型</th>
+                    <th>供应商路由</th>
                     <th>状态</th>
                     <th>能力</th>
                     <th>路由</th>
@@ -825,8 +828,12 @@ export function AdminModels() {
                         <small>{item.code}</small>
                       </td>
                       <td>
-                        {item.providerName}
-                        <small>{item.providerModelId}</small>
+                        {item.routes.length} 条路由
+                        <small>
+                          {item.routes
+                            .map((route) => `${route.providerCode}: ${route.providerModelId}`)
+                            .join(" · ")}
+                        </small>
                       </td>
                       <td>
                         {item.status === "published" ? "已发布" : "草稿"}
@@ -939,25 +946,47 @@ export function AdminModels() {
                     if (route) {
                       setRouteForm((current) => ({
                         ...current,
+                        providerModelId: route.providerModelId,
                         enabled: route.enabled,
                         weight: route.weight,
                         priority: route.priority,
                       }));
+                    } else {
+                      setRouteForm((current) => ({
+                        ...current,
+                        providerModelId: "",
+                        enabled: false,
+                        weight: 100,
+                        priority: 0,
+                      }));
                     }
                   }}
                 >
-                  {routeModel.routes.map((route) => (
-                    <option key={route.providerId} value={route.providerId}>
-                      {route.providerCode}
-                    </option>
-                  ))}
+                  {data.providers
+                    .filter((provider) => provider.status === "active")
+                    .map((provider) => (
+                      <option key={provider.id} value={provider.id}>
+                        {provider.name}
+                      </option>
+                    ))}
                 </select>
+              </label>
+              <label className="admin-form-full">
+                <span>供应商模型 ID</span>
+                <input
+                  required
+                  value={routeForm.providerModelId}
+                  onChange={(event) =>
+                    setRouteForm({ ...routeForm, providerModelId: event.target.value })
+                  }
+                  placeholder="例如 gpt-image-1"
+                />
               </label>
               <div className="admin-form-help admin-form-full">
                 当前连接状态：
-                {selectedRoute?.health === "healthy"
+                {(selectedRoute?.health ?? selectedProvider?.health) === "healthy"
                   ? "健康"
-                  : selectedRoute?.health === "unhealthy"
+                  : (selectedRoute?.health ?? selectedProvider?.health) === "unhealthy"
                     ? "异常"
                     : "未检查"}
                 。健康状态由服务端请求 OpenAI 兼容的 /models 接口确定，不能手工修改。
@@ -966,7 +995,7 @@ export function AdminModels() {
                 <input
                   type="checkbox"
                   checked={routeForm.enabled}
-                  disabled={selectedRoute?.health !== "healthy"}
+                  disabled={(selectedRoute?.health ?? selectedProvider?.health) !== "healthy"}
                   onChange={(event) =>
                     setRouteForm({ ...routeForm, enabled: event.target.checked })
                   }

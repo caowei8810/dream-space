@@ -19,7 +19,7 @@ function createService() {
     publish: vi.fn(),
     rollback: vi.fn(),
     findPublished: vi.fn(),
-    updateRoute: vi.fn(),
+    upsertRoute: vi.fn(),
   };
   return {
     repository,
@@ -65,15 +65,86 @@ describe("AdminModelsService", () => {
 
   it("validates route activation and writes a mapped route response", async () => {
     const { service, repository } = createService();
-    repository.findRoute.mockResolvedValue({ health: "unknown" });
+    repository.findProvider.mockResolvedValue({ status: "ACTIVE", health: "unknown" });
     await expect(
       service.updateRoute(
         "model-1",
         "provider-1",
-        { enabled: true, weight: 100, priority: 0, reason: "启用" },
+        {
+          providerModelId: "gpt-image-1",
+          enabled: true,
+          weight: 100,
+          priority: 0,
+          reason: "启用",
+        },
         "admin-1",
       ),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it("creates a provider-specific route for an existing logical model", async () => {
+    const { service, repository } = createService();
+    repository.findProvider.mockResolvedValue({ status: "ACTIVE", health: "healthy" });
+    repository.upsertRoute.mockResolvedValue({
+      id: "model-1",
+      code: "image-live",
+      name: "Live image",
+      providerId: "provider-primary",
+      providerModelId: "legacy-model",
+      provider: {
+        code: "primary",
+        name: "Primary",
+        baseUrl: "https://primary.example/v1",
+        secretRef: "env://PRIMARY_KEY",
+        timeoutMs: 30000,
+        retryLimit: 2,
+      },
+      status: "DRAFT",
+      visible: false,
+      capabilities: { ratios: ["1:1"], resolutions: ["2K"], maxImageCount: 1 },
+      configVersions: [],
+      routes: [
+        {
+          id: "route-secondary",
+          providerId: "provider-secondary",
+          providerModelId: "secondary-image-v2",
+          provider: { code: "secondary", name: "Secondary" },
+          enabled: true,
+          weight: 25,
+          priority: 1,
+          health: "healthy",
+          lastCheckedAt: new Date(),
+        },
+      ],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    const result = await service.updateRoute(
+      "model-1",
+      "provider-secondary",
+      {
+        providerModelId: "secondary-image-v2",
+        enabled: true,
+        weight: 25,
+        priority: 1,
+        reason: "新增备用供应商",
+      },
+      "admin-1",
+    );
+
+    expect(repository.upsertRoute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        modelId: "model-1",
+        providerId: "provider-secondary",
+        providerModelId: "secondary-image-v2",
+      }),
+    );
+    expect(result.routes[0]).toMatchObject({
+      providerCode: "secondary",
+      providerName: "Secondary",
+      providerModelId: "secondary-image-v2",
+    });
   });
 
   it("maps duplicate provider codes to conflict", async () => {
